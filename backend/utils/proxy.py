@@ -1,6 +1,6 @@
 import os
 import requests
-from urllib.parse import urlsplit
+from urllib.parse import quote, urlsplit
 from typing import Optional
 from youtube_transcript_api.proxies import WebshareProxyConfig, GenericProxyConfig
 from backend.config import logger
@@ -45,13 +45,14 @@ def get_proxy_url() -> Optional[str]:
         return proxy
 
     # Synthesize URL from explicit Webshare credentials if provided
-    ws_user = os.environ.get("WEBSHARE_USERNAME", "").strip()
-    ws_pass = os.environ.get("WEBSHARE_PASSWORD", "").strip()
-    if ws_user and ws_pass:
+    proxy_user = os.environ.get("WEBSHARE_USERNAME", "").strip()
+    proxy_token = os.environ.get("WEBSHARE_PASSWORD", "").strip()
+    if proxy_user and proxy_token:
         ws_locations_raw = os.environ.get("WEBSHARE_LOCATIONS", "").strip()
         loc_suffix = "".join(f"-{loc.strip().upper()}" for loc in ws_locations_raw.split(",") if loc.strip())
-        user_clean = ws_user[:-7] if ws_user.endswith("-rotate") else ws_user
-        return f"http://{user_clean}{loc_suffix}-rotate:{ws_pass}@p.webshare.io:80"
+        user_clean = proxy_user[:-7] if proxy_user.endswith("-rotate") else proxy_user
+        auth_credential = f"{quote(user_clean)}{loc_suffix}-rotate:{quote(proxy_token)}"
+        return f"http://{auth_credential}@p.webshare.io:80"
 
     return None
 
@@ -69,12 +70,12 @@ def get_youtube_transcript_proxy_config(custom_proxy: Optional[str] = None):
         ws_retries = 5
 
     # 1. Explicit Webshare credentials from environment
-    ws_user = os.environ.get("WEBSHARE_USERNAME", "").strip()
-    ws_pass = os.environ.get("WEBSHARE_PASSWORD", "").strip()
-    if not custom_proxy and ws_user and ws_pass:
+    proxy_user = os.environ.get("WEBSHARE_USERNAME", "").strip()
+    proxy_token = os.environ.get("WEBSHARE_PASSWORD", "").strip()
+    if not custom_proxy and proxy_user and proxy_token:
         return WebshareProxyConfig(
-            proxy_username=ws_user,
-            proxy_password=ws_pass,
+            proxy_username=proxy_user,
+            proxy_password=proxy_token,
             filter_ip_locations=ws_locations,
             retries_when_blocked=ws_retries
         )
