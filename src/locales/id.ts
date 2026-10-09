@@ -42,17 +42,22 @@ export const id: Translations = {
 
     // AI Engine settings
     aiSettingsTitle: "Pengaturan Mesin AI",
+    aiProviderLabel: "Penyedia AI",
+    providerGemini: "Google Gemini (Resmi / Multi-Key)",
+    providerOpenRouter: "OpenRouter (DeepSeek, Claude, Llama, GPT)",
     apiKeyLabel: "Gemini API Key",
     apiKeyRequired: "WAJIB",
     getFreeKey: "Dapatkan API key gratis",
+    getOpenRouterKey: "Dapatkan API key",
     hideKey: "Sembunyikan",
     showKey: "Tampilkan",
-    apiKeyPlaceholder: "Tempel Gemini API Key di sini — dapatkan gratis di aistudio.google.com",
-    apiKeyErrorHint: "Wajib diisi — tersimpan lokal di browser Anda.",
+    apiKeyPlaceholder: "Tempel Gemini API Key (dukung multi-key pisahkan koma untuk rotasi) - aistudio.google.com",
+    openRouterApiKeyPlaceholder: "Tempel OpenRouter API Key (sk-or-...) - openrouter.ai/keys",
+    apiKeyErrorHint: "Wajib diisi - tersimpan lokal di browser Anda.",
     aiModelLabel: "Pilihan Model AI",
     fetchingModels: "Mengambil daftar model...",
-    resilienceTip: "Ketahanan Kuota Gratis:",
-    resilienceDesc: "Jika model mencapai batas kuota atau error, ClipVidio AI secara dinamis mencoba seluruh model Flash baru maupun lama (3.x, 2.5, 2.0, 1.5) dari API key Anda hingga klip berhasil ditemukan!",
+    resilienceTip: "Ketahanan Kuota & Provider:",
+    resilienceDesc: "ClipVidio AI otomatis mencoba model alternatif dan rotasi key dinamis (jika memasukkan beberapa Gemini key) agar pemotongan klip tidak pernah terhenti!",
 
     // Customization
     clipCustomizationTitle: "Kustomisasi Klip",

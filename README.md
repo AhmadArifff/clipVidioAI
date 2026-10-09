@@ -113,31 +113,28 @@ Saat ini, codebase ClipVidio AI mengombinasikan **Data Modeling OOP** dengan **F
 
 ---
 
-## 🌐 Analisis Fitur Multi-AI Router (OpenRouter & Gemini Multi-Key Rotation)
+## 🌐 Fitur Multi-AI Router & Multi-Key Dynamic Rotation (✅ Terimplementasi)
 
-Untuk meningkatkan keandalan transkrip dan analisis video tanpa terbentur limit kuota (HTTP 429), arsitektur dapat ditingkatkan dengan sistem **AI Router Gateway**:
+Untuk menjamin keandalan ekstraksi klip video tanpa pernah terhenti akibat batasan kuota (HTTP 429), ClipVidio AI telah mengimplementasikan sistem **AI Router Gateway**:
 
-### 1. Konsep AI Router Multi-Provider (OpenRouter / Multi-Gateway)
-Alih-alih hanya bergantung pada satu API key Gemini, sistem dapat menggunakan antarmuka router terpadu:
-* **Integrasi OpenRouter API:** Menggunakan satu endpoint OpenAI-compatible (`https://openrouter.ai/api/v1`) untuk merouting instruksi AI ke puluhan model unggulan (Claude 3.5 Sonnet, DeepSeek V3/R1, Llama 3.3 70B, GPT-4o mini).
-* **Arsitektur 9-Router Failover Matrix:**
-  1. `Google Gemini 2.5 Flash` (Default: Gratis & Cepat)
-  2. `Google Gemini 2.0 Flash` (Fallback tier 1)
-  3. `Groq Llama-3.3-70B` (Inference super cepat < 1 detik)
-  4. `OpenRouter Gateway` (Multi-model aggregator)
-  5. `DeepSeek API` (Ekonomis & penalaran tajam)
-  6. `OpenAI GPT-4o mini`
-  7. `Anthropic Claude 3.5 Haiku`
-  8. `Mistral AI / Together AI`
-  9. `Local Ollama / Faster-Whisper` (100% Offline & Tanpa Kuota)
+### 1. Multi-Provider Support (Google Gemini & OpenRouter)
+* **Google Gemini (Resmi):** Mendukung model `gemini-2.5-flash`, `gemini-2.5-flash-lite`, `gemini-2.0-flash`, `gemini-2.5-pro` dengan dynamic model discovery & fallback.
+* **OpenRouter Gateway:** Mendukung model reasoning & viral extraction terkemuka dunia:
+  * `deepseek/deepseek-chat` (DeepSeek V3 - Cepat & Ekonomis)
+  * `deepseek/deepseek-r1` (DeepSeek R1 - Penalaran Mendalam)
+  * `meta-llama/llama-3.3-70b-instruct` (Meta LLaMA 3.3 70B)
+  * `anthropic/claude-3.5-haiku` (Claude 3.5 Haiku)
+  * `openai/gpt-4o-mini` (GPT-4o Mini)
+  * `google/gemini-2.0-flash-001`
+  * `qwen/qwen-2.5-72b-instruct`
 
-### 2. Mekanisme Multi-Key Dynamic Rotation
-Seperti yang sudah diterapkan pada Supadata di [`youtube_service.py`](./backend/services/youtube_service.py), API Key Gemini dan OpenRouter dapat dikonfigurasi sebagai array atau dipisah dengan koma:
-```env
-GEMINI_API_KEYS=key1,key2,key3,key4
-OPENROUTER_API_KEY=sk-or-v1-...
-```
-Jika key aktif mengalami *Quota Exceeded (HTTP 429)*, sistem secara otomatis mengalihkan request ke key berikutnya dalam putaran tanpa membuat proses analisis pengguna gagal.
+### 2. Multi-Key Dynamic Quota Rotation
+* Input API Key Gemini mendukung pemisah koma:
+  ```env
+  AIzaSyKey1, AIzaSyKey2, AIzaSyKey3
+  ```
+  atau melalui environment variable `GEMINI_API_KEYS`.
+* Saat suatu API Key mencapai batas limit (HTTP 429 / Resource Exhausted), router otomatis berpindah ke key cadangan berikutnya secara instan dan mengirimkan notifikasi Server-Sent Events (SSE) transparan ke antarmuka pengguna tanpa membatalkan proses analisis!
 
 ---
 

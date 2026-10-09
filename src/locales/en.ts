@@ -40,17 +40,22 @@ export const en = {
 
     // AI Engine settings
     aiSettingsTitle: "AI Engine Settings",
+    aiProviderLabel: "AI Provider",
+    providerGemini: "Google Gemini (Official / Multi-Key)",
+    providerOpenRouter: "OpenRouter (DeepSeek, Claude, Llama, GPT)",
     apiKeyLabel: "Gemini API Key",
     apiKeyRequired: "REQUIRED",
     getFreeKey: "Get free key",
+    getOpenRouterKey: "Get API key",
     hideKey: "Hide key",
     showKey: "Show key",
-    apiKeyPlaceholder: "Paste your Gemini API Key here — get one free at aistudio.google.com",
-    apiKeyErrorHint: "Required — saved locally in browser.",
+    apiKeyPlaceholder: "Paste your Gemini API Key (supports comma-separated for auto-rotation) - aistudio.google.com",
+    openRouterApiKeyPlaceholder: "Paste your OpenRouter API Key (sk-or-...) - openrouter.ai/keys",
+    apiKeyErrorHint: "Required - saved locally in browser.",
     aiModelLabel: "AI Model Selection",
     fetchingModels: "Fetching available...",
-    resilienceTip: "Free Tier Resilience:",
-    resilienceDesc: "If a model encounters quota limits or errors, ClipVidio AI automatically tries all newer and older Flash models (3.x, 2.5, 2.0, 1.5) fetched from your API key until clips are successfully found!",
+    resilienceTip: "Provider & Key Resilience:",
+    resilienceDesc: "ClipVidio AI automatically attempts fallback models and dynamic API key rotation (if multiple Gemini keys are provided) to guarantee 100% uninterrupted clip discovery!",
 
     // Customization
     clipCustomizationTitle: "Clip Customization",

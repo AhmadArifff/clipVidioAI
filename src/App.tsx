@@ -44,7 +44,12 @@ export default function App() {
     if (saved === '15s' || saved === '30s' || saved === '60s' || saved === 'auto') return saved;
     return '30s';
   });
+  const [aiProvider, setAiProvider] = useState<'gemini' | 'openrouter'>(() => {
+    const saved = localStorage.getItem('clipvidio_ai_provider');
+    return (saved === 'openrouter' || saved === 'gemini') ? saved : 'gemini';
+  });
   const [apiKey, setApiKey] = useState(() => localStorage.getItem('clipvidio_gemini_api_key') || localStorage.getItem('cheat_clip_gemini_api_key') || '');
+  const [openrouterApiKey, setOpenrouterApiKey] = useState(() => localStorage.getItem('clipvidio_openrouter_api_key') || '');
   const [showApiKey, setShowApiKey] = useState(false);
   const [isCookiesModalOpen, setIsCookiesModalOpen] = useState(false);
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
@@ -729,17 +734,17 @@ export default function App() {
     };
   }, [result]);
 
-  // Fetch available AI models when API key is detected/entered
+  // Fetch available AI models when API key or provider is updated
   useEffect(() => {
     const fetchModels = async () => {
-      const cleanKey = apiKey.trim();
-      if (!cleanKey || cleanKey.length < 20 || cleanKey.toLowerCase() === 'mock') {
+      const activeKey = aiProvider === 'openrouter' ? openrouterApiKey.trim() : apiKey.trim();
+      if (!activeKey || activeKey.length < 10 || activeKey.toLowerCase() === 'mock') {
         setAvailableModels([]);
         return;
       }
       setLoadingModels(true);
       try {
-        const res = await resilientFetch(`/api/models?api_key=${encodeURIComponent(cleanKey)}`, {
+        const res = await resilientFetch(`/api/models?provider=${encodeURIComponent(aiProvider)}&api_key=${encodeURIComponent(activeKey)}`, {
           maxRetries: 3,
           retryDelay: 800,
           silent: true
@@ -748,8 +753,10 @@ export default function App() {
           const data = await res.json();
           if (data.models && data.models.length > 0) {
             setAvailableModels(data.models);
-            if (!data.models.includes(selectedModel) || selectedModel.includes('1.5') || selectedModel.includes('1.0')) {
-              const fallback = data.models.find((m: string) => m.includes('flash')) || data.models[0] || 'gemini-2.5-flash';
+            if (!data.models.includes(selectedModel)) {
+              const fallback = aiProvider === 'openrouter'
+                ? (data.models.find((m: string) => m.includes('deepseek')) || data.models[0])
+                : (data.models.find((m: string) => m.includes('flash')) || data.models[0] || 'gemini-2.5-flash');
               setSelectedModel(fallback);
               localStorage.setItem('clipvidio_selected_model', fallback);
             }
@@ -767,7 +774,7 @@ export default function App() {
     }, 600);
 
     return () => clearTimeout(delayDebounce);
-  }, [apiKey]);
+  }, [aiProvider, apiKey, openrouterApiKey]);
 
   // Sync marked clips with local storage based on active video ID
   useEffect(() => {
@@ -1487,8 +1494,9 @@ export default function App() {
         body: JSON.stringify({
           url: targetAnalyzeUrl,
           duration: durationPref,
-          api_key: apiKey.trim() || undefined,
+          api_key: (aiProvider === 'openrouter' ? openrouterApiKey : apiKey).trim() || undefined,
           model: selectedModel,
+          ai_provider: aiProvider,
           custom_prompt: customPrompt.trim() || undefined,
           range_start: rangeStartSecs,
           range_end: rangeEndSecs,
@@ -2786,26 +2794,89 @@ Transcript:
           <div className="form-settings-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' }}>
             {/* Card 1: AI Engine Configuration */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '1.25rem', borderRadius: '12px', background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.04)' }}>
-              <h3 style={{ fontSize: '0.9rem', color: 'var(--primary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.25rem' }}>
+              <h3 style={{ fontSize: '0.9rem', color: 'var(--primary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.1rem' }}>
                 🤖 {t.form.aiSettingsTitle}
               </h3>
-              
-              {/* API Key input — required */}
+
+              {/* Provider Selector */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                  {t.form.aiProviderLabel}
+                </label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAiProvider('gemini');
+                      localStorage.setItem('clipvidio_ai_provider', 'gemini');
+                      if (!selectedModel.includes('gemini')) {
+                        setSelectedModel('gemini-2.5-flash');
+                        localStorage.setItem('clipvidio_selected_model', 'gemini-2.5-flash');
+                      }
+                    }}
+                    style={{
+                      padding: '0.55rem 0.75rem',
+                      borderRadius: '8px',
+                      fontSize: '0.8rem',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '0.35rem',
+                      background: aiProvider === 'gemini' ? 'rgba(59, 130, 246, 0.18)' : 'rgba(255, 255, 255, 0.03)',
+                      border: `1px solid ${aiProvider === 'gemini' ? '#3b82f6' : 'rgba(255, 255, 255, 0.08)'}`,
+                      color: aiProvider === 'gemini' ? '#93c5fd' : 'var(--text-secondary)',
+                    }}
+                  >
+                    <span>✨</span> Google Gemini
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAiProvider('openrouter');
+                      localStorage.setItem('clipvidio_ai_provider', 'openrouter');
+                      if (!selectedModel.includes('/')) {
+                        setSelectedModel('deepseek/deepseek-chat');
+                        localStorage.setItem('clipvidio_selected_model', 'deepseek/deepseek-chat');
+                      }
+                    }}
+                    style={{
+                      padding: '0.55rem 0.75rem',
+                      borderRadius: '8px',
+                      fontSize: '0.8rem',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '0.35rem',
+                      background: aiProvider === 'openrouter' ? 'rgba(168, 85, 247, 0.18)' : 'rgba(255, 255, 255, 0.03)',
+                      border: `1px solid ${aiProvider === 'openrouter' ? '#a855f7' : 'rgba(255, 255, 255, 0.08)'}`,
+                      color: aiProvider === 'openrouter' ? '#d8b4fe' : 'var(--text-secondary)',
+                    }}
+                  >
+                    <span>🌐</span> OpenRouter
+                  </button>
+                </div>
+              </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                 <label style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
                   <span>
-                    {t.form.apiKeyLabel}
+                    {aiProvider === 'openrouter' ? 'OpenRouter API Key' : t.form.apiKeyLabel}
                     <span style={{ marginLeft: '0.4rem', fontSize: '0.7rem', fontWeight: 700, color: '#f87171', background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '4px', padding: '0.1rem 0.35rem', letterSpacing: '0.04em' }}>{t.form.apiKeyRequired}</span>
                   </span>
                   <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                     <a
-                      href="https://aistudio.google.com/"
+                      href={aiProvider === 'openrouter' ? 'https://openrouter.ai/keys' : 'https://aistudio.google.com/'}
                       target="_blank"
                       rel="noopener noreferrer"
                       style={{ color: 'var(--primary)', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 600, transition: 'var(--transition-smooth)' }}
                       className="action-link-btn"
                     >
-                      🔑 {t.form.getFreeKey}
+                      🔑 {aiProvider === 'openrouter' ? t.form.getOpenRouterKey : t.form.getFreeKey}
                     </a>
                     <span style={{ color: 'rgba(255,255,255,0.15)', fontSize: '0.75rem' }}>|</span>
                     <span
@@ -2816,24 +2887,42 @@ Transcript:
                     </span>
                   </div>
                 </label>
-                <input
-                  id="gemini-key-input"
-                  type={showApiKey ? 'text' : 'password'}
-                  className={`form-input${!apiKey.trim() ? ' input-error-highlight' : ''}`}
-                  placeholder={t.form.apiKeyPlaceholder}
-                  value={apiKey}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setApiKey(val);
-                    localStorage.setItem('clipvidio_gemini_api_key', val);
-                    if (val.trim()) setError(null);
-                  }}
-                  disabled={loading}
-                  style={{ height: '42px' }}
-                />
-                {!apiKey.trim() && (
+                {aiProvider === 'gemini' ? (
+                  <input
+                    id="gemini-key-input"
+                    type={showApiKey ? 'text' : 'password'}
+                    className={`form-input${!apiKey.trim() ? ' input-error-highlight' : ''}`}
+                    placeholder={t.form.apiKeyPlaceholder}
+                    value={apiKey}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setApiKey(val);
+                      localStorage.setItem('clipvidio_gemini_api_key', val);
+                      if (val.trim()) setError(null);
+                    }}
+                    disabled={loading}
+                    style={{ height: '42px' }}
+                  />
+                ) : (
+                  <input
+                    id="openrouter-key-input"
+                    type={showApiKey ? 'text' : 'password'}
+                    className={`form-input${!openrouterApiKey.trim() ? ' input-error-highlight' : ''}`}
+                    placeholder={t.form.openRouterApiKeyPlaceholder}
+                    value={openrouterApiKey}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setOpenrouterApiKey(val);
+                      localStorage.setItem('clipvidio_openrouter_api_key', val);
+                      if (val.trim()) setError(null);
+                    }}
+                    disabled={loading}
+                    style={{ height: '42px' }}
+                  />
+                )}
+                {((aiProvider === 'gemini' && !apiKey.trim()) || (aiProvider === 'openrouter' && !openrouterApiKey.trim())) && (
                   <span style={{ fontSize: '0.75rem', color: '#f87171', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
                     {t.form.apiKeyErrorHint}
                   </span>
                 )}
@@ -2865,6 +2954,16 @@ Transcript:
                         {m}
                       </option>
                     ))
+                  ) : aiProvider === 'openrouter' ? (
+                    <>
+                      <option value="deepseek/deepseek-chat" style={{ background: '#0d1324', color: '#fff' }}>deepseek/deepseek-chat (DeepSeek V3 - High Intelligence & Value)</option>
+                      <option value="deepseek/deepseek-r1" style={{ background: '#0d1324', color: '#fff' }}>deepseek/deepseek-r1 (DeepSeek R1 - Advanced Reasoning)</option>
+                      <option value="meta-llama/llama-3.3-70b-instruct" style={{ background: '#0d1324', color: '#fff' }}>meta-llama/llama-3.3-70b-instruct (Meta LLaMA 3.3 70B)</option>
+                      <option value="anthropic/claude-3.5-haiku" style={{ background: '#0d1324', color: '#fff' }}>anthropic/claude-3.5-haiku (Claude 3.5 Haiku - Ultra Fast)</option>
+                      <option value="openai/gpt-4o-mini" style={{ background: '#0d1324', color: '#fff' }}>openai/gpt-4o-mini (GPT-4o Mini - Reliable & Snappy)</option>
+                      <option value="google/gemini-2.0-flash-001" style={{ background: '#0d1324', color: '#fff' }}>google/gemini-2.0-flash-001 (Gemini 2.0 via OpenRouter)</option>
+                      <option value="qwen/qwen-2.5-72b-instruct" style={{ background: '#0d1324', color: '#fff' }}>qwen/qwen-2.5-72b-instruct (Alibaba Qwen 2.5 72B)</option>
+                    </>
                   ) : (
                     <>
                       <option value="gemini-2.5-flash" style={{ background: '#0d1324', color: '#fff' }}>gemini-2.5-flash (Fast & recommended - Free tier friendly)</option>
