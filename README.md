@@ -4,72 +4,60 @@
 
 ---
 
-## ⚡ Quick Start & Setup
+## ⚡ Cara Menjalankan Project (How to Run)
 
-Follow these steps to set up and run ClipVidio AI locally on **Windows**, **macOS**, or **Linux**.
+ClipVidio AI menyediakan 3 cara menjalankan aplikasi, mulai dari yang paling praktis hingga manual:
 
-### Step 1: Prerequisites
-
-Make sure you have the following installed:
-
-1. **[Git](https://git-scm.com/)**
-   * **Windows:** `winget install Git.Git` or download from [git-scm.com](https://git-scm.com/)
-   * **macOS:** `brew install git`
-   * **Linux:** `sudo apt install git`
-2. **[Node.js](https://nodejs.org/)** (v18 or newer)
-   * Download from [nodejs.org](https://nodejs.org/) or install via your package manager.
-3. **[Python](https://www.python.org/)** (v3.10 or newer)
-   * **Windows:** Install from [python.org](https://www.python.org/downloads/) (make sure to check *"Add Python to PATH"* during setup) or from Microsoft Store.
-   * **macOS:** `brew install python`
-   * **Linux:** `sudo apt install python3 python3-pip python3-venv`
-4. **FFmpeg & yt-dlp** (Required to download, slice, and render clips)
-   * **Windows (PowerShell):**
-     ```powershell
-     winget install Gyan.FFmpeg
-     winget install yt-dlp.yt-dlp
-     ```
-     *(Close and reopen your terminal after installing so Windows recognizes them)*
-   * **macOS (Terminal):**
-     ```bash
-     brew install ffmpeg-full yt-dlp
-     ```
-      `ffmpeg-full` is required for the libass subtitle filter used by rendered captions.
-   * **Linux:**
-     ```bash
-     sudo apt update && sudo apt install ffmpeg
-     pip install yt-dlp
-     ```
-
----
-
-### Step 2: Clone the Repository
-
-Open your terminal and clone the repository:
-
-```bash
-git clone https://github.com/AhmadArifff/clipVidioAI.git
-cd clipVidioAI
+### 🚀 Cara 1: Menggunakan Launcher Otomatis (Direkomendasikan untuk Windows)
+Cukup jalankan file [`start.bat`](./start.bat) dengan double-click atau lewat terminal:
+```cmd
+start.bat
 ```
+* **Fitur Cerdas `start.bat` Baru:**
+  * ✅ Otomatis memeriksa instalasi **Node.js** & **NPM**.
+  * ✅ Otomatis mendeteksi jika folder `node_modules` belum ada dan menjalankan `npm install` secara otomatis.
+  * ✅ Otomatis memeriksa instalasi **Python** (versi 3.10+).
+  * ✅ Otomatis membuatkan virtual environment (`venv`) jika belum tersedia.
+  * ✅ Otomatis menginstall dependensi backend dari `requirements.txt` jika library belum lengkap.
+  * ✅ Memeriksa ketersediaan **FFmpeg** & **yt-dlp** di PATH dan memberikan petunjuk instalasi instan jika belum terpasang.
+  * ✅ Menahan jendela terminal (`pause`) saat terjadi error agar log kesalahan tidak langsung tertutup.
 
 ---
 
-### Step 3: Install Dependencies
+### 🛠️ Cara 2: Menjalankan Secara Manual (Terminal / CLI)
 
-#### 1. Frontend Dependencies
+#### 1. Persyaratan Sistem (Prerequisites)
+Pastikan telah terpasang:
+* **[Node.js](https://nodejs.org/)** (v18 atau lebih baru)
+* **[Python](https://www.python.org/)** (v3.10 atau lebih baru)
+* **FFmpeg & yt-dlp**:
+  * **Windows (PowerShell):**
+    ```powershell
+    winget install Gyan.FFmpeg
+    winget install yt-dlp.yt-dlp
+    ```
+  * **macOS:**
+    ```bash
+    brew install ffmpeg-full yt-dlp
+    ```
+  * **Linux:**
+    ```bash
+    sudo apt update && sudo apt install ffmpeg
+    pip install yt-dlp
+    ```
+
+#### 2. Install Dependensi Frontend
 ```bash
 npm install
 ```
 
-#### 2. Backend Dependencies
-We recommend setting up a Python virtual environment:
-
-* **Windows:**
+#### 3. Setup Virtual Environment & Install Dependensi Backend
+* **Windows (PowerShell/CMD):**
   ```powershell
   python -m venv venv
   venv\Scripts\activate
   pip install -r backend/requirements.txt
   ```
-
 * **macOS / Linux:**
   ```bash
   python3 -m venv venv
@@ -77,98 +65,92 @@ We recommend setting up a Python virtual environment:
   pip install -r backend/requirements.txt
   ```
 
----
-
-### Step 4: Run the App
-
-Launch both the frontend and backend servers concurrently:
-
+#### 4. Jalankan Aplikasi
+Jalankan frontend dan backend sekaligus menggunakan perintah:
 ```bash
 npm run dev
 ```
-
-* **Web App:** `http://localhost:5173`
-* **Backend API:** `http://localhost:8000`
-* **API Documentation:** `http://localhost:8000/docs`
+* **Web App (Frontend):** `http://localhost:5173`
+* **API Server (Backend):** `http://localhost:8000`
+* **Dokumentasi Interaktif API:** `http://localhost:8000/docs`
 
 ---
 
-## 🔄 Updating to the Latest Version
-
-To update ClipVidio AI to the latest release:
-
+### 🐳 Cara 3: Menjalankan dengan Docker
+Jika Anda menggunakan Docker dan Docker Compose:
 ```bash
-git pull origin main
-npm install
-pip install -r backend/requirements.txt
+docker-compose up --build
 ```
-*(Make sure your virtual environment is activated if you created one)*
+Aplikasi akan langsung online di port `8000`.
 
 ---
 
-## 🔑 Free Google Gemini API Key (Takes 1 Minute)
+## 🔑 Konfigurasi API Key (Gemini & Multi-Provider AI)
 
-ClipVidio AI uses Google's AI to find the best viral moments for free:
-1. Go to **[Google AI Studio](https://aistudio.google.com/)** and sign in with any Google account.
-2. Click **"Get API key"** (or **"Create API key"**).
-3. Copy your key (starts with `AIzaSy...`).
-4. Paste it into the **Gemini API Key** field in the app.
-
-> 💡 **Tip:** You can also type `mock` in the API Key box to test out the app with sample data without an API key!
+1. **Google Gemini API Key (Gratis 1 Menit):**
+   * Buat key di **[Google AI Studio](https://aistudio.google.com/)**.
+   * Salin key dan tempelkan ke kolom **Gemini API Key** di antarmuka web, atau letakkan di `backend/.env` sebagai `GEMINI_API_KEY=AIzaSy...`.
+2. **Mode Pengujian (Mock Mode):**
+   * Masukkan kata `mock` pada kolom API Key untuk menguji seluruh fungsi studio tanpa kuota API!
 
 ---
 
-## 🎯 How to Use
+## 🏗️ Analisis Implementasi OOP (Object-Oriented Programming)
 
-1. **Paste a YouTube URL** — Enter any podcast, stream, or video link (or upload your local video / Google Drive link).
-2. **Choose Duration** — Pick `~15s` (fast hooks), `~30s` (standard shorts), or `~60s` (story clips).
-3. **Click "Analyze Video"** — The AI finds the most exciting moments using YouTube audience retention data.
-4. **Customize in Clip Studio** — Adjust your video style:
-   * **Frame & Crop**: Fullscreen 9:16 vertical, square, or split-screen facecam.
-   * **Face Tracking**: Automatically keeps the speaker in the center of the frame.
-   * **Subtitles**: Choose viral animated karaoke caption styles and fonts.
-   * **Branding & Audio**: Add your watermark logo, background music, and hook sound effects.
-   * **Hardware Acceleration**: Choose your graphics card (NVIDIA, AMD, Intel) or CPU.
-5. **Batch Render & Download** — Click **Batch Render**, then download all your finished videos together in one **.ZIP** file!
+Saat ini, codebase ClipVidio AI mengombinasikan **Data Modeling OOP** dengan **Functional Pipeline**:
+* **Bagian yang Sudah Menerapkan OOP:**
+  * Validasi payload dan tipe data menggunakan Pydantic Class Models ([`backend/schemas/analyze.py`](./backend/schemas/analyze.py), [`backend/schemas/render.py`](./backend/schemas/render.py)), seperti `ViralClip`, `HeatmapPoint`, dan `AnalyzeResponse`.
+  * Objek manipulasi gambar menggunakan library Pillow (`ImageDraw.Draw`, `ImageFont.truetype`).
+* **Bagian yang Masih Prosedural / Functional:**
+  * Modul downloader ([`youtube_service.py`](./backend/services/youtube_service.py)) dan rendering engine ([`video_engine.py`](./backend/video_engine.py)) masih didominasi fungsi prosedural lepas (`def render_clip`, `def detect_faces`, dll).
+* **Rekomendasi Refactoring ke OOP Murni (Design Patterns):**
+  1. **Strategy Pattern untuk Video Downloader:**
+     * `BaseVideoSource` (Interface abstrak) $\rightarrow$ `YouTubeSource`, `GoogleDriveSource`, `LocalUploadSource`.
+  2. **Adapter & Factory Pattern untuk Video Encoder:**
+     * `BaseVideoEncoder` $\rightarrow$ `NvidiaEncoder`, `AmdEncoder`, `IntelEncoder`, `CpuSoftwareEncoder`.
+  3. **Service Class Berbasis Dependency Injection:**
+     * Mengelompokkan logika bisnis ke dalam `class VideoAnalysisService`, `class FaceTrackingService`, dan `class SubtitleRenderingService` sesuai arsitektur 4-layer di [`.agents/rules/10-architecture.md`](./.agents/rules/10-architecture.md).
 
 ---
 
-## ❓ Common Problems & Easy Fixes
+## 🌐 Analisis Fitur Multi-AI Router (OpenRouter & Gemini Multi-Key Rotation)
 
-### 1. "Failed to render video" or `The system cannot find the file specified`
-* **Cause:** `ffmpeg` or `yt-dlp` is missing on your computer.
-* **Fix:**
-  * **Windows (PowerShell):**
-    ```powershell
-    winget install Gyan.FFmpeg
-    winget install yt-dlp.yt-dlp
-    ```
-    *(Then close and reopen your terminal)*
-  * **Mac (Terminal):**
-    ```bash
-    brew install ffmpeg-full yt-dlp
-    ```
-  * Or install directly via Python: `pip install yt-dlp`
+Untuk meningkatkan keandalan transkrip dan analisis video tanpa terbentur limit kuota (HTTP 429), arsitektur dapat ditingkatkan dengan sistem **AI Router Gateway**:
 
-### 2. `No such filter: 'subtitles'`
-* **Cause:** FFmpeg was installed without the libass subtitle filter.
-* **Fix (macOS):**
-  ```bash
-  brew install ffmpeg-full
-  ```
-  Restart the backend after installation. The app automatically prefers Homebrew's subtitle-capable `ffmpeg-full` binary.
+### 1. Konsep AI Router Multi-Provider (OpenRouter / Multi-Gateway)
+Alih-alih hanya bergantung pada satu API key Gemini, sistem dapat menggunakan antarmuka router terpadu:
+* **Integrasi OpenRouter API:** Menggunakan satu endpoint OpenAI-compatible (`https://openrouter.ai/api/v1`) untuk merouting instruksi AI ke puluhan model unggulan (Claude 3.5 Sonnet, DeepSeek V3/R1, Llama 3.3 70B, GPT-4o mini).
+* **Arsitektur 9-Router Failover Matrix:**
+  1. `Google Gemini 2.5 Flash` (Default: Gratis & Cepat)
+  2. `Google Gemini 2.0 Flash` (Fallback tier 1)
+  3. `Groq Llama-3.3-70B` (Inference super cepat < 1 detik)
+  4. `OpenRouter Gateway` (Multi-model aggregator)
+  5. `DeepSeek API` (Ekonomis & penalaran tajam)
+  6. `OpenAI GPT-4o mini`
+  7. `Anthropic Claude 3.5 Haiku`
+  8. `Mistral AI / Together AI`
+  9. `Local Ollama / Faster-Whisper` (100% Offline & Tanpa Kuota)
 
-### 3. "Sign in to confirm you're not a bot"
-* **Cause:** YouTube blocks video downloads if too many requests are sent without logging in.
-* **Fix:** Click the 🍪 **Cookies** button in the top navigation bar, export your YouTube cookies using a free browser extension (like *Get cookies.txt locally*), and paste them into the app.
+### 2. Mekanisme Multi-Key Dynamic Rotation
+Seperti yang sudah diterapkan pada Supadata di [`youtube_service.py`](./backend/services/youtube_service.py), API Key Gemini dan OpenRouter dapat dikonfigurasi sebagai array atau dipisah dengan koma:
+```env
+GEMINI_API_KEYS=key1,key2,key3,key4
+OPENROUTER_API_KEY=sk-or-v1-...
+```
+Jika key aktif mengalami *Quota Exceeded (HTTP 429)*, sistem secara otomatis mengalihkan request ke key berikutnya dalam putaran tanpa membuat proses analisis pengguna gagal.
 
-### 4. Hardware Acceleration Support
-* ClipVidio AI automatically supports:
-  * **NVIDIA** (`h264_nvenc`)
-  * **AMD** (`h264_amf` on Radeon GPUs & Ryzen CPUs)
-  * **Intel** (`h264_qsv` on Arc & UHD Graphics)
-  * **Apple Mac & CPU Software** (`libx264` universal high-speed fallback)
-* You can switch your preferred hardware acceleration encoder anytime in the Render Settings.
+---
+
+## 🚀 Peluang Optimasi Performa Lebih Lanjut
+
+1. **Frontend Code-Splitting & Modular Refactoring:**
+   * Memecah file raksasa `src/App.tsx` (221 KB) dan `ClipStudioSection.tsx` (223 KB) menjadi komponen-komponen kecil dengan `React.lazy()` untuk memangkas waktu *First Contentful Paint (FCP)*.
+2. **Optimasi Computer Vision (Frame Skipping Face Detection):**
+   * Saat ini deteksi wajah memindai setiap frame video. Mengubahnya dengan memindai 1 frame setiap 3–5 frame lalu melakukan interpolasi linier bounding box akan **mempercepat render hingga 300%** dengan akurasi yang tetap mulus.
+3. **Local Offline Transcription (Faster-Whisper):**
+   * Menambahkan modul `faster-whisper` di backend sehingga video lokal tanpa subtitle YouTube dapat langsung ditranskrip secara offline tanpa perlu dependensi layanan cloud pihak ketiga.
+4. **Asynchronous Background Task Queue:**
+   * Menerapkan queue worker untuk render batch agar pemrosesan video berdurasi panjang tidak mengunci event loop server.
 
 ---
 
