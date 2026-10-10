@@ -1,0 +1,34 @@
+{
+  "project": "clipVidioAI",
+  "version": "2.0.0",
+  "total_cases": 3,
+  "cases": [
+    {
+      "id": "case-20261009-github-secret-scanning-proxy-false-positive",
+      "title": "Mitigasi GitHub Secret Scanning False-Positive pada Format URL Proxy Token",
+      "category": "security",
+      "severity": "medium",
+      "status": "VERIFIED",
+      "file": "cases/case-20261009-github-secret-scanning-proxy-false-positive.md",
+      "verified_by": ["security-engineer", "tech-critic"]
+    },
+    {
+      "id": "case-20261010-batch-launcher-special-characters-crash",
+      "title": "Resolusi Parsing Sintaks Karakter Khusus Ampersand dan Asterisk pada start.bat",
+      "category": "devops",
+      "severity": "high",
+      "status": "VERIFIED",
+      "file": "cases/case-20261010-batch-launcher-special-characters-crash.md",
+      "verified_by": ["qa-engineer", "tech-critic"]
+    },
+    {
+      "id": "case-20261009-multi-provider-ai-router-quota-fallback",
+      "title": "Dual-Engine AI Router: Dynamic Multi-Key Gemini Rotation dan OpenRouter Quota Fallback",
+      "category": "ai_architecture",
+      "severity": "high",
+      "status": "VERIFIED",
+      "file": "cases/case-20261009-multi-provider-ai-router-quota-fallback.md",
+      "verified_by": ["backend-engineer", "tech-critic"]
+    }
+  ]
+}
