@@ -4,6 +4,14 @@ from pydantic import BaseModel
 class RenderSettingsModel(BaseModel):
     aspect_ratio: str = "9:16"
     background_style: str = "black"
+    # Custom Background Configuration
+    background_type: Optional[str] = "preset"   # "blur" | "black" | "color" | "gradient" | "preset" | "custom_upload"
+    background_value: Optional[str] = "black"    # hex color ("#09090b"), preset id ("minecraft_parkour"), or gradient
+    background_file_path: Optional[str] = None   # Server file path for custom uploaded or preset media
+    foreground_scale: Optional[float] = 100.0    # 40.0% to 100.0% of canvas width
+    foreground_position_y: Optional[float] = 50.0 # 0% to 100% vertical center
+    foreground_border_radius: Optional[int] = 0  # 0 to 48 px corner radius
+    foreground_shadow: Optional[bool] = False    # Drop shadow under foreground video
     enable_face_tracking: bool = True
     streamer_preset: str = "none"
     facecam_position: Optional[str] = "auto"

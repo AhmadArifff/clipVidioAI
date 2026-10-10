@@ -2418,25 +2418,77 @@ def detect_speaker_center_ratio(video_path: str, facecam_position: str = "auto",
     return float(box.get("cx", 0.5))
 
 
+def _generate_background_canvas_filter(
+    canvas_w: int,
+    canvas_h: int,
+    background_type: str = "preset",
+    background_value: str = "black",
+    bg_input_idx: Optional[int] = None,
+    background_style: str = "black"
+) -> Tuple[List[str], str]:
+    """Generates FFmpeg filter chain creating a 1080x1920 (or custom canvas) background layer."""
+    bg_filters = []
+    out_tag = "[bg_canvas]"
+
+    if bg_input_idx is not None:
+        bg_filters.append(
+            f"[{bg_input_idx}:v]scale={canvas_w}:{canvas_h}:force_original_aspect_ratio=increase,"
+            f"crop={canvas_w}:{canvas_h}:(iw-{canvas_w})/2:(ih-{canvas_h})/2,setsar=1{out_tag}"
+        )
+    elif background_type == "blur" or background_style == "blurred":
+        bg_filters.append(
+            f"[0:v]scale=360:640:force_original_aspect_ratio=increase,crop=360:640,"
+            f"boxblur=12:2,scale={canvas_w}:{canvas_h},eq=saturation=1.2:contrast=1.05{out_tag}"
+        )
+    elif background_type == "color" or (background_value and background_value.startswith("#")):
+        raw_hex = background_value or "09090b"
+        clean_hex = re.sub(r'[^a-fA-F0-9]', '', raw_hex)
+        if len(clean_hex) != 6:
+            clean_hex = "09090b"
+        bg_filters.append(f"color=c=0x{clean_hex}:s={canvas_w}x{canvas_h}:d=1000{out_tag}")
+    elif background_type == "gradient":
+        grad_colors = {
+            "indigo_dark": "0x1e1b4b",
+            "emerald_dark": "0x064e3b",
+            "ruby_sunset": "0x831843",
+            "amber_solar": "0x78350f"
+        }
+        c_val = grad_colors.get(background_value, "0x18181b")
+        bg_filters.append(f"color=c={c_val}:s={canvas_w}x{canvas_h}:d=1000{out_tag}")
+    else:
+        bg_filters.append(f"color=c=black:s={canvas_w}x{canvas_h}:d=1000{out_tag}")
+
+    return bg_filters, out_tag
+
+
 def build_ffmpeg_filtergraph(
     aspect_ratio: str,
-    background_style: str,
+    background_style: str = "black",
     face_center_ratio: float = 0.5,
     streamer_preset: str = "none",
     title_text: Optional[str] = None,
     title_position: str = "auto",
     ass_subtitles_path: Optional[str] = None,
     face_box: Optional[Dict[str, Any]] = None,
-    title_y_percent: Optional[float] = None
+    title_y_percent: Optional[float] = None,
+    # Custom Background Options
+    bg_input_idx: Optional[int] = None,
+    background_type: str = "preset",
+    background_value: str = "black",
+    foreground_scale: float = 100.0,
+    foreground_position_y: float = 50.0,
+    foreground_border_radius: int = 0,
+    foreground_shadow: bool = False
 ) -> Tuple[str, str]:
     """
-    Constructs the FFmpeg -filter_complex chain with proper aspect ratio center-cropping.
-    Canvas is always 1080x1920 (9:16).
+    Constructs the FFmpeg -filter_complex chain with proper aspect ratio center-cropping,
+    custom background overlays, and scaling positioning.
     """
     filters = []
 
     face_cx = float(face_box.get("cx", face_center_ratio)) if face_box else face_center_ratio
     face_cy = float(face_box.get("cy", 0.78 if streamer_preset in ["split_top_cam", "pip_corner"] else 0.35)) if face_box else 0.35
+
 
     # 1. Base Layout & Scaling
     if streamer_preset == "split_top_cam":
@@ -2615,60 +2667,94 @@ def build_ffmpeg_filtergraph(
 
         current_v = "[layout_base]"
 
-    elif aspect_ratio == "9:16":
-        # Full Bleed 9:16 with Face Tracking horizontal crop offset
+    scale_factor = max(0.40, min(1.0, float(foreground_scale) / 100.0))
+    pos_y_factor = max(0.0, min(1.0, float(foreground_position_y) / 100.0))
+    has_custom_bg = (bg_input_idx is not None) or (background_type in ["color", "gradient", "custom_upload"]) or (background_type == "preset" and background_value != "black") or (background_style == "blurred")
+
+    if aspect_ratio == "9:16":
         safe_cx = float(face_cx)
         if 0.46 <= safe_cx <= 0.54:
             safe_cx = 0.50
         safe_cx = max(0.22, min(0.78, safe_cx))
         crop_ratio_safe = max(0.0, min(1.0, (safe_cx - 0.158) / 0.684))
-        filters.append(
-            f"[0:v]crop=ih*9/16:ih:(iw-ih*9/16)*{crop_ratio_safe:.3f}:0,scale=1080:1920[layout_base]"
-        )
+        crop_916 = f"crop=ih*9/16:ih:(iw-ih*9/16)*{crop_ratio_safe:.3f}:0"
+
+        if has_custom_bg or scale_factor < 0.99 or abs(pos_y_factor - 0.5) > 0.05:
+            bg_filters, bg_tag = _generate_background_canvas_filter(
+                canvas_w=1080, canvas_h=1920,
+                background_type=background_type, background_value=background_value,
+                bg_input_idx=bg_input_idx, background_style=background_style
+            )
+            filters.extend(bg_filters)
+
+            fg_w = int(round(1080 * scale_factor))
+            fg_w = fg_w if fg_w % 2 == 0 else fg_w - 1
+            fg_h = int(round(fg_w * 16 / 9))
+            fg_h = fg_h if fg_h % 2 == 0 else fg_h - 1
+            overlay_y = int(round((1920 - fg_h) * pos_y_factor))
+
+            filters.append(
+                f"[0:v]{crop_916},scale={fg_w}:{fg_h}[fg_916];"
+                f"{bg_tag}[fg_916]overlay=(1080-{fg_w})/2:{overlay_y}[layout_base]"
+            )
+        else:
+            filters.append(
+                f"[0:v]{crop_916},scale=1080:1920[layout_base]"
+            )
         current_v = "[layout_base]"
 
     elif aspect_ratio == "1:1":
-        # 1:1 Square (1080x1080) - Smart crop with speaker/object centering then scale to 1080x1080
         safe_cx = float(face_cx)
         if 0.46 <= safe_cx <= 0.54:
             safe_cx = 0.50
         safe_cx = max(0.15, min(0.85, safe_cx))
-        crop_11 = f"crop='min(iw,ih)':'min(iw,ih)':'max(0,min(iw-ih,iw*{safe_cx:.3f}-ih/2))':'(ih-min(iw,ih))/2',scale=1080:1080"
-        if background_style == "blurred":
-            filters.append(
-                f"[0:v]split=2[bg_raw][fg_raw];"
-                f"[bg_raw]scale=360:640:force_original_aspect_ratio=increase,crop=360:640,boxblur=12:2,scale=1080:1920,eq=saturation=1.2:contrast=1.05[bg_blurred];"
-                f"[fg_raw]{crop_11}[fg_square];"
-                f"[bg_blurred][fg_square]overlay=0:420[layout_base]"
-            )
-        else:
-            filters.append(
-                f"[0:v]{crop_11},pad=1080:1920:0:420:black[layout_base]"
-            )
+        crop_11 = f"crop='min(iw,ih)':'min(iw,ih)':'max(0,min(iw-ih,iw*{safe_cx:.3f}-ih/2))':'(ih-min(iw,ih))/2'"
+
+        bg_filters, bg_tag = _generate_background_canvas_filter(
+            canvas_w=1080, canvas_h=1920,
+            background_type=background_type, background_value=background_value,
+            bg_input_idx=bg_input_idx, background_style=background_style
+        )
+        filters.extend(bg_filters)
+
+        fg_w = int(round(1080 * scale_factor))
+        fg_w = fg_w if fg_w % 2 == 0 else fg_w - 1
+        fg_h = fg_w
+        overlay_y = int(round((1920 - fg_h) * pos_y_factor))
+
+        filters.append(
+            f"[0:v]{crop_11},scale={fg_w}:{fg_h}[fg_square];"
+            f"{bg_tag}[fg_square]overlay=(1080-{fg_w})/2:{overlay_y}[layout_base]"
+        )
         current_v = "[layout_base]"
 
     elif aspect_ratio == "4:3":
-        # 4:3 Standard (1080x810) - Smart crop with speaker/object centering then scale to 1080x810
         safe_cx = float(face_cx)
         if 0.46 <= safe_cx <= 0.54:
             safe_cx = 0.50
         safe_cx = max(0.15, min(0.85, safe_cx))
-        crop_43 = f"crop='min(iw,ih*4/3)':'min(ih,iw*3/4)':'max(0,min(iw-ih*4/3,iw*{safe_cx:.3f}-(ih*4/3)/2))':'(ih-min(ih,iw*3/4))/2',scale=1080:810"
-        if background_style == "blurred":
-            filters.append(
-                f"[0:v]split=2[bg_raw][fg_raw];"
-                f"[bg_raw]scale=360:640:force_original_aspect_ratio=increase,crop=360:640,boxblur=12:2,scale=1080:1920,eq=saturation=1.2:contrast=1.05[bg_blurred];"
-                f"[fg_raw]{crop_43}[fg_43];"
-                f"[bg_blurred][fg_43]overlay=0:555[layout_base]"
-            )
-        else:
-            filters.append(
-                f"[0:v]{crop_43},pad=1080:1920:0:555:black[layout_base]"
-            )
+        crop_43 = f"crop='min(iw,ih*4/3)':'min(ih,iw*3/4)':'max(0,min(iw-ih*4/3,iw*{safe_cx:.3f}-(ih*4/3)/2))':'(ih-min(ih,iw*3/4))/2'"
+
+        bg_filters, bg_tag = _generate_background_canvas_filter(
+            canvas_w=1080, canvas_h=1920,
+            background_type=background_type, background_value=background_value,
+            bg_input_idx=bg_input_idx, background_style=background_style
+        )
+        filters.extend(bg_filters)
+
+        fg_w = int(round(1080 * scale_factor))
+        fg_w = fg_w if fg_w % 2 == 0 else fg_w - 1
+        fg_h = int(round(fg_w * 3 / 4))
+        fg_h = fg_h if fg_h % 2 == 0 else fg_h - 1
+        overlay_y = int(round((1920 - fg_h) * pos_y_factor))
+
+        filters.append(
+            f"[0:v]{crop_43},scale={fg_w}:{fg_h}[fg_43];"
+            f"{bg_tag}[fg_43]overlay=(1080-{fg_w})/2:{overlay_y}[layout_base]"
+        )
         current_v = "[layout_base]"
 
     elif aspect_ratio == "16:9_landscape":
-        # True 16:9 Landscape (1920x1080)
         safe_cx = float(face_cx)
         if 0.46 <= safe_cx <= 0.54:
             safe_cx = 0.50
@@ -2680,23 +2766,29 @@ def build_ffmpeg_filtergraph(
         current_v = "[layout_base]"
 
     else:  # 16:9 Letterbox
-        # 16:9 Letterbox (1080x608) - Smart crop with speaker/object centering for ultrawide sources
         safe_cx = float(face_cx)
         if 0.46 <= safe_cx <= 0.54:
             safe_cx = 0.50
         safe_cx = max(0.15, min(0.85, safe_cx))
-        crop_169 = f"crop='min(iw,ih*16/9)':'min(ih,iw*9/16)':'max(0,min(iw-ih*16/9,iw*{safe_cx:.3f}-(ih*16/9)/2))':'(ih-min(ih,iw*9/16))/2',scale=1080:608"
-        if background_style == "blurred":
-            filters.append(
-                f"[0:v]split=2[bg_raw][fg_raw];"
-                f"[bg_raw]scale=360:640:force_original_aspect_ratio=increase,crop=360:640,boxblur=12:2,scale=1080:1920,eq=saturation=1.2:contrast=1.05[bg_blurred];"
-                f"[fg_raw]{crop_169}[fg_169];"
-                f"[bg_blurred][fg_169]overlay=0:656[layout_base]"
-            )
-        else:
-            filters.append(
-                f"[0:v]{crop_169},pad=1080:1920:0:656:black[layout_base]"
-            )
+        crop_169 = f"crop='min(iw,ih*16/9)':'min(ih,iw*9/16)':'max(0,min(iw-ih*16/9,iw*{safe_cx:.3f}-(ih*16/9)/2))':'(ih-min(ih,iw*9/16))/2'"
+
+        bg_filters, bg_tag = _generate_background_canvas_filter(
+            canvas_w=1080, canvas_h=1920,
+            background_type=background_type, background_value=background_value,
+            bg_input_idx=bg_input_idx, background_style=background_style
+        )
+        filters.extend(bg_filters)
+
+        fg_w = int(round(1080 * scale_factor))
+        fg_w = fg_w if fg_w % 2 == 0 else fg_w - 1
+        fg_h = int(round(fg_w * 9 / 16))
+        fg_h = fg_h if fg_h % 2 == 0 else fg_h - 1
+        overlay_y = int(round((1920 - fg_h) * pos_y_factor))
+
+        filters.append(
+            f"[0:v]{crop_169},scale={fg_w}:{fg_h}[fg_169];"
+            f"{bg_tag}[fg_169]overlay=(1080-{fg_w})/2:{overlay_y}[layout_base]"
+        )
         current_v = "[layout_base]"
 
     # 2. Subtitles & Title Burning via libass (.ass)
@@ -2787,11 +2879,19 @@ def render_clip_to_mp4(
     original_audio_volume: float = 1.0,
     # Hardware acceleration selection ('auto', 'nvenc', 'amf', 'qsv', 'cpu')
     hardware_accel: Optional[str] = "auto",
-    title_y_percent: Optional[float] = None
+    title_y_percent: Optional[float] = None,
+    # Custom Background Options
+    background_type: str = "preset",
+    background_value: str = "black",
+    background_file_path: Optional[str] = None,
+    foreground_scale: float = 100.0,
+    foreground_position_y: float = 50.0,
+    foreground_border_radius: int = 0,
+    foreground_shadow: bool = False
 ) -> str:
     """
-    Renders the final 1080x1920 short-form video with layout, aspect ratio, titles, subtitles,
-    watermark branding, background music with start offset, and hook sound effect at frame 0.
+    Renders the final short-form video with layout, aspect ratio, custom backgrounds,
+    titles, subtitles, watermark branding, background music with start offset, and hook sound effect at frame 0.
     """
     if not os.path.exists(video_path) or os.path.getsize(video_path) < 1000:
         raise RuntimeError(f"Input video file is missing or empty: {video_path}")
@@ -2821,6 +2921,27 @@ def render_clip_to_mp4(
             streamer_preset=streamer_preset
         )
 
+    extra_input_args = []
+    input_idx_counter = 1
+    dur = max(1.0, float(clip_duration))
+
+    # Prepare background input stream if media file is present
+    bg_input_idx = None
+    resolved_bg_path = background_file_path
+    if (not resolved_bg_path or not os.path.exists(resolved_bg_path)) and background_type == "preset" and background_value:
+        preset_file_candidate = BASE_DIR / "backgrounds" / "presets" / f"{background_value}.mp4"
+        if preset_file_candidate.exists():
+            resolved_bg_path = str(preset_file_candidate)
+
+    if resolved_bg_path and os.path.exists(resolved_bg_path):
+        bg_input_idx = input_idx_counter
+        input_idx_counter += 1
+        ext_bg = os.path.splitext(resolved_bg_path)[1].lower()
+        if ext_bg in [".mp4", ".webm", ".mov", ".mkv"]:
+            extra_input_args.extend(["-stream_loop", "-1", "-i", str(resolved_bg_path)])
+        else:
+            extra_input_args.extend(["-loop", "1", "-i", str(resolved_bg_path)])
+
     filter_complex, out_video_map = build_ffmpeg_filtergraph(
         aspect_ratio=aspect_ratio,
         background_style=background_style,
@@ -2830,13 +2951,17 @@ def render_clip_to_mp4(
         title_position=title_position,
         ass_subtitles_path=ass_subtitles_path,
         face_box=face_box,
-        title_y_percent=title_y_percent
+        title_y_percent=title_y_percent,
+        bg_input_idx=bg_input_idx,
+        background_type=background_type,
+        background_value=background_value,
+        foreground_scale=foreground_scale,
+        foreground_position_y=foreground_position_y,
+        foreground_border_radius=foreground_border_radius,
+        foreground_shadow=foreground_shadow
     )
 
     filter_chains = [filter_complex]
-    extra_input_args = []
-    input_idx_counter = 1
-    dur = max(1.0, float(clip_duration))
 
     # 1. Apply Title Overlay (Full-Color Emojis & Titles)
     if title_overlay_path and os.path.exists(title_overlay_path):

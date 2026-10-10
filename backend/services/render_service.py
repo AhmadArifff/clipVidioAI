@@ -207,7 +207,14 @@ async def render_single_batch_clip(
             hook_sfx_volume=float((settings.hook_sfx_volume if settings.hook_sfx_volume is not None else 100.0) / 100.0),
             original_audio_volume=float((settings.original_audio_volume if settings.original_audio_volume is not None else 100.0) / 100.0),
             hardware_accel=settings.hardware_accel or "auto",
-            title_y_percent=settings.title_y_percent
+            title_y_percent=settings.title_y_percent,
+            background_type=getattr(settings, "background_type", "preset") or "preset",
+            background_value=getattr(settings, "background_value", settings.background_style or "black") or "black",
+            background_file_path=getattr(settings, "background_file_path", None),
+            foreground_scale=float(getattr(settings, "foreground_scale", 100.0) or 100.0),
+            foreground_position_y=float(getattr(settings, "foreground_position_y", 50.0) or 50.0),
+            foreground_border_radius=int(getattr(settings, "foreground_border_radius", 0) or 0),
+            foreground_shadow=bool(getattr(settings, "foreground_shadow", False))
         )
 
         if not os.path.exists(out_path) or not is_valid_mp4(out_path):
@@ -498,7 +505,14 @@ async def render_merged_batch_clips(
             hook_sfx_volume=float((settings.hook_sfx_volume if settings.hook_sfx_volume is not None else 100.0) / 100.0),
             original_audio_volume=float((settings.original_audio_volume if settings.original_audio_volume is not None else 100.0) / 100.0),
             hardware_accel=settings.hardware_accel or "auto",
-            title_y_percent=settings.title_y_percent
+            title_y_percent=settings.title_y_percent,
+            background_type=getattr(settings, "background_type", "preset") or "preset",
+            background_value=getattr(settings, "background_value", settings.background_style or "black") or "black",
+            background_file_path=getattr(settings, "background_file_path", None),
+            foreground_scale=float(getattr(settings, "foreground_scale", 100.0) or 100.0),
+            foreground_position_y=float(getattr(settings, "foreground_position_y", 50.0) or 50.0),
+            foreground_border_radius=int(getattr(settings, "foreground_border_radius", 0) or 0),
+            foreground_shadow=bool(getattr(settings, "foreground_shadow", False))
         )
 
         if not os.path.exists(out_path) or not is_valid_mp4(out_path):

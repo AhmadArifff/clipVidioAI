@@ -39,22 +39,25 @@
       "prd_sections": ["Seksi 1 - Seksi 7"],
       "status": "VERIFIED_PASS",
       "verified_at": "2026-10-10"
-    }
-  ],
-  "in_progress_milestones": [
+    },
     {
       "id": "M6_CUSTOM_BACKGROUND_ENGINE",
       "title": "Backend Engine Custom Background (Upload API, Preset Library, Dynamic FFmpeg Composite Filter Multi-Ratio)",
       "prd_sections": ["Seksi 2: Fitur 1"],
       "owner_role": "backend-engineer",
-      "status": "IN_PROGRESS"
-    },
+      "status": "VERIFIED_PASS",
+      "verified_at": "2026-10-10",
+      "qa_reviewer": "qa-engineer",
+      "tech_critic_approval": true
+    }
+  ],
+  "in_progress_milestones": [
     {
       "id": "M7_MONOREPO_RESTRUCTURING",
       "title": "Restrukturisasi Direktori Monorepo (apps/web, apps/api, packages/shared, workspaces config)",
       "prd_sections": ["Seksi 3: Fitur 2"],
       "owner_role": "backend-engineer",
-      "status": "PENDING"
+      "status": "IN_PROGRESS"
     },
     {
       "id": "M8_UI_UX_LUCIDE_REDESIGN",
