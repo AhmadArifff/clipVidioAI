@@ -93,10 +93,40 @@ export interface HardwareAccelInfo {
   }>;
 }
 
+export type BackgroundType = 'blur' | 'black' | 'color' | 'gradient' | 'preset' | 'custom_upload';
+
+export interface BackgroundPresetItem {
+  id: string;
+  name: string;
+  category: 'ambient' | 'color' | 'gradient' | 'motion' | 'gaming' | 'aesthetic';
+  type: 'blur' | 'color' | 'gradient' | 'preset';
+  description: string;
+  preview_color: string;
+  value: string;
+  media_file?: string;
+  c0?: string;
+  c1?: string;
+}
+
+export interface CustomBackgroundFileItem {
+  file_name: string;
+  file_path: string;
+  url: string;
+  media_type: 'image' | 'video';
+  file_size_bytes: number;
+}
+
 export interface RenderSettings {
   renderEngine?: 'server' | 'client';
   aspectRatio: AspectRatioOption;
   backgroundStyle: BackgroundStyle;
+  backgroundType?: BackgroundType;
+  backgroundValue?: string;
+  backgroundFilePath?: string;
+  foregroundScale?: number; // 40 to 100%
+  foregroundPositionY?: number; // 0 to 100%
+  foregroundBorderRadius?: number; // 0 to 48px
+  foregroundShadow?: boolean;
   enableFaceTracking: boolean;
   streamerPreset: StreamerPreset;
   facecamPosition?: FacecamPosition;

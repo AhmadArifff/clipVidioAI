@@ -464,6 +464,13 @@ export default function App() {
           settings: {
             aspect_ratio: settings.aspectRatio,
             background_style: settings.backgroundStyle,
+            background_type: settings.backgroundType || 'preset',
+            background_value: settings.backgroundValue || settings.backgroundStyle || 'black',
+            background_file_path: settings.backgroundFilePath || null,
+            foreground_scale: settings.foregroundScale ?? 100.0,
+            foreground_position_y: settings.foregroundPositionY ?? 50.0,
+            foreground_border_radius: settings.foregroundBorderRadius ?? 0,
+            foreground_shadow: !!settings.foregroundShadow,
             enable_face_tracking: settings.enableFaceTracking,
             streamer_preset: settings.streamerPreset,
             facecam_position: settings.facecamPosition || 'auto',

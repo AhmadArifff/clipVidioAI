@@ -19,7 +19,9 @@ import type {
   HardwareAccelOption,
   HardwareAccelInfo,
   FontItem,
+  BackgroundType,
 } from '../types';
+import { BackgroundCustomizer } from './BackgroundCustomizer';
 
 interface ClipStudioSectionProps {
   videoUrl: string;
@@ -206,11 +208,25 @@ export interface StudioPreferences {
   fileNameSuffix?: string;
   titlePrefix?: string;
   titleSuffix?: string;
+  backgroundType?: BackgroundType;
+  backgroundValue?: string;
+  backgroundFilePath?: string;
+  foregroundScale?: number;
+  foregroundPositionY?: number;
+  foregroundBorderRadius?: number;
+  foregroundShadow?: boolean;
 }
 
 export const DEFAULT_STUDIO_PREFS: Required<StudioPreferences> = {
   aspectRatio: '9:16',
   backgroundStyle: 'black',
+  backgroundType: 'preset',
+  backgroundValue: 'black',
+  backgroundFilePath: '',
+  foregroundScale: 100,
+  foregroundPositionY: 50,
+  foregroundBorderRadius: 0,
+  foregroundShadow: false,
   enableFaceTracking: true,
   streamerPreset: 'none',
   facecamPosition: 'auto',
@@ -274,6 +290,13 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
 
   const [aspectRatio, setAspectRatio] = useState<AspectRatioOption>(() => getSavedStudioPreferences().aspectRatio ?? DEFAULT_STUDIO_PREFS.aspectRatio);
   const [backgroundStyle, setBackgroundStyle] = useState<BackgroundStyle>(() => getSavedStudioPreferences().backgroundStyle ?? DEFAULT_STUDIO_PREFS.backgroundStyle);
+  const [backgroundType, setBackgroundType] = useState<BackgroundType>(() => getSavedStudioPreferences().backgroundType ?? DEFAULT_STUDIO_PREFS.backgroundType);
+  const [backgroundValue, setBackgroundValue] = useState<string>(() => getSavedStudioPreferences().backgroundValue ?? DEFAULT_STUDIO_PREFS.backgroundValue);
+  const [backgroundFilePath, setBackgroundFilePath] = useState<string | undefined>(() => getSavedStudioPreferences().backgroundFilePath || undefined);
+  const [foregroundScale, setForegroundScale] = useState<number>(() => getSavedStudioPreferences().foregroundScale ?? DEFAULT_STUDIO_PREFS.foregroundScale);
+  const [foregroundPositionY, setForegroundPositionY] = useState<number>(() => getSavedStudioPreferences().foregroundPositionY ?? DEFAULT_STUDIO_PREFS.foregroundPositionY);
+  const [foregroundBorderRadius, setForegroundBorderRadius] = useState<number>(() => getSavedStudioPreferences().foregroundBorderRadius ?? DEFAULT_STUDIO_PREFS.foregroundBorderRadius);
+  const [foregroundShadow, setForegroundShadow] = useState<boolean>(() => getSavedStudioPreferences().foregroundShadow ?? DEFAULT_STUDIO_PREFS.foregroundShadow);
   const [enableFaceTracking, setEnableFaceTracking] = useState<boolean>(() => getSavedStudioPreferences().enableFaceTracking ?? DEFAULT_STUDIO_PREFS.enableFaceTracking);
   const [streamerPreset, setStreamerPreset] = useState<StreamerPreset>(() => getSavedStudioPreferences().streamerPreset ?? DEFAULT_STUDIO_PREFS.streamerPreset);
   const [facecamPosition, setFacecamPosition] = useState<FacecamPosition>(() => getSavedStudioPreferences().facecamPosition ?? DEFAULT_STUDIO_PREFS.facecamPosition);
@@ -1385,6 +1408,13 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
     const prefs: StudioPreferences = {
       aspectRatio,
       backgroundStyle,
+      backgroundType,
+      backgroundValue,
+      backgroundFilePath,
+      foregroundScale,
+      foregroundPositionY,
+      foregroundBorderRadius,
+      foregroundShadow,
       enableFaceTracking,
       streamerPreset,
       facecamPosition,
@@ -1422,6 +1452,13 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
   }, [
     aspectRatio,
     backgroundStyle,
+    backgroundType,
+    backgroundValue,
+    backgroundFilePath,
+    foregroundScale,
+    foregroundPositionY,
+    foregroundBorderRadius,
+    foregroundShadow,
     enableFaceTracking,
     streamerPreset,
     facecamPosition,
@@ -1455,6 +1492,13 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
   const handleResetToDefaults = () => {
     setAspectRatio(DEFAULT_STUDIO_PREFS.aspectRatio);
     setBackgroundStyle(DEFAULT_STUDIO_PREFS.backgroundStyle);
+    setBackgroundType(DEFAULT_STUDIO_PREFS.backgroundType);
+    setBackgroundValue(DEFAULT_STUDIO_PREFS.backgroundValue);
+    setBackgroundFilePath(DEFAULT_STUDIO_PREFS.backgroundFilePath || undefined);
+    setForegroundScale(DEFAULT_STUDIO_PREFS.foregroundScale);
+    setForegroundPositionY(DEFAULT_STUDIO_PREFS.foregroundPositionY);
+    setForegroundBorderRadius(DEFAULT_STUDIO_PREFS.foregroundBorderRadius);
+    setForegroundShadow(DEFAULT_STUDIO_PREFS.foregroundShadow);
     setEnableFaceTracking(DEFAULT_STUDIO_PREFS.enableFaceTracking);
     setStreamerPreset(DEFAULT_STUDIO_PREFS.streamerPreset);
     setFacecamPosition(DEFAULT_STUDIO_PREFS.facecamPosition);
@@ -1509,6 +1553,13 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
     onStartRender({
       aspectRatio,
       backgroundStyle,
+      backgroundType,
+      backgroundValue,
+      backgroundFilePath,
+      foregroundScale,
+      foregroundPositionY,
+      foregroundBorderRadius,
+      foregroundShadow,
       enableFaceTracking,
       streamerPreset,
       facecamPosition,
@@ -1706,28 +1757,30 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
               </button>
             </div>
 
-            {/* Background Style when bars are active */}
-            {aspectRatio !== '9:16' && aspectRatio !== '16:9_landscape' && (
-              <div className="studio-sub-toggle" style={{ marginTop: '0.75rem' }}>
-                <span className="sub-toggle-label">{t.studio.marginBackdrop}</span>
-                <div className="toggle-pill-group">
-                  <button
-                    type="button"
-                    className={`pill-btn ${backgroundStyle === 'black' ? 'active' : ''}`}
-                    onClick={() => setBackgroundStyle('black')}
-                  >
-                    {t.studio.blackBars}
-                  </button>
-                  <button
-                    type="button"
-                    className={`pill-btn ${backgroundStyle === 'blurred' ? 'active' : ''}`}
-                    onClick={() => setBackgroundStyle('blurred')}
-                  >
-                    {t.studio.blurredVideo}
-                  </button>
-                </div>
-              </div>
-            )}
+            {/* Background Customizer & Layout Engine */}
+            <div style={{ marginTop: '1rem', marginBottom: '1rem' }}>
+              <BackgroundCustomizer
+                aspectRatio={aspectRatio}
+                onAspectRatioChange={handleSelectAspectRatio}
+                backgroundType={backgroundType}
+                onBackgroundTypeChange={(t) => {
+                  setBackgroundType(t);
+                  setBackgroundStyle(t === 'blur' ? 'blurred' : 'black');
+                }}
+                backgroundValue={backgroundValue}
+                onBackgroundValueChange={setBackgroundValue}
+                backgroundFilePath={backgroundFilePath}
+                onBackgroundFilePathChange={setBackgroundFilePath}
+                foregroundScale={foregroundScale}
+                onForegroundScaleChange={setForegroundScale}
+                foregroundPositionY={foregroundPositionY}
+                onForegroundPositionYChange={setForegroundPositionY}
+                foregroundBorderRadius={foregroundBorderRadius}
+                onForegroundBorderRadiusChange={setForegroundBorderRadius}
+                foregroundShadow={foregroundShadow}
+                onForegroundShadowChange={setForegroundShadow}
+              />
+            </div>
 
             {/* AI Active Speaker & Object Centering */}
             <div style={{ marginTop: '0.85rem' }}>
@@ -3805,13 +3858,21 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
               className={`phone-wireframe-container real-preview-container ${isLandscape ? 'is-landscape' : ''}`}
               style={{ width: `${phoneWidth}px`, height: `${phoneHeight}px` }}
             >
-              {/* Background Backdrop (Black or Ambient Blurred) */}
+              {/* Background Backdrop (Black, Ambient Blurred, Gradients, or Preset/Custom Media) */}
               <div
                 className="real-frame-bg-layer"
-                style={{ backgroundColor: '#000000' }}
+                style={{
+                  backgroundColor: backgroundType === 'color' ? backgroundValue : '#000000',
+                  background: backgroundType === 'gradient'
+                    ? (backgroundValue.startsWith('linear-gradient') ? backgroundValue : 'linear-gradient(180deg, #1e1b4b 0%, #0f172a 100%)')
+                    : undefined,
+                  position: 'relative',
+                  overflow: 'hidden'
+                }}
               >
-                {backgroundStyle === 'blurred' && aspectRatio !== '9:16' && aspectRatio !== '16:9_landscape' && (
-                  <div className="ambient-blur-backdrop" style={{ overflow: 'hidden' }}>
+                {/* 1. Ambient Blur Backdrop */}
+                {(backgroundType === 'blur' || (backgroundStyle === 'blurred' && backgroundType === 'preset' && backgroundValue === 'blurred')) && (
+                  <div className="ambient-blur-backdrop" style={{ overflow: 'hidden', position: 'absolute', inset: 0 }}>
                     {videoUrl && (videoUrl.endsWith('.mp4') || videoUrl.endsWith('.webm') || videoUrl.endsWith('.mov') || videoUrl.endsWith('.mkv') || videoUrl.includes('/api/video') || videoUrl.startsWith('blob:') || videoId?.startsWith('upload_') || videoId?.startsWith('gdrive_')) ? (
                       <video
                         ref={ambientVideoRef}
@@ -3844,8 +3905,41 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                   </div>
                 )}
 
-                {/* Content Box with Live Video Player */}
-                <div className={`wireframe-single-layout ${streamerPreset === 'split_top_cam' ? 'split-active' : ''}`}>
+                {/* 2. Custom Media or Preset Video/Image Background */}
+                {(backgroundType === 'preset' || backgroundType === 'custom_upload') && backgroundFilePath && (
+                  <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none' }}>
+                    {backgroundFilePath.endsWith('.mp4') || backgroundFilePath.endsWith('.webm') || backgroundFilePath.endsWith('.mov') ? (
+                      <video
+                        src={`/api/backgrounds/file/${backgroundFilePath.split(/[/\\]/).pop()}`}
+                        autoPlay
+                        loop
+                        muted
+                        playsInline
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      />
+                    ) : (
+                      <img
+                        src={`/api/backgrounds/file/${backgroundFilePath.split(/[/\\]/).pop()}`}
+                        alt="Background"
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      />
+                    )}
+                  </div>
+                )}
+
+                {/* Content Box with Live Video Player & Foreground Customization */}
+                <div
+                  className={`wireframe-single-layout ${streamerPreset === 'split_top_cam' ? 'split-active' : ''}`}
+                  style={{
+                    transform: foregroundScale !== 100 || foregroundPositionY !== 50
+                      ? `scale(${foregroundScale / 100}) translateY(${(foregroundPositionY - 50) * 1.2}%)`
+                      : undefined,
+                    borderRadius: foregroundBorderRadius > 0 ? `${foregroundBorderRadius}px` : undefined,
+                    boxShadow: foregroundShadow ? '0 20px 40px rgba(0,0,0,0.85)' : undefined,
+                    overflow: foregroundBorderRadius > 0 ? 'hidden' : undefined,
+                    transition: 'transform 0.15s ease-out, border-radius 0.15s ease-out, box-shadow 0.15s ease-out'
+                  }}
+                >
                   {/* Top Facecam Box if split_top_cam */}
                   {streamerPreset === 'split_top_cam' && (
                     <>
