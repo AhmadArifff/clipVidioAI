@@ -45,6 +45,7 @@ except Exception:
 _base_dir = os.path.dirname(os.path.abspath(__file__))
 load_dotenv(os.path.join(_base_dir, ".env"))
 load_dotenv(os.path.join(_base_dir, "..", ".env"))
+load_dotenv(os.path.join(_base_dir, "..", "..", ".env"))
 load_dotenv()
 
 ROOT_DIR = Path(_base_dir).parent

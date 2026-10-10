@@ -140,8 +140,14 @@ from pathlib import Path
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
-dist_dir = Path(__file__).resolve().parent.parent / "dist"
-if dist_dir.exists() and (dist_dir / "index.html").exists():
+_dist_candidates = [
+    Path(__file__).resolve().parent.parent.parent / "web" / "dist",
+    Path(__file__).resolve().parent.parent.parent.parent / "apps" / "web" / "dist",
+    Path(__file__).resolve().parent.parent / "dist",
+    Path(__file__).resolve().parent.parent.parent / "dist"
+]
+dist_dir = next((d for d in _dist_candidates if d.exists() and (d / "index.html").exists()), None)
+if dist_dir:
     if (dist_dir / "assets").exists():
         app.mount("/assets", StaticFiles(directory=dist_dir / "assets"), name="assets")
 

@@ -122,7 +122,10 @@ if exist "%~dp0.venv\Scripts\python.exe" (
     )
 )
 
-set "REQ_FILE=%~dp0backend\requirements.txt"
+set "REQ_FILE=%~dp0apps\api\requirements.txt"
+if not exist "%REQ_FILE%" (
+    set "REQ_FILE=%~dp0backend\requirements.txt"
+)
 if not exist "%REQ_FILE%" (
     set "REQ_FILE=%~dp0requirements.txt"
 )

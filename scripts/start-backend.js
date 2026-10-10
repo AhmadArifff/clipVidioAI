@@ -6,8 +6,15 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '..');
-const reqPath = fs.existsSync(path.join(rootDir, 'backend', 'requirements.txt'))
-  ? path.join(rootDir, 'backend', 'requirements.txt')
+const apiDir = path.join(rootDir, 'apps', 'api');
+const apiBackendDir = path.join(apiDir, 'backend');
+const rootBackendDir = path.join(rootDir, 'backend');
+const backendDir = fs.existsSync(apiBackendDir) ? apiBackendDir : rootBackendDir;
+
+const reqPath = fs.existsSync(path.join(apiDir, 'requirements.txt'))
+  ? path.join(apiDir, 'requirements.txt')
+  : fs.existsSync(path.join(backendDir, 'requirements.txt'))
+  ? path.join(backendDir, 'requirements.txt')
   : path.join(rootDir, 'requirements.txt');
 
 const isWindows = process.platform === 'win32';
@@ -42,12 +49,13 @@ function getSanitizedEnv(pythonExe) {
   }
 
   const unifiedPath = pathParts.join(path.delimiter);
+  const pyPathList = [rootDir, apiDir, backendDir].filter((p) => fs.existsSync(p));
   return {
     ...process.env,
     PATH: unifiedPath,
     Path: unifiedPath,
     PYTHONUNBUFFERED: '1',
-    PYTHONPATH: rootDir
+    PYTHONPATH: pyPathList.join(path.delimiter)
   };
 }
 
@@ -252,13 +260,13 @@ async function start() {
     '8000',
     '--reload',
     '--reload-dir',
-    path.join(rootDir, 'backend')
+    backendDir
   ];
 
   console.log('\x1b[34m%s\x1b[0m', `🚀 Launching FastAPI server on http://127.0.0.1:8000 ...`);
 
   const backendProc = spawn(pythonExe, uvicornArgs, {
-    cwd: rootDir,
+    cwd: fs.existsSync(apiDir) ? apiDir : rootDir,
     shell: false,
     stdio: 'inherit',
     env: backendEnv

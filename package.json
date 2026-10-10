@@ -1,36 +1,21 @@
 {
-  "name": "clipvidio-ai",
+  "name": "clipvidio-ai-monorepo",
   "private": true,
-  "version": "0.0.0",
+  "version": "2.0.0",
   "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
     "dev": "concurrently --prefix \"[{name}]\" --names \"frontend,backend\" -c \"cyan,magenta\" \"npm run dev-frontend\" \"npm run dev-backend\"",
-    "dev-frontend": "vite",
+    "dev-frontend": "npm run dev -w @clipvidio/web",
     "dev-backend": "node scripts/start-backend.js",
-    "build": "tsc -b && vite build",
-    "lint": "eslint .",
-    "preview": "vite preview"
-  },
-  "dependencies": {
-    "@ffmpeg/ffmpeg": "^0.12.15",
-    "@ffmpeg/util": "^0.12.2",
-    "lucide-react": "^1.54.0",
-    "react": "^19.2.6",
-    "react-dom": "^19.2.6"
+    "build": "npm run build -w @clipvidio/web",
+    "lint": "npm run lint -w @clipvidio/web",
+    "preview": "npm run preview -w @clipvidio/web"
   },
   "devDependencies": {
-    "@eslint/js": "^10.0.1",
-    "@types/node": "^24.12.3",
-    "@types/react": "^19.2.14",
-    "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^6.0.1",
-    "concurrently": "^10.0.3",
-    "eslint": "^10.3.0",
-    "eslint-plugin-react-hooks": "^7.1.1",
-    "eslint-plugin-react-refresh": "^0.5.2",
-    "globals": "^17.6.0",
-    "typescript": "~6.0.2",
-    "typescript-eslint": "^8.59.2",
-    "vite": "^8.0.12"
+    "concurrently": "^10.0.3"
   }
 }

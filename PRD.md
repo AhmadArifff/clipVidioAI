@@ -185,11 +185,11 @@ File `.agents/session-state.json` bertindak sebagai *Single Source of Truth* unt
 
 | Fase | Sub-Tugas / Deliverable | Output Artefak | Status |
 |---|---|---|---|
-| **Fase 1** | Inisialisasi Session-State & Dokumen PRD | `.agents/session-state.json`, `PRD.md` | **Selesai** |
-| **Fase 2** | Backend Engine: Custom Background API & FFmpeg Pipeline | `backend/routers/background.py`, update `video_engine.py` | Siap Dikerjakan |
-| **Fase 3** | Restrukturisasi Arsitektur Monorepo | `apps/web/`, `apps/api/`, `packages/shared/`, `package.json` | Siap Dikerjakan |
-| **Fase 4** | Redesain UI/UX & Integrasi Ikonografi Lucide | `lucide-react`, Background Customizer UI, Studio Preview | Siap Dikerjakan |
-| **Fase 5** | Pengujian Integrasi, Uji Render FFmpeg, & Delivery Gate Audit | Laporan QA, Verifikasi build, Launch test via `start.bat` | Siap Dikerjakan |
+| **Fase 1** | Inisialisasi Session-State & Dokumen PRD | `.agents/02-session-state/`, `PRD.md` | **Selesai (Verified Pass)** |
+| **Fase 2** | Backend Engine: Custom Background API & FFmpeg Pipeline | `apps/api/backend/routers/backgrounds.py`, `video_engine.py` | **Selesai (Verified Pass)** |
+| **Fase 3** | Restrukturisasi Arsitektur Monorepo | `apps/web/`, `apps/api/`, `packages/shared/`, root `package.json` | **Selesai (Verified Pass)** |
+| **Fase 4** | Redesain UI/UX & Integrasi Ikonografi Lucide | `lucide-react`, `BackgroundCustomizer.tsx`, WYSIWYG Preview | **Selesai (Verified Pass)** |
+| **Fase 5** | Pengujian Integrasi, Uji Render FFmpeg, & Delivery Gate Audit | Laporan QA, Verifikasi build 0-error, Launch test via `start.bat` | **In Progress (Active)** |
 
 ---
 

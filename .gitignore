@@ -52,6 +52,12 @@ backend/temp/
 backend/temp_downloads/
 backend/temp_clips/
 backend/exports/
+apps/api/backend/temp/
+apps/api/backend/temp_downloads/
+apps/api/backend/temp_clips/
+apps/api/backend/exports/
+apps/api/backend/backgrounds/uploads/
+apps/web/dist/
 *.ass
 *.mp4
 *.m4a

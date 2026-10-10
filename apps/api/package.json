@@ -1,0 +1,9 @@
+{
+  "name": "@clipvidio/api",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node ../../scripts/start-backend.js"
+  }
+}
