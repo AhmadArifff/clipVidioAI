@@ -1,7 +1,7 @@
 {
   "project": "clipVidioAI",
   "version": "2.0.0",
-  "total_cases": 3,
+  "total_cases": 4,
   "cases": [
     {
       "id": "case-20261009-github-secret-scanning-proxy-false-positive",
@@ -29,6 +29,15 @@
       "status": "VERIFIED",
       "file": "cases/case-20261009-multi-provider-ai-router-quota-fallback.md",
       "verified_by": ["backend-engineer", "tech-critic"]
+    },
+    {
+      "id": "case-20261010-monorepo-workspaces-hybrid-python-vite-migration",
+      "title": "Arsitektur Monorepo Hybrid Node.js Workspaces dan FastAPI Python: Transparent Root Delegation, Type Sharing, dan Backward-Compatible Windows Launcher",
+      "category": "architecture",
+      "severity": "high",
+      "status": "VERIFIED",
+      "file": "cases/case-20261010-monorepo-workspaces-hybrid-python-vite-migration.md",
+      "verified_by": ["backend-engineer", "qa-engineer", "tech-critic"]
     }
   ]
 }
