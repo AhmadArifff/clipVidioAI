@@ -4926,5 +4926,357 @@ label[for="manual-subtitle-file"]:hover {
   left: 0 !important;
 }
 
+/* ==========================================================================
+   CLIPVIDIO AI -- BACKGROUND & FOREGROUND CUSTOMIZER (VANILLA CSS DESIGN SYSTEM)
+   ========================================================================== */
 
+.bg-customizer-card {
+  background: var(--bg-surface, #11141d);
+  border: 1px solid var(--border-color, #1e2433);
+  border-radius: 14px;
+  padding: 1.25rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 0.75rem;
+  margin-bottom: 0.75rem;
+  box-sizing: border-box;
+  width: 100%;
+}
 
+.bg-customizer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  padding-bottom: 0.85rem;
+  gap: 0.75rem;
+}
+
+.bg-customizer-title-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.bg-customizer-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary, #f8fafc);
+  letter-spacing: -0.01em;
+}
+
+.bg-customizer-title svg {
+  color: var(--primary, #a855f7);
+  flex-shrink: 0;
+}
+
+.bg-customizer-desc {
+  font-size: 0.76rem;
+  color: var(--text-secondary, #94a3b8);
+  line-height: 1.4;
+  margin: 0;
+}
+
+/* Main Mode Tabs */
+.bg-customizer-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding-bottom: 0.85rem;
+}
+
+.bg-customizer-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.5rem 0.85rem;
+  border-radius: 9px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-secondary, #94a3b8);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  outline: none;
+}
+
+.bg-customizer-tab-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary, #f8fafc);
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+.bg-customizer-tab-btn.active {
+  background: rgba(139, 92, 246, 0.18);
+  color: #c084fc;
+  border-color: rgba(168, 85, 247, 0.5);
+  box-shadow: 0 0 16px rgba(168, 85, 247, 0.25);
+}
+
+.bg-customizer-tab-btn svg {
+  flex-shrink: 0;
+}
+
+.bg-customizer-badge {
+  background: rgba(168, 85, 247, 0.25);
+  color: #e9d5ff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 0.1rem 0.4rem;
+  border-radius: 999px;
+}
+
+/* Sub-filter Category Bar */
+.bg-customizer-subfilter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.78rem;
+  color: var(--text-secondary, #94a3b8);
+  margin-bottom: 0.6rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.bg-customizer-pills {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.bg-customizer-pill-btn {
+  padding: 0.25rem 0.65rem;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 500;
+  cursor: pointer;
+  background: transparent;
+  color: var(--text-muted, #64748b);
+  border: 1px solid transparent;
+  transition: all 0.18s ease;
+}
+
+.bg-customizer-pill-btn:hover {
+  color: var(--text-primary, #f8fafc);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.bg-customizer-pill-btn.active {
+  background: var(--bg-surface-hover, #161a26);
+  color: var(--text-primary, #f8fafc);
+  font-weight: 700;
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+/* Preset Cards Grid */
+.bg-customizer-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 0.65rem;
+  max-height: 290px;
+  overflow-y: auto;
+  padding-right: 0.25rem;
+}
+
+.bg-customizer-grid::-webkit-scrollbar {
+  width: 5px;
+}
+.bg-customizer-grid::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 3px;
+}
+
+.bg-customizer-card-item {
+  position: relative;
+  background: rgba(17, 20, 29, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 0.6rem;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 0.45rem;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-sizing: border-box;
+}
+
+.bg-customizer-card-item:hover {
+  background: rgba(26, 32, 48, 0.85);
+  border-color: rgba(168, 85, 247, 0.35);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.bg-customizer-card-item.active {
+  background: rgba(139, 92, 246, 0.14);
+  border-color: var(--primary, #a855f7);
+  box-shadow: 0 0 14px rgba(168, 85, 247, 0.35);
+}
+
+.bg-customizer-thumb-box {
+  width: 100%;
+  height: 52px;
+  border-radius: 6px;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.5);
+}
+
+.bg-customizer-check-badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: var(--primary, #a855f7);
+  color: #fff;
+  border-radius: 999px;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+}
+
+.bg-customizer-card-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.bg-customizer-card-name {
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--text-primary, #f8fafc);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bg-customizer-card-desc {
+  font-size: 0.65rem;
+  color: var(--text-muted, #64748b);
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Upload Dropzone */
+.bg-customizer-dropzone {
+  border: 2px dashed rgba(255, 255, 255, 0.15);
+  background: rgba(9, 11, 16, 0.6);
+  border-radius: 12px;
+  padding: 1.5rem 1rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+}
+
+.bg-customizer-dropzone:hover {
+  border-color: var(--primary, #a855f7);
+  background: rgba(139, 92, 246, 0.05);
+}
+
+.bg-customizer-dropzone-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-primary, #f8fafc);
+}
+
+.bg-customizer-dropzone-subtitle {
+  font-size: 0.72rem;
+  color: var(--text-muted, #64748b);
+  max-width: 380px;
+}
+
+.bg-customizer-progress-wrap {
+  width: 100%;
+  max-width: 260px;
+  margin-top: 0.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.bg-customizer-progress-bar {
+  width: 100%;
+  height: 5px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.bg-customizer-progress-fill {
+  height: 100%;
+  background: var(--primary, #a855f7);
+  border-radius: 999px;
+  transition: width 0.25s ease;
+}
+
+/* Foreground Layout Sliders */
+.bg-customizer-layout-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.bg-customizer-slider-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.bg-customizer-slider-label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.76rem;
+  color: var(--text-secondary, #94a3b8);
+  font-weight: 600;
+}
+
+.bg-customizer-slider-val {
+  color: var(--primary, #c084fc);
+  font-weight: 700;
+}
+
+.bg-customizer-switch-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.65rem 0.85rem;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+/* Footer Indicator */
+.bg-customizer-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.55rem 0.85rem;
+  background: rgba(9, 11, 16, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  font-size: 0.74rem;
+  color: var(--text-secondary, #94a3b8);
+}

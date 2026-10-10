@@ -3866,7 +3866,14 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                   background: backgroundType === 'gradient'
                     ? (backgroundValue.startsWith('linear-gradient') ? backgroundValue : 'linear-gradient(180deg, #1e1b4b 0%, #0f172a 100%)')
                     : undefined,
-                  position: 'relative',
+                  position: 'absolute',
+                  inset: 0,
+                  width: '100%',
+                  height: '100%',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'center',
+                  alignItems: 'center',
                   overflow: 'hidden'
                 }}
               >

@@ -161,7 +161,7 @@ const DEFAULT_PRESETS: BackgroundPresetItem[] = [
 
 export const BackgroundCustomizer: React.FC<BackgroundCustomizerProps> = ({
   aspectRatio,
-  onAspectRatioChange,
+  onAspectRatioChange: _onAspectRatioChange,
   backgroundType,
   onBackgroundTypeChange,
   backgroundValue,
@@ -284,121 +284,80 @@ export const BackgroundCustomizer: React.FC<BackgroundCustomizerProps> = ({
   });
 
   return (
-    <div className="bg-zinc-900/90 border border-zinc-800 rounded-xl p-5 shadow-xl text-zinc-100 space-y-5">
-      {/* Header & Aspect Ratio Selector */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-zinc-800/80 pb-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <Palette className="w-5 h-5 text-indigo-400" />
-            <h3 className="font-semibold text-base text-zinc-100">Kustomisasi Latar Belakang & Rasio</h3>
+    <div className="bg-customizer-card">
+      {/* Header */}
+      <div className="bg-customizer-header">
+        <div className="bg-customizer-title-wrap">
+          <div className="bg-customizer-title">
+            <Palette size={18} />
+            <span>Kustomisasi Latar Belakang & Tata Letak</span>
           </div>
-          <p className="text-xs text-zinc-400 mt-1">
-            Pilih rasio kanvas, video latar, gradasi sinematik, atau unggah media kustom Anda sendiri.
+          <p className="bg-customizer-desc">
+            Pilih video animasi latar, gradasi warna sinematik, efek ambient blur, atau unggah media kustom Anda sendiri.
           </p>
         </div>
 
-        {/* Aspect Ratio Pills */}
-        <div className="flex items-center gap-1.5 bg-zinc-950/80 p-1.5 rounded-lg border border-zinc-800">
-          {(
-            [
-              { id: '9:16', label: '9:16 Shorts' },
-              { id: '1:1', label: '1:1 Square' },
-              { id: '4:3', label: '4:3 Classic' },
-              { id: '16:9', label: '16:9 Wide' }
-            ] as const
-          ).map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => onAspectRatioChange(item.id)}
-              className={`px-3 py-1.5 rounded text-xs font-medium transition-all ${
-                aspectRatio === item.id
-                  ? 'bg-indigo-600 text-white shadow-sm'
-                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/60'
-              }`}
-            >
-              {item.label}
-            </button>
-          ))}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+          <span className="badge" style={{ fontSize: '0.72rem', padding: '0.2rem 0.55rem' }}>
+            Kanvas: {aspectRatio}
+          </span>
         </div>
       </div>
 
       {/* Main Mode Tabs */}
-      <div className="flex flex-wrap items-center gap-2 border-b border-zinc-800/60 pb-3">
+      <div className="bg-customizer-tabs">
         <button
           type="button"
           onClick={() => setActiveTab('presets')}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-medium transition-colors ${
-            activeTab === 'presets'
-              ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/30'
-              : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'
-          }`}
+          className={`bg-customizer-tab-btn ${activeTab === 'presets' ? 'active' : ''}`}
         >
-          <Film className="w-4 h-4" />
+          <Film size={15} />
           <span>Preset Gameplay & Motion</span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab('colors')}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-medium transition-colors ${
-            activeTab === 'colors'
-              ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/30'
-              : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'
-          }`}
+          className={`bg-customizer-tab-btn ${activeTab === 'colors' ? 'active' : ''}`}
         >
-          <Palette className="w-4 h-4" />
+          <Palette size={15} />
           <span>Solid & Gradasi</span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab('upload')}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-medium transition-colors ${
-            activeTab === 'upload'
-              ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/30'
-              : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'
-          }`}
+          className={`bg-customizer-tab-btn ${activeTab === 'upload' ? 'active' : ''}`}
         >
-          <UploadCloud className="w-4 h-4" />
+          <UploadCloud size={15} />
           <span>Unggah Media Kustom</span>
           {uploads.length > 0 && (
-            <span className="ml-1 px-1.5 py-0.2 bg-zinc-800 text-[10px] rounded-full text-zinc-300">
-              {uploads.length}
-            </span>
+            <span className="bg-customizer-badge">{uploads.length}</span>
           )}
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab('layout')}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-medium transition-colors ${
-            activeTab === 'layout'
-              ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/30'
-              : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'
-          }`}
+          className={`bg-customizer-tab-btn ${activeTab === 'layout' ? 'active' : ''}`}
         >
-          <SlidersHorizontal className="w-4 h-4" />
+          <SlidersHorizontal size={15} />
           <span>Layout Foreground</span>
         </button>
       </div>
 
       {/* Tab 1: Presets Catalog */}
       {activeTab === 'presets' && (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between text-xs text-zinc-400">
-            <span className="font-medium text-zinc-300">Pilih Animasi Loop Latar:</span>
-            <div className="flex items-center gap-1">
+        <div>
+          <div className="bg-customizer-subfilter">
+            <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>Pilih Animasi Loop Latar:</span>
+            <div className="bg-customizer-pills">
               {['all', 'motion', 'ambient'].map((cat) => (
                 <button
                   key={cat}
                   type="button"
                   onClick={() => setCategoryFilter(cat)}
-                  className={`px-2.5 py-1 rounded text-[11px] capitalize ${
-                    categoryFilter === cat
-                      ? 'bg-zinc-800 text-zinc-100 font-semibold'
-                      : 'text-zinc-500 hover:text-zinc-300'
-                  }`}
+                  className={`bg-customizer-pill-btn ${categoryFilter === cat ? 'active' : ''}`}
                 >
                   {cat === 'all' ? 'Semua' : cat}
                 </button>
@@ -406,7 +365,7 @@ export const BackgroundCustomizer: React.FC<BackgroundCustomizerProps> = ({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 max-h-72 overflow-y-auto pr-1">
+          <div className="bg-customizer-grid">
             {filteredPresets.map((preset) => {
               const isSelected =
                 (backgroundType === preset.type || (preset.type === 'preset' && backgroundType === 'preset')) &&
@@ -420,30 +379,26 @@ export const BackgroundCustomizer: React.FC<BackgroundCustomizerProps> = ({
                     onBackgroundValueChange(preset.value);
                     onBackgroundFilePathChange(preset.media_file);
                   }}
-                  className={`relative p-3 rounded-lg border text-left cursor-pointer transition-all flex flex-col justify-between ${
-                    isSelected
-                      ? 'border-indigo-500 bg-indigo-950/30 ring-1 ring-indigo-500'
-                      : 'border-zinc-800 bg-zinc-950/40 hover:border-zinc-700 hover:bg-zinc-900/60'
-                  }`}
+                  className={`bg-customizer-card-item ${isSelected ? 'active' : ''}`}
                 >
                   <div
-                    className="w-full h-14 rounded-md mb-2 flex items-center justify-center relative overflow-hidden shadow-inner"
+                    className="bg-customizer-thumb-box"
                     style={{ background: preset.preview_color }}
                   >
                     {isSelected && (
-                      <div className="absolute top-1 right-1 bg-indigo-600 rounded-full p-0.5 text-white shadow">
-                        <Check className="w-3 h-3" />
+                      <div className="bg-customizer-check-badge">
+                        <Check size={11} strokeWidth={3} />
                       </div>
                     )}
                     {preset.type === 'blur' ? (
-                      <Eye className="w-5 h-5 text-zinc-300/80 drop-shadow" />
+                      <Eye size={20} color="rgba(255,255,255,0.85)" />
                     ) : (
-                      <Film className="w-5 h-5 text-white/70 drop-shadow" />
+                      <Film size={20} color="rgba(255,255,255,0.85)" />
                     )}
                   </div>
-                  <div>
-                    <div className="text-xs font-semibold text-zinc-200 truncate">{preset.name}</div>
-                    <div className="text-[10px] text-zinc-400 line-clamp-1 mt-0.5">{preset.description}</div>
+                  <div className="bg-customizer-card-meta">
+                    <div className="bg-customizer-card-name" title={preset.name}>{preset.name}</div>
+                    <div className="bg-customizer-card-desc" title={preset.description}>{preset.description}</div>
                   </div>
                 </div>
               );
@@ -454,9 +409,11 @@ export const BackgroundCustomizer: React.FC<BackgroundCustomizerProps> = ({
 
       {/* Tab 2: Solid Colors & Gradients */}
       {activeTab === 'colors' && (
-        <div className="space-y-4">
-          <div className="text-xs text-zinc-300 font-medium">Pilihan Gradasi & Warna Dasar Studio:</div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+        <div>
+          <div className="bg-customizer-subfilter">
+            <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>Pilihan Gradasi & Warna Dasar Studio:</span>
+          </div>
+          <div className="bg-customizer-grid">
             {presets
               .filter((p) => p.type === 'color' || p.type === 'gradient')
               .map((item) => {
@@ -469,24 +426,22 @@ export const BackgroundCustomizer: React.FC<BackgroundCustomizerProps> = ({
                       onBackgroundValueChange(item.value);
                       onBackgroundFilePathChange(undefined);
                     }}
-                    className={`p-3 rounded-lg border cursor-pointer transition-all ${
-                      isSelected
-                        ? 'border-indigo-500 bg-indigo-950/30 ring-1 ring-indigo-500'
-                        : 'border-zinc-800 bg-zinc-950/40 hover:border-zinc-700'
-                    }`}
+                    className={`bg-customizer-card-item ${isSelected ? 'active' : ''}`}
                   >
                     <div
-                      className="w-full h-12 rounded-md mb-2 flex items-center justify-center relative shadow-inner"
+                      className="bg-customizer-thumb-box"
                       style={{ background: item.preview_color }}
                     >
                       {isSelected && (
-                        <div className="absolute top-1 right-1 bg-indigo-600 rounded-full p-0.5 text-white shadow">
-                          <Check className="w-3 h-3" />
+                        <div className="bg-customizer-check-badge">
+                          <Check size={11} strokeWidth={3} />
                         </div>
                       )}
                     </div>
-                    <div className="text-xs font-semibold text-zinc-200">{item.name}</div>
-                    <div className="text-[10px] text-zinc-400 truncate">{item.description}</div>
+                    <div className="bg-customizer-card-meta">
+                      <div className="bg-customizer-card-name" title={item.name}>{item.name}</div>
+                      <div className="bg-customizer-card-desc" title={item.description}>{item.description}</div>
+                    </div>
                   </div>
                 );
               })}
@@ -496,36 +451,36 @@ export const BackgroundCustomizer: React.FC<BackgroundCustomizerProps> = ({
 
       {/* Tab 3: Custom Uploads */}
       {activeTab === 'upload' && (
-        <div className="space-y-4">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
           {/* Dropzone Upload */}
           <div
             onClick={() => fileInputRef.current?.click()}
-            className="border-2 border-dashed border-zinc-700 hover:border-indigo-500 bg-zinc-950/50 hover:bg-zinc-900/40 p-6 rounded-xl text-center cursor-pointer transition-all"
+            className="bg-customizer-dropzone"
           >
             <input
               ref={fileInputRef}
               type="file"
               accept="video/mp4,video/webm,video/quicktime,image/png,image/jpeg,image/webp"
               onChange={handleFileUpload}
-              className="hidden"
+              style={{ display: 'none' }}
             />
-            <UploadCloud className="w-8 h-8 text-indigo-400 mx-auto mb-2" />
-            <div className="text-sm font-semibold text-zinc-200">
+            <UploadCloud size={30} color="var(--primary, #a855f7)" />
+            <div className="bg-customizer-dropzone-title">
               Klik atau Seret Media Latar Belakang ke Sini
             </div>
-            <div className="text-xs text-zinc-400 mt-1">
+            <div className="bg-customizer-dropzone-subtitle">
               Mendukung video MP4, WEBM, MOV (maks 500MB) atau gambar PNG, JPG, WEBP (maks 30MB)
             </div>
 
             {isUploading && (
-              <div className="mt-4 max-w-xs mx-auto">
-                <div className="flex justify-between text-xs text-indigo-400 mb-1">
+              <div className="bg-customizer-progress-wrap">
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: '#c084fc' }}>
                   <span>Mengunggah...</span>
                   <span>{uploadProgress}%</span>
                 </div>
-                <div className="w-full bg-zinc-800 h-1.5 rounded-full overflow-hidden">
+                <div className="bg-customizer-progress-bar">
                   <div
-                    className="bg-indigo-500 h-full transition-all duration-300"
+                    className="bg-customizer-progress-fill"
                     style={{ width: `${uploadProgress}%` }}
                   />
                 </div>
@@ -533,8 +488,8 @@ export const BackgroundCustomizer: React.FC<BackgroundCustomizerProps> = ({
             )}
 
             {uploadError && (
-              <div className="mt-3 flex items-center justify-center gap-1.5 text-xs text-rose-400">
-                <AlertCircle className="w-4 h-4" />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: '#f87171', fontSize: '0.74rem', marginTop: '0.4rem' }}>
+                <AlertCircle size={15} />
                 <span>{uploadError}</span>
               </div>
             )}
@@ -542,9 +497,11 @@ export const BackgroundCustomizer: React.FC<BackgroundCustomizerProps> = ({
 
           {/* List Media Unggahan */}
           {uploads.length > 0 && (
-            <div className="space-y-2">
-              <div className="text-xs font-semibold text-zinc-300">Media Unggahan Anda ({uploads.length}):</div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-56 overflow-y-auto pr-1">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <div style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                Media Unggahan Anda ({uploads.length}):
+              </div>
+              <div className="bg-customizer-grid">
                 {uploads.map((up) => {
                   const isSelected =
                     backgroundType === 'custom_upload' &&
@@ -558,35 +515,49 @@ export const BackgroundCustomizer: React.FC<BackgroundCustomizerProps> = ({
                         onBackgroundValueChange(up.file_path);
                         onBackgroundFilePathChange(up.file_path);
                       }}
-                      className={`relative p-2.5 rounded-lg border text-left cursor-pointer transition-all flex flex-col justify-between ${
-                        isSelected
-                          ? 'border-indigo-500 bg-indigo-950/30 ring-1 ring-indigo-500'
-                          : 'border-zinc-800 bg-zinc-950/40 hover:border-zinc-700'
-                      }`}
+                      className={`bg-customizer-card-item ${isSelected ? 'active' : ''}`}
                     >
-                      <div className="w-full h-16 rounded bg-zinc-900 mb-2 flex items-center justify-center relative overflow-hidden">
+                      <div
+                        className="bg-customizer-thumb-box"
+                        style={{ background: 'rgba(255,255,255,0.05)' }}
+                      >
                         {up.media_type === 'video' ? (
-                          <Film className="w-6 h-6 text-indigo-400" />
+                          <Film size={22} color="var(--primary, #a855f7)" />
                         ) : (
-                          <ImageIcon className="w-6 h-6 text-emerald-400" />
+                          <ImageIcon size={22} color="#10b981" />
                         )}
                         {isSelected && (
-                          <div className="absolute top-1 right-1 bg-indigo-600 rounded-full p-0.5 text-white shadow">
-                            <Check className="w-3 h-3" />
+                          <div className="bg-customizer-check-badge">
+                            <Check size={11} strokeWidth={3} />
                           </div>
                         )}
                         <button
                           type="button"
                           onClick={(e) => handleDeleteUpload(up.file_name, e)}
                           title="Hapus media ini"
-                          className="absolute bottom-1 right-1 p-1 bg-rose-950/80 hover:bg-rose-800 text-rose-300 rounded text-[10px]"
+                          style={{
+                            position: 'absolute',
+                            bottom: '3px',
+                            right: '3px',
+                            background: 'rgba(239, 68, 68, 0.3)',
+                            border: '1px solid rgba(239, 68, 68, 0.4)',
+                            color: '#fca5a5',
+                            borderRadius: '4px',
+                            padding: '2px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}
                         >
-                          <Trash2 className="w-3 h-3" />
+                          <Trash2 size={12} />
                         </button>
                       </div>
-                      <div className="text-xs font-medium text-zinc-200 truncate">{up.file_name}</div>
-                      <div className="text-[10px] text-zinc-500 uppercase mt-0.5">
-                        {up.media_type} • {(up.file_size_bytes / (1024 * 1024)).toFixed(1)} MB
+                      <div className="bg-customizer-card-meta">
+                        <div className="bg-customizer-card-name" title={up.file_name}>{up.file_name}</div>
+                        <div className="bg-customizer-card-desc">
+                          {up.media_type.toUpperCase()} • {(up.file_size_bytes / (1024 * 1024)).toFixed(1)} MB
+                        </div>
                       </div>
                     </div>
                   );
@@ -599,12 +570,12 @@ export const BackgroundCustomizer: React.FC<BackgroundCustomizerProps> = ({
 
       {/* Tab 4: Foreground Position & Scale Controls */}
       {activeTab === 'layout' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-2">
+        <div className="bg-customizer-layout-grid">
           {/* Scale Slider */}
-          <div className="space-y-1.5">
-            <div className="flex justify-between text-xs">
-              <span className="text-zinc-300 font-medium">Skala Video Foreground</span>
-              <span className="text-indigo-400 font-semibold">{foregroundScale}%</span>
+          <div className="bg-customizer-slider-group">
+            <div className="bg-customizer-slider-label-row">
+              <span>Skala Video Foreground</span>
+              <span className="bg-customizer-slider-val">{foregroundScale}%</span>
             </div>
             <input
               type="range"
@@ -613,19 +584,19 @@ export const BackgroundCustomizer: React.FC<BackgroundCustomizerProps> = ({
               step="1"
               value={foregroundScale}
               onChange={(e) => onForegroundScaleChange(Number(e.target.value))}
-              className="w-full accent-indigo-500 cursor-pointer"
+              className="studio-slider"
             />
-            <div className="flex justify-between text-[10px] text-zinc-500">
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.68rem', color: 'var(--text-muted)' }}>
               <span>Kecil (40%)</span>
               <span>Standar (100% Penuh)</span>
             </div>
           </div>
 
           {/* Vertical Position Y */}
-          <div className="space-y-1.5">
-            <div className="flex justify-between text-xs">
-              <span className="text-zinc-300 font-medium">Posisi Vertikal (Pusat Y)</span>
-              <span className="text-indigo-400 font-semibold">{foregroundPositionY}%</span>
+          <div className="bg-customizer-slider-group">
+            <div className="bg-customizer-slider-label-row">
+              <span>Posisi Vertikal (Pusat Y)</span>
+              <span className="bg-customizer-slider-val">{foregroundPositionY}%</span>
             </div>
             <input
               type="range"
@@ -634,9 +605,9 @@ export const BackgroundCustomizer: React.FC<BackgroundCustomizerProps> = ({
               step="1"
               value={foregroundPositionY}
               onChange={(e) => onForegroundPositionYChange(Number(e.target.value))}
-              className="w-full accent-indigo-500 cursor-pointer"
+              className="studio-slider"
             />
-            <div className="flex justify-between text-[10px] text-zinc-500">
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.68rem', color: 'var(--text-muted)' }}>
               <span>Atas (10%)</span>
               <span>Tengah (50%)</span>
               <span>Bawah (90%)</span>
@@ -644,10 +615,10 @@ export const BackgroundCustomizer: React.FC<BackgroundCustomizerProps> = ({
           </div>
 
           {/* Border Radius */}
-          <div className="space-y-1.5">
-            <div className="flex justify-between text-xs">
-              <span className="text-zinc-300 font-medium">Sudut Melengkung (Corner Radius)</span>
-              <span className="text-indigo-400 font-semibold">{foregroundBorderRadius} px</span>
+          <div className="bg-customizer-slider-group">
+            <div className="bg-customizer-slider-label-row">
+              <span>Sudut Melengkung (Corner Radius)</span>
+              <span className="bg-customizer-slider-val">{foregroundBorderRadius} px</span>
             </div>
             <input
               type="range"
@@ -656,37 +627,37 @@ export const BackgroundCustomizer: React.FC<BackgroundCustomizerProps> = ({
               step="2"
               value={foregroundBorderRadius}
               onChange={(e) => onForegroundBorderRadiusChange(Number(e.target.value))}
-              className="w-full accent-indigo-500 cursor-pointer"
+              className="studio-slider"
             />
-            <div className="flex justify-between text-[10px] text-zinc-500">
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.68rem', color: 'var(--text-muted)' }}>
               <span>Tegak (0px)</span>
               <span>Melengkung Halus (36px)</span>
             </div>
           </div>
 
           {/* Drop Shadow Switch */}
-          <div className="flex items-center justify-between p-3 rounded-lg border border-zinc-800 bg-zinc-950/40">
+          <div className="bg-customizer-switch-card">
             <div>
-              <div className="text-xs font-semibold text-zinc-200">Efek Bayangan (Drop Shadow)</div>
-              <div className="text-[10px] text-zinc-400">Menambah kedalaman visual di atas background</div>
+              <div style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-primary)' }}>Efek Bayangan (Drop Shadow)</div>
+              <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: '2px' }}>Menambah kedalaman visual di atas background</div>
             </div>
             <input
               type="checkbox"
               checked={foregroundShadow}
               onChange={(e) => onForegroundShadowChange(e.target.checked)}
-              className="w-4 h-4 accent-indigo-500 rounded cursor-pointer"
+              style={{ width: '16px', height: '16px', accentColor: 'var(--primary, #a855f7)', cursor: 'pointer' }}
             />
           </div>
         </div>
       )}
 
       {/* Summary Indicator Bar */}
-      <div className="flex items-center justify-between text-xs bg-zinc-950/60 p-2.5 rounded-lg border border-zinc-800/80 text-zinc-400">
-        <div className="flex items-center gap-2">
-          <Layers className="w-4 h-4 text-indigo-400" />
+      <div className="bg-customizer-footer">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+          <Layers size={14} color="var(--primary, #a855f7)" />
           <span>
             Latar Aktif:{' '}
-            <strong className="text-zinc-200 capitalize">
+            <strong style={{ color: 'var(--text-primary)', textTransform: 'capitalize' }}>
               {backgroundType === 'custom_upload'
                 ? 'Unggahan Kustom'
                 : backgroundType === 'blur'
@@ -695,9 +666,9 @@ export const BackgroundCustomizer: React.FC<BackgroundCustomizerProps> = ({
             </strong>
           </span>
         </div>
-        <div className="text-[11px] text-zinc-500">
-          Kanvas: <span className="text-zinc-300 font-medium">{aspectRatio}</span> • Foreground:{' '}
-          <span className="text-zinc-300 font-medium">{foregroundScale}%</span>
+        <div>
+          Kanvas: <strong style={{ color: 'var(--text-primary)' }}>{aspectRatio}</strong> • Foreground:{' '}
+          <strong style={{ color: 'var(--text-primary)' }}>{foregroundScale}%</strong>
         </div>
       </div>
     </div>
