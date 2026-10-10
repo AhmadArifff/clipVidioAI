@@ -4687,7 +4687,15 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                             {clip.status === 'pending' && <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>{t.studio.statusWaitingShort}</span>}
                             {clip.status === 'downloading' && (
                               <span style={{ fontSize: '0.68rem', color: '#f59e0b', fontWeight: 600 }}>
-                                {clip.download_speed ? `⬇️ Unduh ${clip.download_pct ?? clip.progress_percent}% (${clip.download_speed})` : `⚡ Memotong (${clip.progress_percent}%)`}
+                                {clip.download_speed ? (
+                                  clip.download_speed.includes('Menghubungkan') ? (
+                                    `🔗 Menghubungkan... (${clip.progress_percent}%)`
+                                  ) : (
+                                    `⬇️ Unduh ${clip.download_pct ?? clip.progress_percent}% (${clip.download_speed}${clip.download_eta ? ` · ETA ${clip.download_eta}` : ''})`
+                                  )
+                                ) : (
+                                  `⚡ Menyiapkan (${clip.progress_percent}%)`
+                                )}
                               </span>
                             )}
                             {clip.status === 'transcribing' && <span style={{ fontSize: '0.68rem', color: '#8b5cf6', fontWeight: 600 }}>✍️ Subtitle ({clip.progress_percent}%)</span>}

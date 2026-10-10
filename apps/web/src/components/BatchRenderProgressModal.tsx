@@ -72,9 +72,13 @@ export const BatchRenderProgressModal: React.FC<BatchRenderProgressModalProps> =
                 {clip.status === 'downloading' && (
                   <span className="status-badge active">
                     {clip.download_speed ? (
-                      `⬇️ Unduh (${clip.download_pct ?? clip.progress_percent}% · ${clip.download_speed}${clip.download_eta ? ` · ETA ${clip.download_eta}` : ''})`
+                      clip.download_speed.includes('Menghubungkan') ? (
+                        `🔗 Menghubungkan ke YouTube... (${clip.progress_percent}%)`
+                      ) : (
+                        `⬇️ Unduh (${clip.download_pct ?? clip.progress_percent}% · ${clip.download_speed}${clip.download_eta ? ` · ETA ${clip.download_eta}` : ''})`
+                      )
                     ) : (
-                      `⚡ Memotong (${clip.progress_percent}%)`
+                      `⚡ Menyiapkan (${clip.progress_percent}%)`
                     )}
                   </span>
                 )}

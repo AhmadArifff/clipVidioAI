@@ -678,17 +678,36 @@ def _cache_segment(cache_path: Path, source_path: Path) -> None:
         logger.debug(f"Unable to cache segment {cache_path.name}: {e}")
 
 
+def _parse_ffmpeg_time(time_str: str) -> float:
+    """Parses FFmpeg time strings (e.g. '00:01:23.45', '01:23.45', or '12.34') into total seconds."""
+    clean = time_str.strip()
+    if not clean or clean.upper() == "N/A":
+        return 0.0
+    parts = clean.split(":")
+    try:
+        if len(parts) == 3:
+            return float(parts[0]) * 3600 + float(parts[1]) * 60 + float(parts[2])
+        elif len(parts) == 2:
+            return float(parts[0]) * 60 + float(parts[1])
+        else:
+            return float(parts[0])
+    except Exception:
+        return 0.0
+
+
 def _run_ytdlp_with_live_progress(
     cmd: List[str],
     timeout_sec: int,
     output_path: Path,
-    progress_callback: Optional[Callable[[Dict[str, Any]], None]] = None
+    progress_callback: Optional[Callable[[Dict[str, Any]], None]] = None,
+    clip_duration: Optional[float] = None
 ) -> Tuple[bool, str]:
     """
-    Executes a yt-dlp command with live stdout piping to broadcast download speed,
-    byte percentage, and ETA in real-time.
+    Executes a yt-dlp or ffmpeg command with live stdout/stderr piping to broadcast download speed,
+    byte/slice percentage, and ETA in real-time across yt-dlp internal and delegated FFmpeg streams.
     """
     last_err = ""
+    handshake_count = 0
     try:
         proc = subprocess.Popen(
             cmd,
@@ -703,6 +722,7 @@ def _run_ytdlp_with_live_progress(
                 continue
             clean_line = re.sub(r'\x1b\[[0-9;]*[a-zA-Z]', '', raw_line).strip()
 
+            # 1. yt-dlp custom progress template format
             if clean_line.startswith("download:") and progress_callback:
                 raw_data = clean_line[len("download:"):].strip()
                 parts = raw_data.split("|")
@@ -720,7 +740,33 @@ def _run_ytdlp_with_live_progress(
                         "speed": spd_str.strip() if spd_str and spd_str != "NA" else "",
                         "eta": eta_str.strip() if eta_str and eta_str != "NA" else ""
                     })
-            elif "[download]" in clean_line and progress_callback:
+
+            # 2. FFmpeg delegated section slicing format (time=... speed=...x)
+            elif "time=" in clean_line and progress_callback:
+                t_match = re.search(r'time=\s*([0-9:.]+)', clean_line)
+                s_match = re.search(r'speed=\s*([0-9.]+)\s*x', clean_line)
+                if t_match:
+                    cur_sec = _parse_ffmpeg_time(t_match.group(1))
+                    dur = clip_duration if (clip_duration and clip_duration > 0) else 30.0
+                    pct_val = min(99.0, max(0.0, (cur_sec / dur) * 100.0))
+
+                    speed_val = float(s_match.group(1)) if s_match else 1.0
+                    rem_sec = max(0.0, dur - cur_sec)
+                    eta_sec = rem_sec / speed_val if speed_val > 0.05 else 0.0
+                    eta_min = int(eta_sec // 60)
+                    eta_s = int(eta_sec % 60)
+                    eta_str = f"{eta_min:02d}:{eta_s:02d}"
+
+                    progress_callback({
+                        "percent": pct_val,
+                        "downloaded": f"{cur_sec:.1f}s / {dur:.1f}s",
+                        "total": f"{dur:.1f}s",
+                        "speed": f"{speed_val:.1f}x" if s_match else "1.0x",
+                        "eta": eta_str
+                    })
+
+            # 3. yt-dlp native percentage format
+            elif "[download]" in clean_line and "%" in clean_line and progress_callback:
                 match = re.search(r'([0-9]+(?:\.[0-9]+)?)\s*%', clean_line)
                 if match:
                     try:
@@ -737,11 +783,32 @@ def _run_ytdlp_with_live_progress(
                         "speed": spd_match.group(1) if spd_match else "",
                         "eta": eta_match.group(1) if eta_match else ""
                     })
+
+            # 4. YouTube Handshake & Metadata Extraction Heartbeat
+            elif any(k in clean_line for k in ["[youtube]", "Downloading webpage", "player API JSON", "[info]", "Extracting URL"]) and progress_callback:
+                handshake_count += 1
+                progress_callback({
+                    "percent": min(10.0, float(handshake_count * 1.5)),
+                    "downloaded": "Menghubungkan...",
+                    "total": "",
+                    "speed": "Menghubungkan...",
+                    "eta": ""
+                })
+
             elif "ERROR:" in clean_line or "error:" in clean_line.lower():
                 last_err = clean_line
+
         proc.stdout.close()
         ret = proc.wait(timeout=timeout_sec)
         if ret == 0 and output_path.exists() and is_valid_mp4(output_path):
+            if progress_callback:
+                progress_callback({
+                    "percent": 100.0,
+                    "downloaded": "100%",
+                    "total": "Complete",
+                    "speed": "Selesai",
+                    "eta": "0s"
+                })
             return True, ""
         return False, last_err or f"Process exited with code {ret}"
     except subprocess.TimeoutExpired:
@@ -921,7 +988,7 @@ def download_clip_segment(
                 "--progress-template", "download:%(progress._percent_str)s|%(progress._downloaded_bytes_str)s|%(progress._total_bytes_str)s|%(progress._speed_str)s|%(progress._eta_str)s",
                 clean_url
             ]
-            ok, err_msg = _run_ytdlp_with_live_progress(cmd, timeout_sec, output_path, progress_callback)
+            ok, err_msg = _run_ytdlp_with_live_progress(cmd, timeout_sec, output_path, progress_callback, clip_duration=clip_duration)
             if ok:
                 logger.info(f"Successfully downloaded section ({mode_label}): {output_path} ({output_path.stat().st_size} bytes)")
                 _cache_segment(cache_seg_path, output_path)
@@ -951,7 +1018,7 @@ def download_clip_segment(
 
                     trim_timeout = max(90, min(300, int(clip_duration * 3) + 40))
                     trim_cmd = [
-                        "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
+                        "ffmpeg", "-y", "-hide_banner",
                         "-reconnect", "1",
                         "-reconnect_at_eof", "1",
                         "-reconnect_streamed", "1",
@@ -969,11 +1036,9 @@ def download_clip_segment(
                         "-movflags", "+faststart",
                         str(output_path)
                     ]
-                    trim_res = subprocess.run(trim_cmd, capture_output=True, text=True, timeout=trim_timeout)
-                    if trim_res.returncode == 0 and is_valid_mp4(output_path):
+                    ok_trim, err_trim = _run_ytdlp_with_live_progress(trim_cmd, trim_timeout, output_path, progress_callback, clip_duration=clip_duration)
+                    if ok_trim and is_valid_mp4(output_path):
                         logger.info(f"Successfully trimmed stream URLs with FFmpeg ({mode_label}): {output_path} ({output_path.stat().st_size} bytes)")
-                        if progress_callback:
-                            progress_callback({"percent": 100.0, "downloaded": "Complete", "total": "Complete", "speed": "Stream", "eta": "0s"})
                         _cache_segment(cache_seg_path, output_path)
                         return str(output_path)
                     else:
@@ -982,7 +1047,7 @@ def download_clip_segment(
                                 output_path.unlink()
                             except Exception:
                                 pass
-                        last_err_snippet = trim_res.stderr[:300] if (trim_res and trim_res.stderr) else "stream trimming failed"
+                        last_err_snippet = err_trim or "stream trimming failed"
             except Exception as e:
                 logger.error(f"Fallback stream trimming failed ({mode_label}): {e}")
                 if output_path.exists():
@@ -1013,7 +1078,7 @@ def download_clip_segment(
                     clean_url
                 ]
                 timeout_720p = max(60, min(240, int(clip_duration * 2.5) + 30))
-                ok_720, err_720 = _run_ytdlp_with_live_progress(cmd_720p, timeout_720p, output_path, progress_callback)
+                ok_720, err_720 = _run_ytdlp_with_live_progress(cmd_720p, timeout_720p, output_path, progress_callback, clip_duration=clip_duration)
                 if ok_720:
                     logger.info(f"Successfully downloaded 720p fallback section ({mode_label}): {output_path} ({output_path.stat().st_size} bytes)")
                     _cache_segment(cache_seg_path, output_path)
@@ -1054,7 +1119,7 @@ def download_clip_segment(
                     clean_url
                 ]
                 timeout_480p = max(50, min(180, int(clip_duration * 2) + 25))
-                ok_480, err_480 = _run_ytdlp_with_live_progress(cmd_480p, timeout_480p, output_path, progress_callback)
+                ok_480, err_480 = _run_ytdlp_with_live_progress(cmd_480p, timeout_480p, output_path, progress_callback, clip_duration=clip_duration)
                 if ok_480:
                     logger.info(f"Successfully downloaded 480p fallback section ({mode_label}): {output_path} ({output_path.stat().st_size} bytes)")
                     _cache_segment(cache_seg_path, output_path)
