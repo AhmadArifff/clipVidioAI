@@ -181,7 +181,37 @@ File `.agents/session-state.json` bertindak sebagai *Single Source of Truth* unt
 
 ---
 
-## 6. Milestones & Jadwal Implementasi
+## 6. Fitur 5: High-Speed Render Engine & Real-Time Telemetry Streaming
+
+### 6.1 Real-Time Download Progress Streaming (Anti-Stuck 15%)
+* **Latar Belakang & Masalah**:
+  Pada pipeline awal, proses `download_clip_segment` dijalankan menggunakan `subprocess.run()` secara blocking, sehingga UI frontend menahan status statis pada angka 15% ("⚡ Memotong (15%)") selama proses pengunduhan berlangsung (10-30 detik). Hal ini menciptakan impresi bahwa sistem mengalami *hang* atau *stuck*.
+* **Solusi Arsitektur**:
+  * Mengganti proses blocking dengan event stream parser dari `yt-dlp` (`--progress` / hook downloader) untuk menangkap persentase unduhan byte secara granular.
+  * Mengirimkan data telemetri real-time via Server-Sent Events (SSE) `/api/render-progress/{batch_id}`:
+    `15% -> 20% -> 28% -> 35% -> 40%`.
+  * Menampilkan informasi transfer aktif di UI:
+    `"⬇️ Mengunduh Segmen HD (28% · 4.2 MB/s · ETA: 6s)"`.
+
+### 6.2 Smart Video Segment Caching (Anti-Redundant Download)
+* **Mekanisme Caching**:
+  * Menerapkan hashing cache pada folder `temp_downloads/` berbasis format:
+    `cache_{video_id}_{start_time}_{end_time}.mp4`.
+  * Jika klip dengan rentang waktu tersebut sudah pernah diunduh dan belum kedaluwarsa (*TTL 1 jam*), backend langsung melewati tahap unduh (0 detik) dan langsung masuk ke tahap compositing FFmpeg.
+
+### 6.3 Single-Pass Master Stream Slicing (Batch Render Multi-Klip)
+* **Optimasi Batch Rendering**:
+  * Untuk batch $\ge$ 3 klip dari video YouTube yang sama, sistem mengunduh master stream satu kali (*Single-Pass*).
+  * Pemotongan seluruh klip berikutnya dilakukan secara instan di komputer lokal menggunakan FFmpeg stream-copy (`ffmpeg -ss ... -to ... -c copy`), memangkas total waktu batch render hingga 60%-70%.
+
+### 6.4 Hardware Acceleration Auto-Priority Pipeline
+* **Penegakan Prioritas GPU**:
+  * Sistem memprioritaskan encoder perangkat keras AMD AMF (`h264_amf`) dan NVIDIA NVENC (`h264_nvenc`) secara otomatis saat terdeteksi.
+  * Menggunakan fallback cerdas ke CPU multi-threaded (`-preset veryfast -threads 0`) jika GPU sedang digunakan proses lain.
+
+---
+
+## 7. Milestones & Jadwal Implementasi
 
 | Fase | Sub-Tugas / Deliverable | Output Artefak | Status |
 |---|---|---|---|
@@ -190,14 +220,16 @@ File `.agents/session-state.json` bertindak sebagai *Single Source of Truth* unt
 | **Fase 3** | Restrukturisasi Arsitektur Monorepo | `apps/web/`, `apps/api/`, `packages/shared/`, root `package.json` | **Selesai (Verified Pass)** |
 | **Fase 4** | Redesain UI/UX & Integrasi Ikonografi Lucide | `lucide-react`, `BackgroundCustomizer.tsx`, WYSIWYG Preview | **Selesai (Verified Pass)** |
 | **Fase 5** | Refactor Vanilla CSS Background Customizer & Framing Preview Auto-Centering | `apps/web/src/index.css`, `BackgroundCustomizer.tsx`, `ClipStudioSection.tsx` (Auto Centering 4:3/1:1, Full-Bleed Backdrop) | **Selesai (Verified Pass)** |
-| **Fase 6** | Pengujian Integrasi, Uji Render FFmpeg, & Delivery Gate Audit | Laporan QA, Verifikasi build 0-error, Launch test via `start.bat` | **In Progress (Active)** |
+| **Fase 6** | Pengujian Integrasi, Uji Render FFmpeg, & Delivery Gate Audit | Laporan QA, Verifikasi build 0-error, Launch test via `start.bat` | **Selesai (Verified Pass)** |
+| **Fase 7** | High-Speed Render Engine & Real-Time Download Telemetry | `video_engine.py`, `render_service.py`, `ClipStudioSection.tsx` (SSE Progress Streaming, Smart Caching, Single-Pass Slicing) | **Planned (Roadmap)** |
 
 ---
 
-## 7. Kriteria Penerimaan (Acceptance Criteria)
+## 8. Kriteria Penerimaan (Acceptance Criteria)
 
 1. Pengguna dapat mengunggah gambar/video latar belakang atau memilih dari preset yang tersedia.
 2. Klip video dapat di-render dengan latar belakang khusus pada rasio aspek 9:16, 1:1, 4:3, dan 16:9 tanpa distorsi visual.
 3. Proyek tersusun dalam struktur Monorepo yang bersih dan perintah `start.bat` maupun `npm run dev` tetap berjalan lancar.
 4. File `.agents/session-state.json` aktif melacak setiap langkah perubahan dan mempertahankan konsistensi sesi.
 5. Tampilan aplikasi terlihat profesional, modern, bebas dari inkonsistensi ikon, dan mematuhi seluruh aturan Anti-Slop.
+6. Progress rendering klip memberikan umpan balik persentase dan kecepatan transfer unduhan secara transparan tanpa angka statis 15% yang membingungkan.

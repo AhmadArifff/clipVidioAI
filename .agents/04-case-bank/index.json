@@ -1,7 +1,7 @@
 {
   "project": "clipVidioAI",
   "version": "2.0.0",
-  "total_cases": 4,
+  "total_cases": 5,
   "cases": [
     {
       "id": "case-20261009-github-secret-scanning-proxy-false-positive",
@@ -37,6 +37,15 @@
       "severity": "high",
       "status": "VERIFIED",
       "file": "cases/case-20261010-monorepo-workspaces-hybrid-python-vite-migration.md",
+      "verified_by": ["backend-engineer", "qa-engineer", "tech-critic"]
+    },
+    {
+      "id": "case-20261010-render-pipeline-download-telemetry-caching",
+      "title": "Analisis Latensi Download yt-dlp, Telemetri Progres Real-Time SSE, dan Strategi Caching Segmen Video",
+      "category": "performance",
+      "severity": "medium",
+      "status": "VERIFIED",
+      "file": "cases/case-20261010-render-pipeline-download-telemetry-caching.md",
       "verified_by": ["backend-engineer", "qa-engineer", "tech-critic"]
     }
   ]
