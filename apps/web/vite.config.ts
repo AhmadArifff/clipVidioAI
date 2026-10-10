@@ -13,14 +13,29 @@ export default defineConfig({
         target: 'http://127.0.0.1:8000',
         changeOrigin: true,
         configure: (proxy) => {
-          proxy.on('error', (_err, _req, res: any) => {
-            if (res && !res.headersSent && typeof res.writeHead === 'function') {
-              res.writeHead(503, { 'Content-Type': 'application/json' });
-              res.end(JSON.stringify({
-                error: 'Backend API server on port 8000 is not running. Start the backend with `npm run dev` or `python -m uvicorn backend.main:app --port 8000`.',
-                status: 503
-              }));
-            }
+          // Gracefully suppress ECONNREFUSED terminal noise while backend is starting up
+          process.nextTick(() => {
+            const originalListeners = proxy.rawListeners('error');
+            proxy.removeAllListeners('error');
+            proxy.on('error', (err: any, _req: any, res: any) => {
+              if (err && err.code === 'ECONNREFUSED') {
+                if (res && !res.headersSent && typeof res.writeHead === 'function') {
+                  res.writeHead(503, {
+                    'Content-Type': 'application/json',
+                    'Retry-After': '1',
+                  });
+                  res.end(JSON.stringify({
+                    error: 'Backend API is still starting up. Please wait...',
+                    status: 503,
+                    starting: true
+                  }));
+                }
+                return;
+              }
+              for (const listener of originalListeners) {
+                (listener as any)(err, _req, res);
+              }
+            });
           });
         }
       },

@@ -412,6 +412,76 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
     fetchHardwareSupport();
   }, []);
 
+  // Derived hardware acceleration status
+  const effectiveHw = hardwareAccel === 'auto'
+    ? (hardwareInfo?.recommended || 'cpu')
+    : hardwareAccel;
+
+  const isGpuActive = effectiveHw === 'amf' || effectiveHw === 'nvenc' || effectiveHw === 'qsv';
+
+  const getHwStatusMeta = () => {
+    if (!hardwareInfo) {
+      return {
+        badgeText: 'MEMERIKSA...',
+        badgeColor: '#94a3b8',
+        title: t.studio.hwDetecting,
+        subtitle: 'Memeriksa ketersediaan GPU encoder AMD AMF, NVIDIA NVENC, dan Intel QSV...',
+        isGpu: false,
+        icon: '⏳'
+      };
+    }
+    if (effectiveHw === 'amf') {
+      return {
+        badgeText: t.studio.hwGpuActiveBadge,
+        badgeColor: '#10b981',
+        title: t.studio.hwAmfDetectedMsg,
+        subtitle: t.studio.hwSpeedBoostNotice,
+        isGpu: true,
+        icon: '⚡'
+      };
+    }
+    if (effectiveHw === 'nvenc') {
+      return {
+        badgeText: t.studio.hwGpuActiveBadge,
+        badgeColor: '#10b981',
+        title: t.studio.hwNvencDetectedMsg,
+        subtitle: t.studio.hwSpeedBoostNotice,
+        isGpu: true,
+        icon: '⚡'
+      };
+    }
+    if (effectiveHw === 'qsv') {
+      return {
+        badgeText: t.studio.hwGpuActiveBadge,
+        badgeColor: '#38bdf8',
+        title: t.studio.hwQsvDetectedMsg,
+        subtitle: t.studio.hwSpeedBoostNotice,
+        isGpu: true,
+        icon: '⚡'
+      };
+    }
+    if (effectiveHw === 'browser_wasm') {
+      return {
+        badgeText: 'BROWSER WASM',
+        badgeColor: '#0ea5e9',
+        title: 'Browser Client-Side Engine (WASM)',
+        subtitle: 'Render langsung di browser pengguna tanpa beban CPU server.',
+        isGpu: false,
+        icon: '🌐'
+      };
+    }
+    return {
+      badgeText: t.studio.hwCpuActiveBadge,
+      badgeColor: '#a855f7',
+      title: t.studio.hwCpuFallbackMsg,
+      subtitle: t.studio.hwCpuNotice,
+      isGpu: false,
+      icon: '🖥️'
+    };
+  };
+
+  const hwStatusMeta = getHwStatusMeta();
+
   const loadCustomFontFace = (name: string, url: string) => {
     try {
       const font = new FontFace(name, `url(${url})`);
@@ -3450,15 +3520,84 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
           <div className="studio-card-group">
             <div className="group-header" style={{ marginBottom: '0.65rem' }}>
               <span className="group-title">{t.studio.hwTitle}</span>
-              <span className="group-badge" style={{ fontWeight: 500 }}>
+              <span
+                className="group-badge"
+                style={{
+                  fontWeight: 600,
+                  background: isGpuActive ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255, 255, 255, 0.08)',
+                  color: isGpuActive ? '#34d399' : 'inherit',
+                  borderColor: isGpuActive ? 'rgba(16, 185, 129, 0.35)' : 'var(--border-color)',
+                }}
+              >
                 {hardwareAccel === 'auto'
-                  ? (hardwareInfo?.recommended ? hardwareInfo.recommended.toUpperCase() : t.studio.hwDetectedPill)
-                  : hardwareAccel.toUpperCase()}
+                  ? (hardwareInfo?.recommended ? `⚡ ${hardwareInfo.recommended.toUpperCase()}` : t.studio.hwDetectedPill)
+                  : `${effectiveHw === 'cpu' ? '🖥️' : '⚡'} ${hardwareAccel.toUpperCase()}`}
               </span>
             </div>
             <p style={{ fontSize: '0.74rem', color: 'var(--text-muted)', margin: '0 0 0.65rem 0', lineHeight: 1.4, fontWeight: 400 }}>
               {t.studio.hwSubtitle}
             </p>
+
+            {/* Visual Hardware Status Card */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '0.65rem 0.85rem',
+                borderRadius: '10px',
+                background: hwStatusMeta.isGpu
+                  ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(6, 95, 70, 0.06))'
+                  : 'rgba(255, 255, 255, 0.03)',
+                border: `1px solid ${hwStatusMeta.isGpu ? 'rgba(16, 185, 129, 0.3)' : 'rgba(255, 255, 255, 0.08)'}`,
+                marginBottom: '0.75rem',
+                gap: '0.65rem',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', minWidth: 0 }}>
+                <span style={{ fontSize: '1.2rem', flexShrink: 0 }}>
+                  {hwStatusMeta.icon}
+                </span>
+                <div style={{ minWidth: 0 }}>
+                  <div
+                    style={{
+                      fontSize: '0.8rem',
+                      fontWeight: 600,
+                      color: hwStatusMeta.isGpu ? '#34d399' : '#e2e8f0',
+                      lineHeight: 1.3,
+                    }}
+                  >
+                    {hwStatusMeta.title}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: '0.7rem',
+                      color: 'var(--text-muted)',
+                      lineHeight: 1.3,
+                      marginTop: '0.15rem',
+                    }}
+                  >
+                    {hwStatusMeta.subtitle}
+                  </div>
+                </div>
+              </div>
+              <span
+                style={{
+                  fontSize: '0.68rem',
+                  fontWeight: 700,
+                  letterSpacing: '0.04em',
+                  padding: '0.22rem 0.55rem',
+                  borderRadius: '999px',
+                  background: hwStatusMeta.isGpu ? 'rgba(16, 185, 129, 0.2)' : 'rgba(148, 163, 184, 0.12)',
+                  color: hwStatusMeta.isGpu ? '#6ee7b7' : '#94a3b8',
+                  border: `1px solid ${hwStatusMeta.isGpu ? 'rgba(16, 185, 129, 0.35)' : 'rgba(148, 163, 184, 0.2)'}`,
+                  whiteSpace: 'nowrap',
+                  flexShrink: 0,
+                }}
+              >
+                {hwStatusMeta.badgeText}
+              </span>
+            </div>
 
             <div className="hardware-dropdown-container">
               <select
@@ -3481,16 +3620,16 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
               >
                 <option value="auto">
                   {t.studio.hwAuto} ({t.studio.hwDetectedPill}
-                  {hardwareInfo?.recommended ? `: ${hardwareInfo.recommended.toUpperCase()}` : ''})
-                </option>
-                <option value="nvenc" disabled={hardwareInfo?.support && !hardwareInfo.support.nvenc}>
-                  {t.studio.hwNvenc} ({hardwareInfo?.support?.nvenc ? t.studio.hwSupportedPill : t.studio.hwUnavailablePill})
+                  {hardwareInfo?.recommended ? `: ${hardwareInfo.recommended.toUpperCase()} ⚡` : ''})
                 </option>
                 <option value="amf" disabled={hardwareInfo?.support && !hardwareInfo.support.amf}>
-                  {t.studio.hwAmf} ({hardwareInfo?.support?.amf ? t.studio.hwSupportedPill : t.studio.hwUnavailablePill})
+                  {t.studio.hwAmf} ({hardwareInfo?.support?.amf ? `${t.studio.hwSupportedPill} ⚡` : t.studio.hwUnavailablePill})
+                </option>
+                <option value="nvenc" disabled={hardwareInfo?.support && !hardwareInfo.support.nvenc}>
+                  {t.studio.hwNvenc} ({hardwareInfo?.support?.nvenc ? `${t.studio.hwSupportedPill} ⚡` : t.studio.hwUnavailablePill})
                 </option>
                 <option value="qsv" disabled={hardwareInfo?.support && !hardwareInfo.support.qsv}>
-                  {t.studio.hwQsv} ({hardwareInfo?.support?.qsv ? t.studio.hwSupportedPill : t.studio.hwUnavailablePill})
+                  {t.studio.hwQsv} ({hardwareInfo?.support?.qsv ? `${t.studio.hwSupportedPill} ⚡` : t.studio.hwUnavailablePill})
                 </option>
                 <option value="cpu">
                   {t.studio.hwCpu} ({t.studio.hwSupportedPill})
@@ -3500,7 +3639,7 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginTop: '0.45rem', fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 400 }}>
                 <span>
                   {hardwareAccel === 'auto'
-                    ? (hardwareInfo?.recommended ? `${t.studio.hwAutoDesc} · Recommended: ${hardwareInfo.recommended.toUpperCase()}` : t.studio.hwAutoDesc)
+                    ? (hardwareInfo?.recommended ? `${t.studio.hwAutoDesc} · Aktif: ${hardwareInfo.recommended.toUpperCase()}` : t.studio.hwAutoDesc)
                     : hardwareAccel === 'nvenc'
                     ? t.studio.hwNvencDesc
                     : hardwareAccel === 'amf'
@@ -4349,19 +4488,19 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                         🌐 Browser Engine (Client-Side WASM · 0% Server CPU)
                       </option>
                       <option value="auto">
-                        Auto ({hardwareInfo?.recommended ? hardwareInfo.recommended.toUpperCase() : 'NVENC'})
+                        Auto ({hardwareInfo?.recommended ? `${hardwareInfo.recommended.toUpperCase()} ⚡` : 'AMD AMF / GPU'})
                       </option>
-                      <option value="nvenc">
-                        NVENC {hardwareInfo?.support?.nvenc ? '(Ready)' : ''}
+                      <option value="amf" disabled={hardwareInfo?.support && !hardwareInfo.support.amf}>
+                        AMD AMF {hardwareInfo?.support?.amf ? '(Ready ⚡)' : '(Unavailable)'}
                       </option>
-                      <option value="amf">
-                        AMD AMF {hardwareInfo?.support?.amf ? '(Ready)' : ''}
+                      <option value="nvenc" disabled={hardwareInfo?.support && !hardwareInfo.support.nvenc}>
+                        NVIDIA NVENC {hardwareInfo?.support?.nvenc ? '(Ready ⚡)' : '(Unavailable)'}
                       </option>
-                      <option value="qsv">
-                        Intel QSV {hardwareInfo?.support?.qsv ? '(Ready)' : ''}
+                      <option value="qsv" disabled={hardwareInfo?.support && !hardwareInfo.support.qsv}>
+                        Intel QSV {hardwareInfo?.support?.qsv ? '(Ready ⚡)' : '(Unavailable)'}
                       </option>
                       <option value="cpu">
-                        CPU (libx264)
+                        CPU (libx264 Universal)
                       </option>
                     </select>
                   </div>
