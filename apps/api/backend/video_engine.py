@@ -416,10 +416,10 @@ def get_yt_dlp_base_cmd(
     return cmd
 
 
-def is_valid_mp4(file_path: Union[str, Path]) -> bool:
+def is_valid_mp4(file_path: Union[str, Path], require_video: bool = True) -> bool:
     """
-    Checks if an MP4 file exists, is non-empty, and has a valid moov atom / container header
-    that FFmpeg or ffprobe can read without errors.
+    Checks if an MP4/video file exists, is non-empty, and has a valid moov atom / container header.
+    When require_video is True (default), it also verifies that at least one valid video stream exists.
     """
     p = Path(file_path)
     if not p.exists():
@@ -433,20 +433,27 @@ def is_valid_mp4(file_path: Union[str, Path]) -> bool:
 
     # Check using ffprobe if available
     try:
+        select_arg = ["-select_streams", "v:0"] if require_video else []
         probe_cmd = [
             "ffprobe", "-v", "error",
-            "-show_entries", "format=duration",
+            *select_arg,
+            "-show_entries", "stream=codec_type:format=duration",
             "-of", "default=noprint_wrappers=1:nokey=1",
             str(p)
         ]
         res = subprocess.run(probe_cmd, capture_output=True, text=True, timeout=8)
         if res.returncode == 0 and res.stdout.strip():
-            try:
-                dur = float(res.stdout.strip())
-                if dur > 0.05:
+            out_str = res.stdout.strip().lower()
+            if require_video:
+                if "video" in out_str:
                     return True
-            except Exception:
-                return True
+            else:
+                try:
+                    dur = float(out_str.split("\n")[0])
+                    if dur > 0.05:
+                        return True
+                except Exception:
+                    return True
         err = (res.stderr or "").lower()
         if "moov atom not found" in err or "invalid data" in err:
             return False
@@ -460,6 +467,7 @@ def is_valid_mp4(file_path: Union[str, Path]) -> bool:
         ffmpeg_cmd = [
             "ffmpeg", "-v", "error",
             "-i", str(p),
+            "-map", "0:v:0" if require_video else "0",
             "-t", "0.1",
             "-f", "null", "-"
         ]
@@ -467,7 +475,7 @@ def is_valid_mp4(file_path: Union[str, Path]) -> bool:
         if res.returncode == 0:
             return True
         err = (res.stderr or "").lower()
-        if "moov atom not found" in err or "invalid data" in err:
+        if "moov atom not found" in err or "invalid data" in err or "matches no streams" in err:
             return False
     except Exception:
         pass
@@ -854,21 +862,28 @@ def download_clip_segment(
     seg_cache_key = f"cache_seg_{vid_id}_{round(start_time, 1)}_{round(end_time, 1)}.mp4"
     cache_seg_path = TEMP_DIR / seg_cache_key
 
-    if cache_seg_path.exists() and is_valid_mp4(cache_seg_path):
-        logger.info(f"Smart segment cache hit ({seg_cache_key}): 0s instant load -> {output_path.name}")
-        try:
-            shutil.copyfile(str(cache_seg_path), str(output_path))
-            if progress_callback:
-                progress_callback({
-                    "percent": 100.0,
-                    "downloaded": "Complete",
-                    "total": "Complete",
-                    "speed": "Cache",
-                    "eta": "0s"
-                })
-            return str(output_path)
-        except Exception as e:
-            logger.warning(f"Error copying cached segment ({e}), falling back to direct download...")
+    if cache_seg_path.exists():
+        if is_valid_mp4(cache_seg_path, require_video=True):
+            logger.info(f"Smart segment cache hit ({seg_cache_key}): 0s instant load -> {output_path.name}")
+            try:
+                shutil.copyfile(str(cache_seg_path), str(output_path))
+                if progress_callback:
+                    progress_callback({
+                        "percent": 100.0,
+                        "downloaded": "Complete",
+                        "total": "Complete",
+                        "speed": "Cache",
+                        "eta": "0s"
+                    })
+                return str(output_path)
+            except Exception as e:
+                logger.warning(f"Error copying cached segment ({e}), falling back to direct download...")
+        else:
+            logger.warning(f"Cached segment {seg_cache_key} is invalid or has no video stream, purging from disk...")
+            try:
+                cache_seg_path.unlink()
+            except Exception:
+                pass
 
     # Check if video_url points to a local file (e.g. uploaded or Google Drive cached video)
     local_source = None
@@ -975,7 +990,7 @@ def download_clip_segment(
                 "--no-colors",
                 "--download-sections", f"*{t_start_fmt}-{t_end_fmt}",
                 "--force-keyframes-at-cuts",
-                "-f", "bestvideo[height<=1080]+bestaudio/best[height<=1080]/bestvideo+bestaudio/best",
+                "-f", "bestvideo[height<=1080][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=1080]+bestaudio/best[height<=1080][vcodec!=none]+bestaudio/best[vcodec!=none]",
                 "-N", "4",
                 "--socket-timeout", "20",
                 "--fragment-retries", "5",
@@ -1007,47 +1022,48 @@ def download_clip_segment(
                     *base_cmd,
                     "--socket-timeout", "20",
                     "-g",
-                    "-f", "bestvideo[height<=1080]+bestaudio/best[height<=1080]/bestvideo+bestaudio/best",
+                    "-f", "bestvideo[height<=1080][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=1080]+bestaudio/best[vcodec!=none]",
                     clean_url
                 ]
                 url_res = subprocess.run(url_cmd, capture_output=True, text=True, timeout=25)
                 if url_res.returncode == 0 and url_res.stdout.strip():
-                    urls = url_res.stdout.strip().split("\n")
-                    video_stream = urls[0]
-                    audio_stream = urls[1] if len(urls) > 1 else urls[0]
+                    raw_urls = [u.strip() for u in url_res.stdout.strip().split("\n") if u.strip()]
+                    video_stream = raw_urls[0] if len(raw_urls) >= 1 else None
+                    audio_stream = raw_urls[1] if len(raw_urls) > 1 else (raw_urls[0] if len(raw_urls) >= 1 else None)
 
-                    trim_timeout = max(90, min(300, int(clip_duration * 3) + 40))
-                    trim_cmd = [
-                        "ffmpeg", "-y", "-hide_banner",
-                        "-reconnect", "1",
-                        "-reconnect_at_eof", "1",
-                        "-reconnect_streamed", "1",
-                        "-reconnect_delay_max", "5",
-                        "-ss", str(start_time),
-                        "-i", video_stream,
-                        "-ss", str(start_time),
-                        "-i", audio_stream,
-                        "-t", str(clip_duration),
-                        "-map", "0:v:0", "-map", "1:a:0?",
-                        "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
-                        "-c:a", "aac",
-                        "-b:a", "192k",
-                        "-avoid_negative_ts", "make_zero",
-                        "-movflags", "+faststart",
-                        str(output_path)
-                    ]
-                    ok_trim, err_trim = _run_ytdlp_with_live_progress(trim_cmd, trim_timeout, output_path, progress_callback, clip_duration=clip_duration)
-                    if ok_trim and is_valid_mp4(output_path):
-                        logger.info(f"Successfully trimmed stream URLs with FFmpeg ({mode_label}): {output_path} ({output_path.stat().st_size} bytes)")
-                        _cache_segment(cache_seg_path, output_path)
-                        return str(output_path)
-                    else:
-                        if output_path.exists():
-                            try:
-                                output_path.unlink()
-                            except Exception:
-                                pass
-                        last_err_snippet = err_trim or "stream trimming failed"
+                    if video_stream and audio_stream:
+                        trim_timeout = max(90, min(300, int(clip_duration * 3) + 40))
+                        trim_cmd = [
+                            "ffmpeg", "-y", "-hide_banner",
+                            "-reconnect", "1",
+                            "-reconnect_at_eof", "1",
+                            "-reconnect_streamed", "1",
+                            "-reconnect_delay_max", "5",
+                            "-ss", str(start_time),
+                            "-i", video_stream,
+                            "-ss", str(start_time),
+                            "-i", audio_stream,
+                            "-t", str(clip_duration),
+                            "-map", "0:v:0", "-map", "1:a:0?",
+                            "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
+                            "-c:a", "aac",
+                            "-b:a", "192k",
+                            "-avoid_negative_ts", "make_zero",
+                            "-movflags", "+faststart",
+                            str(output_path)
+                        ]
+                        ok_trim, err_trim = _run_ytdlp_with_live_progress(trim_cmd, trim_timeout, output_path, progress_callback, clip_duration=clip_duration)
+                        if ok_trim and is_valid_mp4(output_path):
+                            logger.info(f"Successfully trimmed stream URLs with FFmpeg ({mode_label}): {output_path} ({output_path.stat().st_size} bytes)")
+                            _cache_segment(cache_seg_path, output_path)
+                            return str(output_path)
+                        else:
+                            if output_path.exists():
+                                try:
+                                    output_path.unlink()
+                                except Exception:
+                                    pass
+                            last_err_snippet = err_trim or "stream trimming failed"
             except Exception as e:
                 logger.error(f"Fallback stream trimming failed ({mode_label}): {e}")
                 if output_path.exists():
@@ -1065,7 +1081,7 @@ def download_clip_segment(
                     "--no-colors",
                     "--download-sections", f"*{t_start_fmt}-{t_end_fmt}",
                     "--force-keyframes-at-cuts",
-                    "-f", "bestvideo[height<=720]+bestaudio/best[height<=720]/best",
+                    "-f", "bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=720]+bestaudio/best[height<=720][vcodec!=none]+bestaudio/best[vcodec!=none]",
                     "-N", "4",
                     "--socket-timeout", "20",
                     "--fragment-retries", "5",
@@ -1106,7 +1122,7 @@ def download_clip_segment(
                     "--no-colors",
                     "--download-sections", f"*{t_start_fmt}-{t_end_fmt}",
                     "--force-keyframes-at-cuts",
-                    "-f", "bestvideo[height<=480]+bestaudio/best[height<=480]/18/best",
+                    "-f", "bestvideo[height<=480][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=480]+bestaudio/best[height<=480][vcodec!=none]/18/best[vcodec!=none]",
                     "-N", "2",
                     "--socket-timeout", "20",
                     "--fragment-retries", "3",
@@ -3058,10 +3074,10 @@ def render_clip_to_mp4(
     if not os.path.exists(video_path) or os.path.getsize(video_path) < 1000:
         raise RuntimeError(f"Input video file is missing or empty: {video_path}")
 
-    if not is_valid_mp4(video_path):
+    if not is_valid_mp4(video_path, require_video=True):
         raise RuntimeError(
-            "Source video segment is incomplete or corrupted ('moov atom not found'). "
-            "This usually happens when internet lags during download. Please retry rendering this clip."
+            "Source video segment is invalid, incomplete, or contains no video stream. "
+            "Please retry rendering this clip so the video stream can be re-downloaded."
         )
 
     if ass_subtitles_path and os.path.exists(ass_subtitles_path):
