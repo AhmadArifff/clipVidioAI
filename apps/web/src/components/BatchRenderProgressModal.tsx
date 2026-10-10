@@ -70,13 +70,23 @@ export const BatchRenderProgressModal: React.FC<BatchRenderProgressModalProps> =
               <div className="batch-item-status-wrap">
                 {clip.status === 'pending' && <span className="status-badge pending">{t.batchProgress.statusWaiting}</span>}
                 {clip.status === 'downloading' && (
-                  <span className="status-badge active">{t.batchProgress.statusSlicing}</span>
+                  <span className="status-badge active">
+                    {clip.download_speed ? (
+                      `⬇️ Unduh (${clip.download_pct ?? clip.progress_percent}% · ${clip.download_speed}${clip.download_eta ? ` · ETA ${clip.download_eta}` : ''})`
+                    ) : (
+                      `⚡ Memotong (${clip.progress_percent}%)`
+                    )}
+                  </span>
                 )}
                 {clip.status === 'transcribing' && (
-                  <span className="status-badge active">{t.batchProgress.statusCaptions}</span>
+                  <span className="status-badge active" style={{ color: '#a78bfa', borderColor: 'rgba(167, 139, 250, 0.4)', background: 'rgba(167, 139, 250, 0.12)' }}>
+                    ✍️ Subtitle ({clip.progress_percent}%)
+                  </span>
                 )}
                 {clip.status === 'rendering' && (
-                  <span className="status-badge active">{t.batchProgress.statusRendering}</span>
+                  <span className="status-badge active" style={{ color: '#60a5fa', borderColor: 'rgba(96, 165, 250, 0.4)', background: 'rgba(96, 165, 250, 0.12)' }}>
+                    🎬 Render ({clip.progress_percent}%)
+                  </span>
                 )}
                 {clip.status === 'completed' && (
                   <div className="completed-action-row">

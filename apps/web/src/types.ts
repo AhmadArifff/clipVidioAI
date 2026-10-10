@@ -191,6 +191,9 @@ export interface RenderClipStatus {
   download_url?: string;
   error_message?: string;
   error?: string;
+  download_speed?: string;
+  download_eta?: string;
+  download_pct?: number;
 }
 
 export interface BatchRenderProgress {

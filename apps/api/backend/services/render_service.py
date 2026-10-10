@@ -40,13 +40,27 @@ async def render_single_batch_clip(
 
     clip_status = batch["clips"][idx]
     clip_status["status"] = "downloading"
-    clip_status["progress_percent"] = 15
+    clip_status["progress_percent"] = 10
+    clip_status["download_speed"] = ""
+    clip_status["download_eta"] = ""
+    clip_status["download_pct"] = 0
     clip_status["error_message"] = None
     clip_status["error"] = None
 
     raw_path = None
     ass_path = None
     title_overlay_path = None
+
+    def on_dl_progress(p: Dict[str, Any]):
+        try:
+            pct = float(p.get("percent", 0.0))
+            mapped_clip_progress = 10 + int((pct / 100.0) * 28)
+            clip_status["progress_percent"] = min(38, max(10, mapped_clip_progress))
+            clip_status["download_speed"] = p.get("speed") or ""
+            clip_status["download_eta"] = p.get("eta") or ""
+            clip_status["download_pct"] = round(pct, 1)
+        except Exception:
+            pass
 
     try:
         # 1. Download
@@ -60,7 +74,8 @@ async def render_single_batch_clip(
             start_t,
             end_t,
             seg_filename,
-            cookies_content
+            cookies_content,
+            on_dl_progress
         )
 
         if not raw_path or not os.path.exists(raw_path) or not is_valid_mp4(raw_path):
@@ -324,19 +339,34 @@ async def render_merged_batch_clips(
 
     try:
         total_segments = len(clips)
+        seg_span = 28 / max(1, total_segments)
         # 1. Download / slice each segment
         for i, seg in enumerate(clips):
-            clip_status["progress_percent"] = 10 + int((i / max(1, total_segments)) * 25)
+            base_seg_progress = 10 + int(i * seg_span)
+            clip_status["progress_percent"] = base_seg_progress
             s_t = float(seg.get("start_time", 0.0))
             e_t = float(seg.get("end_time", s_t + 30.0))
             part_filename = f"{batch_id}_part_{i}_raw.mp4"
+
+            def on_part_progress(p: Dict[str, Any]):
+                try:
+                    pct = float(p.get("percent", 0.0))
+                    mapped_p = base_seg_progress + int((pct / 100.0) * seg_span)
+                    clip_status["progress_percent"] = min(38, max(10, mapped_p))
+                    clip_status["download_speed"] = p.get("speed") or ""
+                    clip_status["download_eta"] = p.get("eta") or ""
+                    clip_status["download_pct"] = round(pct, 1)
+                except Exception:
+                    pass
+
             p_path = await asyncio.to_thread(
                 download_clip_segment,
                 target_url,
                 s_t,
                 e_t,
                 part_filename,
-                cookies_content
+                cookies_content,
+                on_part_progress
             )
             if not p_path or not os.path.exists(p_path) or not is_valid_mp4(p_path):
                 raise RuntimeError(
