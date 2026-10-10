@@ -112,3 +112,28 @@ Setelah review disetujui dan AI mulai menulis kode, perhatikan etika penulisan k
     // Sinkronisasi scroll horizontal header, body, dan footer
     ```
 
+---
+
+## 5. Universal Git Lifecycle & Continuous Knowledge Sync Protocol
+
+Seluruh pengembangan fitur, perbaikan bug, maupun modifikasi arsitektur wajib mematuhi 5 Siklus Eksekusi dan 2 Disiplin Pencatatan Permanen:
+
+### A. 5 Siklus Eksekusi (Execution Lifecycle):
+1. **User Prompt**: Pengguna memberikan instruksi, ide fitur, atau laporan temuan bug.
+2. **Plan & Discussion**: AI menyusun rencana kerja terstruktur (analisis dampak, opsi solusi, komparasi before vs after) dan mendiskusikannya secara transparan dengan pengguna.
+3. **Approval Gate**: Pengembangan HANYA dimulai setelah pengguna memberikan persetujuan eksplisit. Dilarang mengubah file produksi sebelum lampu hijau disepakati.
+4. **Pre-Flight Git Sync (Pull Before Code)**: Sebelum menulis atau memodifikasi kode, AI WAJIB menjalankan `git pull` (atau `git pull --rebase origin main`) untuk memastikan kode lokal 100% selaras dengan remote terbaru dan mencegah konflik cabang.
+5. **Post-Flight Git Sync & Verification (Test -> Sync -> Push)**:
+   * Seluruh kode diuji secara mandiri oleh tim Reviewer (QA / Tech-Critic).
+   * Jalankan `git pull` kembali untuk memeriksa apakah ada commit baru dari perangkat lain.
+   * Lakukan `git add` dan `git commit` dengan pesan deskriptif semantik (`feat:`, `fix:`, `refactor:`, `docs:`).
+   * Lakukan `git push` ke cabang utama (`origin main`).
+
+### B. 2 Disiplin Pencatatan Permanen Setiap Perubahan:
+1. **Sinkronisasi Perencanaan ke `PRD.md`**:
+   * Setiap penambahan fitur, perubahan tata letak arsitektur, atau pembaruan kriteria penerimaan wajib langsung dicatatkan ke [PRD.md](../../PRD.md). Ini menjaga agar *product tracking* selalu mutakhir dan selaras dengan realitas kode.
+2. **Penyimpanan Pengetahuan ke `.agents` (`02-session-state` & `04-case-bank`)**:
+   * **Tracking Milestone & State**: Memperbarui status sub-tugas dan milestone pada [.agents/02-session-state/active-session.json](../02-session-state/active-session.json).
+   * **Continuous Learning & Bug Case Banking**: Setiap kali bug diselesaikan atau ditemukan solusi arsitektur krusial, wajib didokumentasikan ke [.agents/04-case-bank/cases/](../04-case-bank/cases/) dan didaftarkan pada [.agents/04-case-bank/index.json](../04-case-bank/index.json).
+   * **Tujuan**: AI di giliran berikutnya terus belajar (*never repeat same mistakes*), dan developer/tim lain dapat melacak riwayat resolusi bug teknis secara mendalam, bukan sekadar melihat log commit git biasa.
+
