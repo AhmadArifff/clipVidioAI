@@ -203,6 +203,40 @@
         }
       ],
       "verdict": "approved"
+    },
+    {
+      "id": "T10",
+      "task": "Implementasi Live Synchronized Subtitle Karaoke Preview di Studio Preview Player dengan Responsif Slider Offset (ClipStudioSection.tsx & App.tsx)",
+      "owner_role": "frontend-engineer",
+      "status": "done",
+      "depends_on": ["T9"],
+      "rework_iteration_count": 0,
+      "reviewed_by": [
+        {
+          "role": "qa-engineer",
+          "verdict": "approved",
+          "timestamp": "2026-10-11T06:05:00Z",
+          "note": "Vite & tsc build sukses 100%, animasi teks subtitle karaoke bergerak sinkron dengan audio dan merespons slider offset secara real-time"
+        }
+      ],
+      "verdict": "approved"
+    },
+    {
+      "id": "T11",
+      "task": "Implementasi Auto-Whisper AI Fallback Pipeline untuk Video YouTube Tanpa Subtitle Bawaan (analyze.py & youtube_service.py)",
+      "owner_role": "backend-engineer",
+      "status": "done",
+      "depends_on": ["T10"],
+      "rework_iteration_count": 0,
+      "reviewed_by": [
+        {
+          "role": "tech-critic",
+          "verdict": "approved",
+          "timestamp": "2026-10-11T06:08:00Z",
+          "note": "Pipeline audio extraction & Whisper speech-to-text fallback teruji bebas error syntax dan terintegrasi mulus dengan SSE streaming"
+        }
+      ],
+      "verdict": "approved"
     }
   ],
   "open_questions": [],
@@ -216,6 +250,6 @@
   "last_reviewer_verdict": {
     "role": "tech-critic",
     "result": "approved",
-    "note": "Dokumen PRD.md v2.6.0, Case-Bank CASE-20261011, serta implementasi Bilingual Subtitle & Audio Offset Calibration telah diverifikasi lulus 100%"
+    "note": "Milestone v2.7.0 (Live Synchronized Karaoke Preview di Studio & Auto-Whisper Fallback Engine) berhasil diimplementasikan, diverifikasi, dan disetujui 100%"
   }
 }

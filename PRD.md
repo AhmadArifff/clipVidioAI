@@ -248,6 +248,7 @@ Memungkinkan pengguna mengubah video 16:9 atau 1:1 menjadi format vertikal 9:16 
 | **v2.4.0** | Oktober 2026 | Enterprise AI Router Multi-Provider: Integrasi OpenRouter (DeepSeek V3/R1) berdampingan dengan Google Gemini Multi-Key Rotation | Selesai (Verified Pass) |
 | **v2.5.0** | Oktober 2026 | GPU Hardware Acceleration (AMD AMF benchmark 2.86x real-time), Card Status GPU Studio, Peredaman Log Proxy Startup, dan Perbaikan FontFace encoding | Selesai (Verified Pass) |
 | **v2.6.0** | Oktober 2026 | Bilingual Subtitle Intelligence (Fokus Indonesian & English), Kalibrasi Audio-Text Offset Slider, dan Eliminasi Bentrok Subtitle Ganda | Selesai (Verified Pass) |
+| **v2.7.0** | Oktober 2026 | Live Synchronized Subtitle Karaoke Preview di Studio & Auto-Whisper Speech-to-Text Fallback untuk Video YouTube Nir-Subtitle | Selesai (Verified Pass) |
 
 ---
 
@@ -314,4 +315,30 @@ Untuk memastikan teks subtitle beriringan secara presisi dengan suara dubbing na
   ```
 * **Opsi "Tanpa Subtitle (None)" untuk Video yang Sudah Punya Hardsub**:
   * Jika video sumber terdeteksi sudah memiliki subtitle permanen di dalam gambar seperti pada video Moby Dick, pengguna dapat langsung mengklik opsi `Gaya Subtitle: None` agar ClipVidio AI tidak menimpa subtitle kedua, menghasilkan video yang bersih dan rapi.
+
+---
+
+## 9. Fitur 7: Live Synchronized Subtitle Karaoke Preview & Auto-Whisper Fallback Engine (v2.7.0)
+
+### 9.1 Spesifikasi Fitur A: Live Synchronized Subtitle Karaoke Preview di Studio
+* **Tujuan**: Memberikan umpan balik instan kepada pengguna di mana subtitle karaoke animasi kata per kata berkedip/menyala secara real-time mengikuti detik pemutaran video di Studio Preview sebelum tombol Render diklik.
+* **Mekanisme Kerja**:
+  * Mengintegrasikan `fullTranscript` dari hasil analisis ke komponen Studio (`ClipStudioSection`).
+  * Mengalkulasikan waktu efektif dialog dengan mengikutsertakan pergeseran slider:
+    `effective_time = current_player_time + (subtitle_offset_ms / 1000.0)`.
+  * Menemukan kalimat transkrip aktif pada rentang `effective_time`.
+  * Membagi kalimat menjadi kata-kata (chunks 1-3 kata) dan menyorot kata yang sedang aktif dengan warna aksen gaya subtitle (misal Lemon Yellow untuk Viral Pop, Neon Green untuk Beast Punch) dan animasi pembesaran mikro (*scale pop*).
+  * Menyesuaikan ukuran font dan posisi vertikal secara responsif mengikuti konfigurasi rasio dan slider penempatan subtitle.
+  * Ketika slider `subtitle_offset_ms` digeser, teks dan highlight kata langsung bergeser detik aktifnya di layar secara instan.
+
+### 9.2 Spesifikasi Fitur B: Auto-Whisper Fallback untuk Video YouTube Nir-Subtitle (Zero-Caption Videos)
+* **Tujuan**: Mencegah kegagalan proses analisis ketika suatu video YouTube sama sekali tidak memiliki teks terjemahan atau transkrip otomatis (ASR YouTube non-aktif).
+* **Mekanisme Kerja**:
+  * Jika `fetch_transcript()` gagal menemukan caption pada seluruh tier (Supadata, YouTube Direct, dan Auto-Translate):
+    1. Sistem tidak langsung membatalkan analisis dengan error 400.
+    2. Sistem memicu event SSE: `Auto-Whisper Speech Recognition Fallback Activated`.
+    3. `yt-dlp` mengunduh stream audio ringan (`m4a` / `bestaudio`) ke direktori temporer.
+    4. Mesin OpenAI Whisper lokal (`whisper.load_model('base')`) mengekstrak dialog audio menjadi transkrip ber-timestamp presisi.
+    5. Transkrip hasil olahan Whisper langsung diteruskan ke modul kurasi AI (Gemini / OpenRouter) untuk menemukan segmen klip viral.
+
 

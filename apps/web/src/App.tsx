@@ -2282,9 +2282,12 @@ Transcript:
   }, [activeClip]);
 
   // Find current subtitle line with slight gap tolerance to prevent jitter
-  const currentSubtitle = result?.transcript?.find(
-    line => currentTime >= (line.start - 0.05) && currentTime <= (line.end + 0.25)
-  );
+  const currentSubtitle = useMemo(() => {
+    if (!result?.transcript || result.transcript.length === 0) return null;
+    return result.transcript.find(
+      line => currentTime >= (line.start - 0.05) && currentTime <= (line.end + 0.25)
+    );
+  }, [result?.transcript, currentTime]);
 
   return (
     <div className="app-container">
@@ -4114,7 +4117,7 @@ Transcript:
                     <div id="youtube-player"></div>
                   </div>
                 )}
-                {subtitlesSource === 'manual' && currentSubtitle && (
+                {currentSubtitle && (
                   <div className="video-subtitle-overlay">
                     <span>{currentSubtitle.text}</span>
                   </div>
@@ -4921,6 +4924,7 @@ Transcript:
           allClips={result.clips}
           markedClips={markedClipsList}
           activeClip={activeClip}
+          fullTranscript={result.transcript}
           onStartRender={handleStartBatchRender}
           isRendering={isLaunchingRender}
           onToggleMarkClip={(clip) => toggleMarkedClip(`${clip.start_time}_${clip.end_time}`)}

@@ -44,11 +44,13 @@ from backend.services.system_service import (
     is_update_allowed,
 )
 from backend.services.youtube_service import (
+    download_youtube_audio_for_whisper,
     fetch_transcript,
     fetch_video_metadata,
     get_supadata_keys,
     get_supadata_usage_data,
 )
+from backend.video_engine import get_whisper_model
 from backend.utils.heatmap import get_average_heatmap_value
 from backend.utils.proxy import get_proxy_url
 from backend.utils.sse import _sse
@@ -677,9 +679,104 @@ async def analyze_video(request: AnalyzeRequest):
                                 "status": 400
                             })
                         else:
-                            msg = e.detail if isinstance(e, HTTPException) else str(e)
-                            yield _sse({"error": msg, "status": 400})
-                        return
+                            # Auto-Whisper Fallback: If native captions are unavailable, transcribe audio using Whisper AI
+                            whisper_model = get_whisper_model()
+                            if whisper_model is not None:
+                                logger.info(f"YouTube captions unavailable for {video_id}. Activating Auto-Whisper AI Fallback...")
+                                yield _sse({
+                                    "step": 3,
+                                    "step_progress": 20,
+                                    "overall_progress": 55,
+                                    "stage": "Auto-Whisper AI Speech Recognition",
+                                    "detail": "No native YouTube captions found. Downloading audio stream for Whisper AI speech recognition...",
+                                    "message": "Activating Auto-Whisper speech-to-text fallback..."
+                                })
+
+                                def whisper_download_prog(stg, dtl, pct):
+                                    loop.call_soon_threadsafe(progress_queue.put_nowait, {
+                                        "step": 3,
+                                        "step_progress": min(45, 20 + int(pct * 0.25)),
+                                        "overall_progress": 58,
+                                        "stage": stg,
+                                        "detail": dtl,
+                                        "message": dtl
+                                    })
+
+                                try:
+                                    audio_task = asyncio.create_task(
+                                        asyncio.to_thread(
+                                            download_youtube_audio_for_whisper,
+                                            video_id,
+                                            request.proxy,
+                                            request.cookies,
+                                            whisper_download_prog
+                                        )
+                                    )
+                                    while not audio_task.done():
+                                        try:
+                                            evt = await asyncio.wait_for(progress_queue.get(), timeout=0.2)
+                                            yield _sse(evt)
+                                        except asyncio.TimeoutError:
+                                            pass
+                                    while not progress_queue.empty():
+                                        yield _sse(progress_queue.get_nowait())
+
+                                    audio_file = await audio_task
+
+                                    yield _sse({
+                                        "step": 3,
+                                        "step_progress": 50,
+                                        "overall_progress": 60,
+                                        "stage": "Transcribing with Whisper",
+                                        "detail": f"Audio downloaded ({round(audio_file.stat().st_size / (1024*1024), 1)} MB). Extracting timestamped dialogue with Whisper AI...",
+                                        "message": "Transcribing audio track with Whisper AI..."
+                                    })
+
+                                    def whisper_transcribe_prog(stg, dtl, pct):
+                                        loop.call_soon_threadsafe(progress_queue.put_nowait, {
+                                            "step": 3,
+                                            "step_progress": min(95, 50 + int(pct * 0.45)),
+                                            "overall_progress": min(68, 60 + int(pct * 0.08)),
+                                            "stage": stg,
+                                            "detail": dtl,
+                                            "message": dtl
+                                        })
+
+                                    transcribe_task = asyncio.create_task(
+                                        asyncio.to_thread(
+                                            transcribe_local_video_file,
+                                            audio_file,
+                                            whisper_transcribe_prog
+                                        )
+                                    )
+                                    while not transcribe_task.done():
+                                        try:
+                                            evt = await asyncio.wait_for(progress_queue.get(), timeout=0.2)
+                                            yield _sse(evt)
+                                        except asyncio.TimeoutError:
+                                            pass
+                                    while not progress_queue.empty():
+                                        yield _sse(progress_queue.get_nowait())
+
+                                    transcript_lines = await transcribe_task
+
+                                    yield _sse({
+                                        "step": 3,
+                                        "step_progress": 100,
+                                        "overall_progress": 70,
+                                        "stage": "Subtitles Ready",
+                                        "detail": f"Auto-Whisper speech-to-text complete: {len(transcript_lines)} dialogue sentences with timestamps ready.",
+                                        "message": f"Whisper transcribed {len(transcript_lines)} dialogue segments successfully."
+                                    })
+                                except Exception as whisper_err:
+                                    logger.error(f"Auto-Whisper speech recognition fallback failed: {whisper_err}", exc_info=True)
+                                    msg = e.detail if isinstance(e, HTTPException) else str(e)
+                                    yield _sse({"error": f"{msg}\n\n(Auto-Whisper Speech Recognition fallback encountered error: {str(whisper_err)})", "status": 400})
+                                    return
+                            else:
+                                msg = e.detail if isinstance(e, HTTPException) else str(e)
+                                yield _sse({"error": msg, "status": 400})
+                                return
 
         # Estimate duration from transcript if missing
         if duration == 0.0 and transcript_lines:

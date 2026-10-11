@@ -20,6 +20,7 @@ import type {
   HardwareAccelInfo,
   FontItem,
   BackgroundType,
+  TranscriptLine,
 } from '../types';
 import { BackgroundCustomizer } from './BackgroundCustomizer';
 
@@ -37,6 +38,7 @@ interface ClipStudioSectionProps {
   onDismissProgress?: () => void;
   onRetryClip?: (clipIndex?: number) => void;
   allowAppUpdates?: boolean;
+  fullTranscript?: TranscriptLine[];
 }
 
 function getFriendlyErrorMessage(rawMsg: string): string {
@@ -67,6 +69,26 @@ function getFriendlyErrorMessage(rawMsg: string): string {
     return 'FFmpeg video rendering failed during composition. Check error details below.';
   }
   return rawMsg.length > 140 ? rawMsg.slice(0, 140) + '...' : rawMsg;
+}
+
+function getCaptionStyleColors(style: CaptionStyle): { primary: string; highlight: string } {
+  switch (style) {
+    case 'viral_pop':
+      return { primary: '#ffffff', highlight: '#FFE600' };
+    case 'beast_punch':
+      return { primary: '#ffffff', highlight: '#00FF66' };
+    case 'cyber_violet':
+      return { primary: '#ffffff', highlight: '#D946EF' };
+    case 'fire_red':
+      return { primary: '#ffffff', highlight: '#FF2E2E' };
+    case 'electric_cyan':
+      return { primary: '#ffffff', highlight: '#00F0FF' };
+    case 'golden_aura':
+      return { primary: '#ffffff', highlight: '#FFB800' };
+    case 'clean_minimal':
+    default:
+      return { primary: '#ffffff', highlight: '#ffffff' };
+  }
 }
 
 const ClipRenderErrorBox: React.FC<{ errorMessage: string; t: any; onRetry?: () => void }> = ({ errorMessage, t, onRetry }) => {
@@ -286,6 +308,7 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
   onDismissProgress,
   onRetryClip,
   allowAppUpdates = false,
+  fullTranscript = [],
 }) => {
   const { t } = useLanguage();
   // Directly reflect marked clips (supports selecting 0 clips)
@@ -781,7 +804,7 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
           }
         }
       } catch (e) {}
-    }, 150);
+    }, 60);
   };
 
   const stopTracking = () => {
@@ -945,6 +968,97 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
   const totalSelectedDuration = useMemo(() => {
     return Math.round(selectedClips.reduce((acc, c) => acc + (c.end_time - c.start_time), 0));
   }, [selectedClips]);
+
+  // Active synchronized subtitle for studio preview
+  const liveSubtitleInfo = useMemo(() => {
+    if (captionStyle === 'none') return null;
+
+    // Shift time by user calibration slider:
+    const offsetSec = (subtitleOffsetMs || 0) / 1000.0;
+    const effectiveTime = currentTime + offsetSec;
+
+    let activeLine: { start: number; end: number; text: string } | null = null;
+
+    if (fullTranscript && fullTranscript.length > 0) {
+      const found = fullTranscript.find(
+        (line) => effectiveTime >= (line.start - 0.05) && effectiveTime <= (line.end + 0.20)
+      );
+      if (found) {
+        activeLine = found;
+      }
+    }
+
+    // Fallback: If not in fullTranscript or fullTranscript is empty, check currentPreviewClip
+    if (!activeLine && currentPreviewClip) {
+      if (fullTranscript && fullTranscript.length > 0) {
+        const inClip = fullTranscript.filter(
+          (l) => l.start >= currentPreviewClip.start_time - 0.5 && l.start <= currentPreviewClip.end_time + 0.5
+        );
+        if (inClip.length > 0) {
+          if (effectiveTime <= inClip[0].start) {
+            activeLine = inClip[0];
+          } else {
+            activeLine = inClip.reduce((prev, curr) =>
+              Math.abs(curr.start - effectiveTime) < Math.abs(prev.start - effectiveTime) ? curr : prev
+            );
+          }
+        }
+      }
+      if (!activeLine && currentPreviewClip.transcript) {
+        activeLine = {
+          start: currentPreviewClip.start_time,
+          end: currentPreviewClip.end_time,
+          text: currentPreviewClip.transcript.slice(0, 100),
+        };
+      }
+    }
+
+    if (!activeLine || !activeLine.text) return null;
+
+    const rawWords = activeLine.text.trim().split(/\s+/).filter(Boolean);
+    if (rawWords.length === 0) return null;
+
+    // Group into chunks of 1 to 3 words (max 16 chars) to match ASS layout
+    const chunks: string[][] = [];
+    let curChunk: string[] = [];
+    let curChars = 0;
+    for (const w of rawWords) {
+      if (curChunk.length >= 3 || (curChunk.length > 0 && curChars + w.length > 16)) {
+        chunks.push(curChunk);
+        curChunk = [w];
+        curChars = w.length;
+      } else {
+        curChunk.push(w);
+        curChars += w.length + 1;
+      }
+    }
+    if (curChunk.length > 0) chunks.push(curChunk);
+
+    // Calculate progression across active line
+    const duration = Math.max(0.4, activeLine.end - activeLine.start);
+    const progress = Math.min(1.0, Math.max(0.0, (effectiveTime - activeLine.start) / duration));
+
+    const totalWords = rawWords.length;
+    const activeWordIndex = Math.min(totalWords - 1, Math.floor(progress * totalWords));
+
+    let accumulated = 0;
+    let chosenChunk = chunks[0] || [];
+    let activeIndexInChunk = 0;
+
+    for (const ch of chunks) {
+      if (activeWordIndex < accumulated + ch.length) {
+        chosenChunk = ch;
+        activeIndexInChunk = activeWordIndex - accumulated;
+        break;
+      }
+      accumulated += ch.length;
+    }
+
+    return {
+      words: chosenChunk,
+      activeWordIndex: activeIndexInChunk,
+    };
+  }, [currentTime, subtitleOffsetMs, fullTranscript, currentPreviewClip, captionStyle]);
 
   const handleClearTempClick = () => {
     setShowClearConfirmModal(true);
@@ -4426,46 +4540,73 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                         display: 'inline-block',
                       }}
                     >
-                      {captionStyle === 'viral_pop' && (
+                      {liveSubtitleInfo && liveSubtitleInfo.words.length > 0 ? (
+                        liveSubtitleInfo.words.map((word, wIdx) => {
+                          const isWordActive = wIdx === liveSubtitleInfo.activeWordIndex;
+                          const colors = getCaptionStyleColors(captionStyle);
+                          const wordColor = isWordActive ? colors.highlight : colors.primary;
+
+                          return (
+                            <React.Fragment key={`${word}_${wIdx}`}>
+                              <span
+                                style={{
+                                  color: wordColor,
+                                  display: 'inline-block',
+                                  transform: isWordActive ? 'scale(1.12)' : 'scale(1.0)',
+                                  transition: 'transform 0.08s ease, color 0.08s ease',
+                                  filter: isWordActive ? 'drop-shadow(0 0 6px rgba(255,255,255,0.4))' : 'none',
+                                }}
+                              >
+                                {applyLetterCase(word, textCase)}
+                              </span>
+                              {wIdx < liveSubtitleInfo.words.length - 1 ? ' ' : ''}
+                            </React.Fragment>
+                          );
+                        })
+                      ) : (
                         <>
-                          <span style={{ color: '#ffffff' }}>{applyLetterCase('VIRAL', textCase)}</span>{' '}
-                          <span style={{ color: '#FFE600' }}>{applyLetterCase('POP', textCase)}</span>
+                          {captionStyle === 'viral_pop' && (
+                            <>
+                              <span style={{ color: '#ffffff' }}>{applyLetterCase('VIRAL', textCase)}</span>{' '}
+                              <span style={{ color: '#FFE600' }}>{applyLetterCase('POP', textCase)}</span>
+                            </>
+                          )}
+                          {captionStyle === 'beast_punch' && (
+                            <>
+                              <span style={{ color: '#ffffff' }}>{applyLetterCase('UNREAL', textCase)}</span>{' '}
+                              <span style={{ color: '#00FF66' }}>{applyLetterCase('HACK', textCase)}</span>
+                            </>
+                          )}
+                          {captionStyle === 'cyber_violet' && (
+                            <>
+                              <span style={{ color: '#ffffff' }}>{applyLetterCase('CYBER', textCase)}</span>{' '}
+                              <span style={{ color: '#D946EF' }}>{applyLetterCase('PUNCH', textCase)}</span>
+                            </>
+                          )}
+                          {captionStyle === 'fire_red' && (
+                            <>
+                              <span style={{ color: '#ffffff' }}>{applyLetterCase('HOT', textCase)}</span>{' '}
+                              <span style={{ color: '#FF2E2E' }}>{applyLetterCase('FIRE', textCase)}</span>
+                            </>
+                          )}
+                          {captionStyle === 'electric_cyan' && (
+                            <>
+                              <span style={{ color: '#ffffff' }}>{applyLetterCase('ELECTRIC', textCase)}</span>{' '}
+                              <span style={{ color: '#00F0FF' }}>{applyLetterCase('CYAN', textCase)}</span>
+                            </>
+                          )}
+                          {captionStyle === 'golden_aura' && (
+                            <>
+                              <span style={{ color: '#ffffff' }}>{applyLetterCase('GOLDEN', textCase)}</span>{' '}
+                              <span style={{ color: '#FFB800' }}>{applyLetterCase('MOMENT', textCase)}</span>
+                            </>
+                          )}
+                          {captionStyle === 'clean_minimal' && (
+                            <span style={{ color: '#ffffff' }}>
+                              {applyLetterCase('CLEAN SUBTITLE', textCase)}
+                            </span>
+                          )}
                         </>
-                      )}
-                      {captionStyle === 'beast_punch' && (
-                        <>
-                          <span style={{ color: '#ffffff' }}>{applyLetterCase('UNREAL', textCase)}</span>{' '}
-                          <span style={{ color: '#00FF66' }}>{applyLetterCase('HACK', textCase)}</span>
-                        </>
-                      )}
-                      {captionStyle === 'cyber_violet' && (
-                        <>
-                          <span style={{ color: '#ffffff' }}>{applyLetterCase('CYBER', textCase)}</span>{' '}
-                          <span style={{ color: '#D946EF' }}>{applyLetterCase('PUNCH', textCase)}</span>
-                        </>
-                      )}
-                      {captionStyle === 'fire_red' && (
-                        <>
-                          <span style={{ color: '#ffffff' }}>{applyLetterCase('HOT', textCase)}</span>{' '}
-                          <span style={{ color: '#FF2E2E' }}>{applyLetterCase('FIRE', textCase)}</span>
-                        </>
-                      )}
-                      {captionStyle === 'electric_cyan' && (
-                        <>
-                          <span style={{ color: '#ffffff' }}>{applyLetterCase('ELECTRIC', textCase)}</span>{' '}
-                          <span style={{ color: '#00F0FF' }}>{applyLetterCase('CYAN', textCase)}</span>
-                        </>
-                      )}
-                      {captionStyle === 'golden_aura' && (
-                        <>
-                          <span style={{ color: '#ffffff' }}>{applyLetterCase('GOLDEN', textCase)}</span>{' '}
-                          <span style={{ color: '#FFB800' }}>{applyLetterCase('MOMENT', textCase)}</span>
-                        </>
-                      )}
-                      {captionStyle === 'clean_minimal' && (
-                        <span style={{ color: '#ffffff' }}>
-                          {applyLetterCase('CLEAN SUBTITLE', textCase)}
-                        </span>
                       )}
                     </span>
                   </div>

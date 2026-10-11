@@ -7,6 +7,7 @@ import subprocess
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
 from typing import Callable, List, Optional
 
 import requests
@@ -15,7 +16,7 @@ from fastapi import HTTPException
 from youtube_transcript_api import YouTubeTranscriptApi
 from youtube_transcript_api.formatters import JSONFormatter
 
-from backend.config import get_effective_cookies_path, ephemeral_cookies_file, logger
+from backend.config import TEMP_DIR, get_effective_cookies_path, ephemeral_cookies_file, logger
 from backend.utils.proxy import (
     TimeoutSession,
     _shared_cookie_jar,
@@ -823,3 +824,56 @@ def fetch_transcript(
     full_error_detail = "\n".join(error_lines)
     logger.error(f"Subtitle retrieval exhausted all {len(attempt_history)} methods:\n{full_error_detail}")
     raise HTTPException(status_code=400, detail=full_error_detail)
+
+
+def download_youtube_audio_for_whisper(
+    video_id: str,
+    proxy: Optional[str] = None,
+    cookies_content: Optional[str] = None,
+    on_progress: Optional[Callable[[str, str, int], None]] = None
+) -> Path:
+    """Downloads an audio stream (m4a/aac) of a YouTube video to TEMP_DIR for Whisper speech recognition.
+    Used as an automatic fallback when no native YouTube subtitles or captions exist."""
+    target_audio = TEMP_DIR / f"whisper_audio_{video_id}.m4a"
+
+    if target_audio.exists() and target_audio.stat().st_size > 10000:
+        logger.info(f"Using cached audio stream for Whisper AI: {target_audio.name} ({target_audio.stat().st_size} bytes)")
+        return target_audio
+
+    out_tmpl = str(TEMP_DIR / f"whisper_audio_{video_id}.%(ext)s")
+
+    with ephemeral_cookies_file(cookies_content) as temp_cookies:
+        ydl_opts = {
+            'format': 'ba/b',
+            'outtmpl': out_tmpl,
+            'postprocessors': [{
+                'key': 'FFmpegExtractAudio',
+                'preferredcodec': 'm4a',
+            }],
+            'quiet': True,
+            'no_warnings': True,
+            'proxy': proxy or get_proxy_url(),
+            'socket_timeout': 30,
+        }
+        eff_cookies = temp_cookies or get_effective_cookies_path()
+        if eff_cookies:
+            ydl_opts['cookiefile'] = str(eff_cookies)
+        ydl_opts['extractor_args'] = {'youtube': {'player_client': ['default', 'web_embedded', 'ios']}}
+
+        if on_progress:
+            on_progress("Downloading Audio", "Downloading audio stream from YouTube for Whisper AI...", 30)
+
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            ydl.download([f"https://www.youtube.com/watch?v={video_id}"])
+
+    if target_audio.exists() and target_audio.stat().st_size > 10000:
+        logger.info(f"Successfully downloaded audio stream for Whisper: {target_audio.name} ({target_audio.stat().st_size} bytes)")
+        return target_audio
+
+    for cand in TEMP_DIR.glob(f"whisper_audio_{video_id}.*"):
+        if cand.is_file() and cand.stat().st_size > 10000:
+            logger.info(f"Found audio file for Whisper: {cand.name} ({cand.stat().st_size} bytes)")
+            return cand
+
+    raise FileNotFoundError(f"Failed to download audio stream for YouTube video ID '{video_id}'.")
+
