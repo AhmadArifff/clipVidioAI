@@ -1,8 +1,8 @@
-# PRD: ClipVidio AI — Platform Architecture, Custom Background Engine & Monorepo Transformation
+# PRD: ClipVidio AI - Platform Architecture, Multi-Provider AI Engine & High-Speed Media Pipeline
 
 > **Dokumen Spesifikasi Produk (PRD)**  
-> **Versi**: 2.0.0  
-> **Status**: Approved for Development  
+> **Versi**: 2.5.0  
+> **Status**: Approved & Fully Operational  
 > **Owner**: Ahmad Arif / clipVidioAI Core Team  
 > **Governance Engine**: Agentic AI Multi-Role System (.agents)
 
@@ -10,226 +10,257 @@
 
 ## 1. Executive Summary & Visi Produk
 
-**ClipVidio AI** adalah platform open-source cerdas untuk memotong, menganalisis, dan memproduksi video pendek (*viral short-form clips*) dari YouTube, Google Drive, atau unggahan langsung secara otomatis. Platform ini mengintegrasikan kecerdasan buatan (Google Gemini Flash & OpenRouter Multi-Provider) dengan mesin pengolah video berkinerja tinggi berbasis FFmpeg.
+**ClipVidio AI** adalah platform open-source cerdas untuk memotong, menganalisis, dan memproduksi video pendek (*viral short-form clips*) dari YouTube, Google Drive, atau berkas lokal secara otomatis. Platform ini mengintegrasikan kecerdasan buatan multi-penyedia (Google Gemini Flash & OpenRouter) dengan mesin pengolah video berkinerja tinggi berbasis FFmpeg dan akselerasi perangkat keras kartu grafis (GPU).
 
-### Latar Belakang Perubahan & Kebutuhan Utama
-1. **Kebutuhan Custom Background Multi-Ratio**: Video pendek di platform seperti TikTok, YouTube Shorts, dan Instagram Reels sering kali menggunakan format vertikal 9:16 yang membutuhkan latar belakang menarik (misalnya gameplay loop Minecraft/Subway Surfers, tema aesthetic, atau branding khusus) di belakang video utama yang berukuran 16:9 atau 1:1. Saat ini aplikasi hanya mendukung latar belakang hitam atau ambient blur bawaan.
-2. **Kebutuhan Arsitektur Monorepo**: Kode Frontend dan Backend saat ini bercampur di direktori *root*. Diperlukan pemisahan bersih (*Separation of Concerns*) berbasis Monorepo (`apps/web`, `apps/api`, dan `packages/shared`) untuk memudahkan skalabilitas, pemeliharaan dependensi, dan kerja tim.
-3. **Penerapan Governance Session-State**: Memastikan seluruh siklus pengembangan terlacak secara persisten melalui `.agents/session-state.json` agar riwayat arsitektur, batasan (*constraints*), dan progres sub-tugas tidak hilang saat sesi berganti (*context drift prevention*).
-4. **Transformasi UI/UX & Ikonografi Profesional**: Merombak antarmuka agar berstandar SaaS modern kelas atas (Obsidian/Zinc dark theme, tipografi presisi, micro-interactions halus) dan mengganti semua ikon dengan **Lucide React** yang seragam, bersih, dan mematuhi aturan Anti-Slop (tanpa em dash, WCAG AA contrast).
+Platform ini didesain untuk kreator konten, agensi media sosial, dan streamer yang ingin mengubah video panjang (podcast, webinar, gameplay, vod) menjadi klip vertikal siap tayang untuk TikTok, YouTube Shorts, dan Instagram Reels dalam hitungan detik.
 
 ---
 
-## 2. Fitur 1: Custom Background Multi-Ratio Engine
+## 2. Arsitektur Sistem Terintegrasi
 
-### 2.1 Spesifikasi Fungsional
-Pengguna dapat memilih atau mengunggah latar belakang (*background*) untuk klip video dengan dukungan rasio aspek fleksibel:
-* **Pilihan Aspek Rasio**:
-  * `9:16` (Vertical / Shorts / TikTok / Reels)
-  * `1:1` (Square / Instagram Feed)
-  * `4:3` (Classic)
-  * `16:9` (Landscape / YouTube Standard)
-* **Kategori Background yang Didukung**:
-  1. **Ambient Blur**: Menggunakan video asli yang di-blur secara dinamis dengan filter boxblur dan saturasi sinematik.
-  2. **Solid Color & Gradients**: Pilihan warna solid gelap/terang atau gradien gradasi modern.
-  3. **Curated Preset Loops**: Koleksi latar bawaan seperti gameplay loop (Minecraft Parkour, Subway Surfers, GTA Stunt), Motion Loops (Cyberpunk Neon Grid, Lo-Fi Room, Abstract Waves, Starfield).
-  4. **Custom Upload**: Pengguna dapat mengunggah file media sendiri:
-     * Format gambar: `.png`, `.jpg`, `.jpeg`, `.webp`
-     * Format video looping: `.mp4`, `.webm`, `.mov`
-* **Pengaturan Komposisi Video Utama (*Foreground Layout*)**:
-  * **Scale Slider**: Menyesuaikan ukuran video utama (50% hingga 100% dari lebar canvas).
-  * **Vertical Position**: Penempatan posisi vertikal (Top, Center, Bottom, atau slider koordinat Y).
-  * **Frame Polish**: Opsi corner radius (sudut melengkung halus), drop shadow sinematik, dan border outline tipis agar video utama tampil kontras dan profesional di atas latar belakang.
-
-### 2.2 Arsitektur Pipeline FFmpeg
-Mesin video engine [backend/video_engine.py](file:///c:/Users/ASUS/Documents/Web%20Dev/improving/Clipper-Vidio-YT/backend/video_engine.py) akan diperluas untuk menerima input media latar:
-
-```
-[Input 0: Main Video] ──> [Crop/Scale/Border/Shadow] ──┐
-                                                       ├─> [Overlay] ──> [Subtitles/Title] ──> [Final MP4]
-[Input 1: Custom BG]  ──> [Loop/Scale to Canvas/Crop] ──┘
-```
-
-* **Formula Looping Video Background**: Menggunakan flag `-stream_loop -1` pada input latar video agar looping berjalan mulus sepanjang durasi klip utama.
-* **Formula Filtergraph FFmpeg**:
-  ```bash
-  # Background scale & crop to target canvas (misal 1080x1920)
-  [1:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920:(iw-1080)/2:(ih-1920)/2[bg_base];
-  # Foreground scale & optional rounded/shadow
-  [0:v]scale=w=1080*scale_val:h=-2[fg_main];
-  # Composite overlay
-  [bg_base][fg_main]overlay=(W-w)/2:y_pos[layout_base]
-  ```
-
-### 2.3 Kontrak API Backend (FastAPI)
-* `POST /api/backgrounds/upload`: Endpoint Multipart upload file background (disimpan di `backend/storage/backgrounds/`).
-* `GET /api/backgrounds/presets`: Mengambil daftar preset latar belakang bawaan sistem.
-* `DELETE /api/backgrounds/{id}`: Menghapus background yang diunggah pengguna.
-* Ekstensi pada `RenderSettingsModel`:
-  * `background_type`: `"blur" | "solid" | "gradient" | "preset" | "custom_upload"`
-  * `background_value`: URL / path file background / kode warna heksadesimal / nama preset
-  * `foreground_scale`: Nilai float (0.50 s.d. 1.00)
-  * `foreground_position_y`: Nilai persentase (0% s.d. 100%)
-  * `foreground_border_radius`: Integer (0px s.d. 48px)
-  * `foreground_shadow`: Boolean
-
----
-
-## 3. Fitur 2: Restrukturisasi Monorepo
-
-### 3.1 Struktur Direktori Sasaran
+Sistem mengadopsi pola arsitektur **Monorepo Hybrid (TypeScript + Python)** dengan pemisahan peran yang tegas antara antarmuka web, backend pemrosesan media, dan kontrak tipe bersama:
 
 ```
 clipVidioAI/
 ├── apps/
 │   ├── web/                     # Frontend Application (React 19 + Vite + TypeScript)
 │   │   ├── src/
-│   │   │   ├── components/      # UI Components (Modular & Refactored)
-│   │   │   ├── hooks/           # Custom React Hooks
-│   │   │   ├── services/        # API Client Services
-│   │   │   ├── types/           # Local UI Types
-│   │   │   └── App.tsx          # Root Layout Shell
-│   │   ├── package.json
-│   │   └── vite.config.ts
+│   │   │   ├── components/      # UI Studio, Trimmer, Batch Progress, Backgrounds
+│   │   │   ├── locales/         # Bilingual i18n Dictionary (id.ts, en.ts)
+│   │   │   ├── utils/           # Resilient API Client, Helper Functions
+│   │   │   ├── types.ts         # Local UI Type Definitions
+│   │   │   └── App.tsx          # Master Shell & Workflow Controller
+│   │   ├── vite.config.ts       # Vite Dev Server with Graceful Proxy Interceptor
+│   │   └── package.json
 │   │
-│   └── api/                     # Backend Application (FastAPI + Python .venv)
-│       ├── routers/             # API Routers (clips, render, background, system)
-│       ├── services/            # Core Services (render_service, ai_service, etc.)
-│       ├── schemas/             # Pydantic Request/Response Models
-│       ├── storage/             # Uploaded Media & Backgrounds Storage
-│       ├── utils/               # Utilities (proxy, cookies, system)
-│       ├── video_engine.py      # Core FFmpeg Video Processing Engine
-│       ├── main.py              # FastAPI Application Entrypoint
-│       └── requirements.txt
+│   └── api/                     # Backend API & Media Processing (FastAPI + Python 3.10+)
+│       └── backend/
+│           ├── routers/         # API Controllers (analyze, clips, render, backgrounds, system)
+│           ├── services/        # Business Logic (render_service, ai_service, youtube_service)
+│           ├── schemas/         # Pydantic Contracts (analyze, render, backgrounds)
+│           ├── utils/           # Proxy rotator, cookies parser, system path safety
+│           ├── video_engine.py  # Core FFmpeg Compositor & Hardware Acceleration
+│           ├── config.py        # Centralized Environment & Directory Configuration
+│           └── main.py          # FastAPI Entrypoint & Static Files Mounter
 │
 ├── packages/
-│   └── shared/                  # Shared Types & Constants
-│       ├── src/
-│       │   ├── constants/       # Ratio Presets, Background Presets, AI Models
-│       │   └── types/           # Shared TypeScript interfaces
-│       └── package.json
+│   └── shared/                  # Shared Contracts & Domain Constants
+│       └── src/
+│           ├── constants/       # Ratio presets, AI model registries
+│           └── index.ts         # Exported domain types
 │
-├── .agents/                     # Multi-Agent Governance & State
-│   ├── session-state.json       # Single Source of Truth Session State
-│   ├── skills/                  # Registered Specialized Skills
+├── .agents/                     # Multi-Agent Governance & State Engine
+│   ├── session-state.json       # Persistent Single Source of Truth
+│   ├── 04-case-bank/            # Verified Production Incident & Solution Bank
 │   ├── rules/                   # Enterprise Guardrails
-│   └── workflows/               # SOP & Workflows
+│   └── workflows/               # Standard Operating Procedures
 │
-├── scripts/                     # Unified Orchestration Scripts
-│   ├── start-backend.js         # Intelligent Python backend detector & launcher
-│   └── clean.js                 # Temporary storage cleaner
-│
-├── start.bat                    # One-Click Root Launcher (Windows Native)
-├── package.json                 # Root Workspaces Configuration
-├── tsconfig.json                # Project References Configuration
-├── .env.example                 # Environment Variables Template
-├── PRD.md                       # Master Product Requirements Document
-└── README.md                    # Project Documentation
+├── .env.example                 # Environment Variables Reference
+├── start.bat                    # One-Click Root Windows Launcher
+└── PRD.md                       # Master Product Requirements Document
 ```
 
-### 3.2 Strategi Migrasi Aman (*Zero Breaking Changes*)
-1. Migrasi dilakukan tanpa merusak `start.bat` dan perintah `npm run dev`.
-2. Menggunakan npm workspaces bawaan di `package.json` root:
-   ```json
-   "workspaces": [
-     "apps/*",
-     "packages/*"
-   ]
-   ```
-3. Script `start-backend.js` dan konfigurasi Vite proxy tetap mengarah ke port 8000 dan 5173.
+---
+
+## 3. Modul Utama & Spesifikasi Fungsional
+
+### 3.1 Modul 1: Multi-Provider AI Engine (Enterprise AI Router)
+
+Modul ini bertanggung jawab menganalisis transkrip dialog dari video YouTube/lokal untuk mendeteksi momen bernilai tinggi (*high-retention highlights*).
+
+* **Penyedia AI yang Didukung**:
+  1. **Google Gemini (Default)**:
+     * Model: `gemini-2.5-flash`, `gemini-2.5-flash-lite`, `gemini-2.0-flash`, `gemini-1.5-flash`, `gemini-2.5-pro`.
+     * **Dynamic Multi-Key Rotation**: Menerima daftar API key via `GEMINI_API_KEYS=key1,key2,key3`. Jika satu key terkena limit kuota HTTP 429, router otomatis berpindah ke key cadangan secara transparan.
+  2. **OpenRouter (Multi-Model Agregator)**:
+     * Model: `deepseek/deepseek-chat` (DeepSeek V3), `deepseek/deepseek-r1`, `meta-llama/llama-3.3-70b-instruct`, `anthropic/claude-3.5-sonnet`, `openai/gpt-4o-mini`.
+     * Mengambil model aktif langsung dari registry OpenRouter via endpoint remote.
+     * Penanganan error terstruktur untuk status 402 (*insufficient credits*) dan 429 (*rate limit*).
+* **Ekstraksi Hasil Analisis**:
+  * Judul klip viral yang memancing rasa penasaran (*hook-driven*).
+  * Skor viralitas (0 - 100) dan alasan kurasi konten.
+  * Timestamp mulai (`start_time`) dan selesai (`end_time`).
+  * Ringkasan isi klip.
 
 ---
 
-## 4. Fitur 3: Governance Session-State (.agents)
+### 3.2 Modul 2: YouTube Anti-Bot & Network Resiliency
 
-### 4.1 Spesifikasi Session-State
-File `.agents/session-state.json` bertindak sebagai *Single Source of Truth* untuk memandu multi-agen Antigravity dan menghindari amnesia konteks pada sesi berkelanjutan:
+YouTube secara berkala memperbarui proteksi anti-bot yang dapat memblokir IP server atau memunculkan halaman bot. Modul ini menjamin unduhan transkrip dan video tetap berjalan 100%:
 
-* **Field Terikat**:
-  * `session_id`: Pengidentifikasi unik sesi pengerjaan.
-  * `primary_goal`: Sasaran utama proyek yang disepakati pengguna.
-  * `current_stage`: Tahap pengerjaan aktif (`planning_and_prd`, `backend_dev`, `monorepo_migration`, `ui_redesign`, `qa_testing`, `done`).
-  * `established_constraints`: Batasan permanen yang dikunci (No hardcoded secrets, Native Windows, Anti-slop, No docker).
-  * `decomposed_subtasks`: Rincian sub-tugas atomik dengan peran pelaksana (`owner_role`), status (`pending`, `in_progress`, `done`), dependensi, dan riwayat ulasan tim penguji (`reviewed_by`).
-  * `pruned_log`: Catatan kompresi konteks tanpa menghilangkan keputusan arsitektur.
-  * `open_questions`: Daftar pertanyaan terbuka yang memerlukan konfirmasi pengguna (*Human-in-the-Loop*).
-
----
-
-## 5. Fitur 4: Redesain UI/UX & Ikonografi Profesional
-
-### 5.1 Standar Visual & Design DNA
-* **Warna Tema (Dark Slate / Obsidian Universe)**:
-  * Background Utama: `#09090b` (Deep Zinc)
-  * Card / Surface Container: `#121215` dengan border halus `rgba(255, 255, 255, 0.08)`
-  * Accent Primary: `#6366f1` (Indigo Neon) dan `#8b5cf6` (Electric Violet)
-  * Text Colors: `#f8fafc` (Primary High Contrast), `#94a3b8` (Muted), `#64748b` (Subtle)
-* **Ikonografi Terpadu**:
-  * Mengintegrasikan pustaka **`lucide-react`** secara menyeluruh.
-  * Menghapus semua karakter emoji non-standar dan inline SVG yang tidak konsisten pada antarmuka.
-  * Ikon seragam dengan stroke `1.75px` dan ukuran proporsional (16px, 18px, 20px).
-
-### 5.2 Kepatuhan Anti-Slop (Mandatory Delivery Gate)
-* **Hard Gate**:
-  * Bebas dari karakter em dash (R-02).
-  * Bebas dari kebocoran layout horizontal pada perangkat mobile (R-03).
-  * Kontras rasio warna memenuhi standar WCAG AA minimal 4.5:1 untuk teks normal dan 3:1 untuk teks tebal/komponen grafis (R-25).
-  * Semua tombol memiliki affordance interaktif yang jelas dan feedback saat di-klik (R-26).
-* **Live Interactive Studio Preview**:
-  * Menampilkan pratinjau real-time kanvas vertikal 9:16 di browser.
-  * Menggambarkan secara visual letak latar belakang, rasio klip utama, posisi teks judul, dan subtitle sebelum tombol render ditekan.
+* **Supadata Cloud Residential Fallback**:
+  * Ketika ekstraksi transkrip langsung lokal diblokir oleh YouTube (*IpBlocked* / *RequestBlocked*), sistem otomatis mengalihkan request ke Supadata API (`SUPADATA_API_KEYS`).
+  * Menggunakan jaringan IP residential global untuk mengunduh subtitle berformat JSON secara instan.
+* **Webshare Rotating Proxy Integration**:
+  * Konfigurasi proxy berputar datacenter/residential (`WEBSHARE_USERNAME`, `WEBSHARE_PASSWORD`, `WEBSHARE_LOCATIONS`).
+  * Digunakan oleh `yt-dlp` saat mengunduh potongan segmen video dari YouTube jika terjadi pembatasan IP.
+* **Handshake Heartbeat & Netscape Cookies Sync**:
+  * Menyimpan dan memvalidasi `cookies.txt` akun YouTube.
+  * Mengisolasi file cookie ke format Netscape yang valid secara efemeral untuk menghindari deteksi bot dan memastikan unduhan 1080p/4K tanpa batasan usia (*age-restricted*).
+* **Multi-Client Emulation**:
+  * `yt-dlp` dikonfigurasi dengan extractor visionOS, iOS, dan Android client untuk menjaga stabilitas unduhan.
 
 ---
 
-## 6. Fitur 5: High-Speed Render Engine & Real-Time Telemetry Streaming
+### 3.3 Modul 3: GPU Hardware Acceleration & Video Engine
 
-### 6.1 Real-Time Download Progress Streaming (Anti-Stuck 15%)
-* **Latar Belakang & Masalah**:
-  Pada pipeline awal, proses `download_clip_segment` dijalankan menggunakan `subprocess.run()` secara blocking, sehingga UI frontend menahan status statis pada angka 15% ("⚡ Memotong (15%)") selama proses pengunduhan berlangsung (10-30 detik). Hal ini menciptakan impresi bahwa sistem mengalami *hang* atau *stuck*.
-* **Solusi Arsitektur**:
-  * Mengganti proses blocking dengan event stream parser dari `yt-dlp` (`--progress` / hook downloader) untuk menangkap persentase unduhan byte secara granular.
-  * Mengirimkan data telemetri real-time via Server-Sent Events (SSE) `/api/render-progress/{batch_id}`:
-    `15% -> 20% -> 28% -> 35% -> 40%`.
-  * Menampilkan informasi transfer aktif di UI:
-    `"⬇️ Mengunduh Segmen HD (28% · 4.2 MB/s · ETA: 6s)"`.
+Mesin video di [apps/api/backend/video_engine.py](file:///c:/Users/ASUS/Documents/Web%20Dev/improving/Clipper-Vidio-YT/apps/api/backend/video_engine.py) dirancang untuk memproses compositing video resolusi tinggi dengan kecepatan maksimal:
 
-### 6.2 Smart Video Segment Caching (Anti-Redundant Download)
-* **Mekanisme Caching**:
-  * Menerapkan hashing cache pada folder `temp_downloads/` berbasis format:
-    `cache_{video_id}_{start_time}_{end_time}.mp4`.
-  * Jika klip dengan rentang waktu tersebut sudah pernah diunduh dan belum kedaluwarsa (*TTL 1 jam*), backend langsung melewati tahap unduh (0 detik) dan langsung masuk ke tahap compositing FFmpeg.
-
-### 6.3 Single-Pass Master Stream Slicing (Batch Render Multi-Klip)
-* **Optimasi Batch Rendering**:
-  * Untuk batch $\ge$ 3 klip dari video YouTube yang sama, sistem mengunduh master stream satu kali (*Single-Pass*).
-  * Pemotongan seluruh klip berikutnya dilakukan secara instan di komputer lokal menggunakan FFmpeg stream-copy (`ffmpeg -ss ... -to ... -c copy`), memangkas total waktu batch render hingga 60%-70%.
-
-### 6.4 Hardware Acceleration Auto-Priority Pipeline
-* **Penegakan Prioritas GPU**:
-  * Sistem memprioritaskan encoder perangkat keras AMD AMF (`h264_amf`) dan NVIDIA NVENC (`h264_nvenc`) secara otomatis saat terdeteksi.
-  * Menggunakan fallback cerdas ke CPU multi-threaded (`-preset veryfast -threads 0`) jika GPU sedang digunakan proses lain.
+* **Encoder yang Didukung & Prioritas Otomatis**:
+  1. **AMD AMF (`h264_amf`)**: Dioptimalkan dengan argumen `-quality speed -rc cbr -b:v 6M`. Teruji mencapai kecepatan benchmark **2.86x real-time** pada GPU AMD Radeon.
+  2. **NVIDIA NVENC (`h264_nvenc`)**: Dioptimalkan dengan argumen `-preset p4 -cq 23`.
+  3. **Intel QuickSync (`h264_qsv`)**: Dioptimalkan dengan `-preset veryfast`.
+  4. **CPU Software Fallback (`libx264`)**: Dioptimalkan dengan multi-threading `-preset veryfast -crf 22`. Aktif otomatis jika hardware encoder gagal atau sibuk.
+* **Indikator Visual di Antarmuka Studio**:
+  * Banner status dinamis di antarmuka Studio yang menampilkan status GPU aktif (misal `⚡ AMD Radeon AMF Terdeteksi & Aktif`).
+  * Dropdown encoder otomatis mendeteksi hardware yang didukung dan menonaktifkan opsi yang tidak tersedia di PC pengguna.
 
 ---
 
-## 7. Milestones & Jadwal Implementasi
+### 3.4 Modul 4: Custom Background & Multi-Ratio Layout Engine
 
-| Fase | Sub-Tugas / Deliverable | Output Artefak | Status |
+Memungkinkan pengguna mengubah video 16:9 atau 1:1 menjadi format vertikal 9:16 (Shorts/TikTok/Reels) dengan latar belakang yang menarik:
+
+* **Dukungan Rasio Aspek**:
+  * `9:16` (Vertical Full-bleed / Shorts / TikTok / Reels)
+  * `1:1` (Square / Instagram Feed)
+  * `4:3` (Classic TV / Podcasting)
+  * `16:9` (Landscape / YouTube Standard)
+* **Kategori Background**:
+  * **Ambient Blur**: Mengambil video utama, memperbesar, dan mem-blur dengan filter boxblur sinematik.
+  * **Solid Color & Gradients**: Latar belakang warna solid atau gradasi warna modern.
+  * **Curated Video Loops**: Latar video gameplay looping (Minecraft Parkour, Subway Surfers, GTA Stunt) atau motion graphic (Cyberpunk Grid, Lo-Fi Room, Abstract Waves).
+  * **Custom Upload**: Unggah file gambar (`.png`, `.jpg`, `.webp`) atau video looping (`.mp4`, `.webm`, `.mov`).
+* **Kontrol Komposisi Video Utama (Foreground)**:
+  * Scale slider (50% hingga 100%).
+  * Posisi vertikal (Top, Center, Bottom, atau slider koordinat Y bebas).
+  * Rounded border radius (0px s.d. 48px) dan drop shadow sinematik.
+
+---
+
+### 3.5 Modul 5: Tipografi, Subtitle ASS & Watermark Branding
+
+* **Generator Subtitle Berbasis Kata (*Karaoke ASS*)**:
+  * Mengonversi transkrip timestamp kata (*word-level timing*) menjadi file subtitle Advanced SubStation Alpha (`.ass`).
+  * Gaya subtitle: Bold Yellow, White Clean, Neon Green, Red Punch, Retro Gradient.
+  * Posisi teks dapat diatur (bawah, tengah, atas, atau drag-and-drop).
+* **Pipeline Font Dinamis**:
+  * Backend melayani endpoint `/api/fonts` dan `/api/font-file/{font_name}`.
+  * Font dimuat secara asinkron di browser via `FontFace` API dengan proteksi URI encoding (`encodeURI`) agar nama font berspasi (misal *Bebas Neue*, *Outfit*, *Komika Axis*) tidak memicu error sintaks.
+  * Dukungan render emoji berwarna (🔥, 🚀, 😱) menggunakan font emoji warna lokal atau jalur kustom `EMOJI_FONT_PATH`.
+* **Watermark Branding**:
+  * Watermark gambar (logo PNG) atau teks kustom.
+  * Pengaturan posisi bebas (drag preview atau slider persentase X/Y), ukuran, dan tingkat transparansi (*opacity*).
+
+---
+
+### 3.6 Modul 6: Audio Compositing (BGM & Hook SFX)
+
+* **Background Music (BGM)**:
+  * Pengguna dapat memilih BGM instrumental atau mengunggah audio sendiri.
+  * Pengaturan volume independen (0% s.d. 100%) dan start offset audio.
+* **Hook Sound Effect (SFX)**:
+  * Efek suara kejutan (*whoosh*, *impact*, *bell*, *glitch*) yang diputar persis pada frame 0 (awal klip) untuk meningkatkan retensi penonton.
+* **Mixer Audio FFmpeg**:
+  * Menggabungkan audio asli video, BGM, dan Hook SFX menggunakan filter `amix=inputs=3:duration=first:dropout_transition=2`.
+
+---
+
+### 3.7 Modul 7: Telemetri Render Real-Time & Caching Cerdas
+
+* **Server-Sent Events (SSE) Progress Streaming**:
+  * Menghilangkan fenomena status macet di 15% pada versi lawas.
+  * Frontend berlangganan ke `/api/render-progress/{batch_id}` yang mengirimkan status bertahap:
+    * `15%`: Menyiapkan unduhan segmen.
+    * `20% - 40%`: Mengunduh segmen video dengan informasi ukuran dan estimasi waktu (*live download ETA*).
+    * `45% - 65%`: Pemotongan dan ekstraksi audio.
+    * `70% - 95%`: Compositing dan encoding FFmpeg GPU (dengan pembacaan telemetri `time=...` dan `speed=...`).
+    * `100%`: Berkas MP4 selesai dan tautan unduhan ZIP siap.
+* **Smart Segment Caching**:
+  * Berkas unduhan disimpan dalam cache berbasis hash `cache_{video_id}_{start}_{end}.mp4`.
+  * Verifikasi integritas kontainer MP4 (`is_valid_mp4`) memastikan cache tidak menyimpan berkas audio-only atau berkas yang korup.
+* **Multi-Segment Merged Compilation Mode**:
+  * Opsi menggabungkan seluruh klip highlight yang dipilih menjadi 1 berkas video panjang berurutan (*compilation video*) lengkap dengan transisi dan penyesuaian offset waktu subtitle.
+
+---
+
+### 3.8 Modul 8: Resiliensi Startup & Keamanan Lingkungan
+
+* **Graceful Vite Proxy Startup Interceptor**:
+  * Proxy Vite di `apps/web/vite.config.ts` menangani error `ECONNREFUSED` secara senyap saat backend FastAPI masih dalam detik-detik pertama proses booting.
+  * Fungsi `resilientFetch` di frontend secara otomatis melakukan percobaan ulang (*exponential backoff retry*), sehingga tidak ada pesan error merah di terminal.
+* **Server Environment Isolation**:
+  * Fungsi `is_server_environment()` mendeteksi apakah aplikasi berjalan di Docker, Dokploy, Vercel, atau VPS.
+  * Fitur berbahaya seperti restart server dan pembaruan mandiri melalui antarmuka web dinonaktifkan secara otomatis pada lingkungan produksi server demi keamanan.
+
+---
+
+## 4. Matriks Spesifikasi Endpoint API (FastAPI)
+
+| Metode | Endpoint | Deskripsi |
+|---|---|---|
+| `POST` | `/api/analyze-youtube` | Streaming SSE analisis klip video dengan AI (Gemini / OpenRouter) |
+| `GET` | `/api/models` | Mengambil daftar model AI aktif dari Gemini atau OpenRouter |
+| `GET` | `/api/hardware-accel` | Mengambil status deteksi akselerasi GPU (AMF, NVENC, QSV, CPU) |
+| `POST` | `/api/render-batch` | Mendaftarkan antrean batch render video (terpisah atau kompilasi) |
+| `GET` | `/api/render-progress/{id}` | Mengambil status dan telemetri persentase render secara berkala |
+| `POST` | `/api/render-batch/{id}/retry` | Mencoba ulang klip tertentu yang gagal pada suatu batch |
+| `GET` | `/api/download-rendered/{file}` | Mengunduh berkas video MP4 hasil render |
+| `GET` | `/api/download-batch-zip/{id}` | Mengunduh seluruh video dalam satu berkas arsip ZIP |
+| `GET` | `/api/fonts` | Mengambil daftar font tipografi yang terpasang |
+| `GET` | `/api/font-file/{name}` | Mengunduh berkas biner font untuk pratinjau browser |
+| `GET` | `/api/backgrounds/presets` | Mengambil koleksi preset background bawaan |
+| `POST` | `/api/backgrounds/upload` | Mengunggah gambar atau video background kustom |
+| `GET` | `/api/backgrounds/file/{name}` | Melayani berkas media background statis |
+| `GET` | `/api/cookies` | Memeriksa ketersediaan dan status validitas cookie YouTube |
+| `POST` | `/api/cookies/upload` | Mengunggah atau memperbarui berkas `cookies.txt` |
+| `GET` | `/api/system/version` | Mengambil informasi versi aplikasi dan status update Git |
+
+---
+
+## 5. Ringkasan Variabel Lingkungan (.env)
+
+| Variabel | Sifat | Kegunaan |
+|---|---|---|
+| `GEMINI_API_KEY` | Wajib (atau OpenRouter) | Kunci API utama Google Gemini AI |
+| `GEMINI_API_KEYS` | Opsional | Kunci cadangan Gemini untuk rotasi otomatis kuota 429 |
+| `OPENROUTER_API_KEY` | Opsional | Kunci API OpenRouter untuk model alternatif (DeepSeek, LLaMA, dll) |
+| `SUPADATA_API_KEYS` | Opsional | Proxy transkrip YouTube cloud saat IP lokal diblokir |
+| `WEBSHARE_USERNAME` | Opsional | Kredensial proxy berputar Webshare untuk unduhan video |
+| `WEBSHARE_PASSWORD` | Opsional | Token sandi proxy Webshare |
+| `WEBSHARE_LOCATIONS` | Opsional | Lokasi server proxy Webshare (misal `US,GB,DE`) |
+| `PROXY_URL` | Opsional | URL proxy mandiri kustom (`http://user:pass@host:port`) |
+| `EMOJI_FONT_PATH` | Opsional | Jalur berkas font emoji berwarna (.ttf / .otf) |
+| `REQUESTS_CA_BUNDLE` | Opsional | Jalur sertifikat SSL custom jika berada di balik firewall inspeksi |
+| `SERVER_MODE` | Opsional | Mode server produksi (mengunci fungsi self-update UI) |
+
+---
+
+## 6. Riwayat Milestone & Log Pembaruan Sistem
+
+| Versi | Tanggal | Milestone / Pembaruan Utama | Status |
 |---|---|---|---|
-| **Fase 1** | Inisialisasi Session-State & Dokumen PRD | `.agents/02-session-state/`, `PRD.md` | **Selesai (Verified Pass)** |
-| **Fase 2** | Backend Engine: Custom Background API & FFmpeg Pipeline | `apps/api/backend/routers/backgrounds.py`, `video_engine.py` | **Selesai (Verified Pass)** |
-| **Fase 3** | Restrukturisasi Arsitektur Monorepo | `apps/web/`, `apps/api/`, `packages/shared/`, root `package.json` | **Selesai (Verified Pass)** |
-| **Fase 4** | Redesain UI/UX & Integrasi Ikonografi Lucide | `lucide-react`, `BackgroundCustomizer.tsx`, WYSIWYG Preview | **Selesai (Verified Pass)** |
-| **Fase 5** | Refactor Vanilla CSS Background Customizer & Framing Preview Auto-Centering | `apps/web/src/index.css`, `BackgroundCustomizer.tsx`, `ClipStudioSection.tsx` (Auto Centering 4:3/1:1, Full-Bleed Backdrop) | **Selesai (Verified Pass)** |
-| **Fase 6** | Pengujian Integrasi, Uji Render FFmpeg, & Delivery Gate Audit | Laporan QA, Verifikasi build 0-error, Launch test via `start.bat` | **Selesai (Verified Pass)** |
-| **Fase 7** | High-Speed Render Engine & Real-Time Download Telemetry | `video_engine.py`, `render_service.py`, `ClipStudioSection.tsx` (SSE Progress Streaming, Smart Caching, Single-Pass Slicing) | **Selesai (Verified Pass)** |
+| **v1.0.0** | Awal 2026 | Rilis awal Clipper Video YouTube dasar berbasis Streamlit/Script lokal | Selesai |
+| **v1.5.0** | Pertengahan 2026 | Migrasi ke FastAPI + React SPA dan pengenalan subtitle ASS karaoke | Selesai |
+| **v2.0.0** | Oktober 2026 | Restrukturisasi Monorepo Hybrid (`apps/web`, `apps/api`, `packages/shared`), Custom Background Multi-Ratio, Framing Preview, dan Ikonografi Lucide | Selesai (Verified Pass) |
+| **v2.2.0** | Oktober 2026 | Real-Time Download Streaming SSE (Anti-Stuck 15%), Smart Caching Segmen Video, dan Single-Pass Batch Slicing | Selesai (Verified Pass) |
+| **v2.3.0** | Oktober 2026 | Pemulihan integrasi bypass YouTube: Supadata Residential Fallback, Webshare Proxying, Netscape Cookies sync, dan VisionOS emulation | Selesai (Verified Pass) |
+| **v2.4.0** | Oktober 2026 | Enterprise AI Router Multi-Provider: Integrasi OpenRouter (DeepSeek V3/R1) berdampingan dengan Google Gemini Multi-Key Rotation | Selesai (Verified Pass) |
+| **v2.5.0** | Oktober 2026 | GPU Hardware Acceleration (AMD AMF benchmark 2.86x real-time), Card Status GPU Studio, Peredaman Log Proxy Startup, dan Perbaikan FontFace encoding | Selesai (Verified Pass) |
 
 ---
 
-## 8. Kriteria Penerimaan (Acceptance Criteria)
+## 7. Kriteria Kualitas & Governance (Anti-Slop & Quality Gate)
 
-1. Pengguna dapat mengunggah gambar/video latar belakang atau memilih dari preset yang tersedia.
-2. Klip video dapat di-render dengan latar belakang khusus pada rasio aspek 9:16, 1:1, 4:3, dan 16:9 tanpa distorsi visual.
-3. Proyek tersusun dalam struktur Monorepo yang bersih dan perintah `start.bat` maupun `npm run dev` tetap berjalan lancar.
-4. File `.agents/session-state.json` aktif melacak setiap langkah perubahan dan mempertahankan konsistensi sesi.
-5. Tampilan aplikasi terlihat profesional, modern, bebas dari inkonsistensi ikon, dan mematuhi seluruh aturan Anti-Slop.
-6. Progress rendering klip memberikan umpan balik persentase dan kecepatan transfer unduhan secara transparan tanpa angka statis 15% yang membingungkan.
+Seluruh pembaruan di masa mendatang wajib mematuhi standar kualitas berikut:
+
+1. **Hard Gate (Mutlak)**:
+   * Bebas dari karakter em dash (`-` biasa atau titik dua digunakan sebagai pengganti).
+   * Bebas dari kebocoran layout horizontal (*zero horizontal scrollbar leak*) pada semua resolusi layar.
+   * Kontras rasio warna memenuhi standar aksesibilitas WCAG AA minimal 4.5:1 untuk teks normal dan 3:1 untuk elemen UI.
+   * Tidak ada tautan atau tombol mati tanpa umpan balik interaktif.
+2. **Resiliensi Media**:
+   * Setiap berkas MP4 hasil unduhan maupun hasil render wajib divalidasi dengan `is_valid_mp4(..., require_video=True)` sebelum dianggap sukses.
+   * Jika hardware encoder GPU gagal atau kehabisan alokasi memori VRAM, proses render wajib melakukan *graceful fallback* ke encoder CPU (`libx264`) secara otomatis tanpa menggagalkan tugas pengguna.
+3. **Session Consistency**:
+   * Setiap perubahan arsitektur atau keputusan fitur baru wajib dicatat dan diselaraskan pada dokumen PRD ini dan `.agents/session-state.json`.

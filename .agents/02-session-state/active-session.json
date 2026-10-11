@@ -89,6 +89,26 @@
       "verified_at": "2026-10-10",
       "qa_reviewer": "qa-engineer",
       "tech_critic_approval": true
+    },
+    {
+      "id": "M11_YOUTUBE_BYPASS_RESILIENCY",
+      "title": "Pemulihan Jaringan YouTube: Supadata Cloud Residential Fallback, Webshare Proxying, Netscape Cookies sync, dan VisionOS Extractor",
+      "prd_sections": ["Seksi 3.2: Modul 2"],
+      "owner_role": "backend-engineer",
+      "status": "VERIFIED_PASS",
+      "verified_at": "2026-10-10",
+      "qa_reviewer": "qa-engineer",
+      "tech_critic_approval": true
+    },
+    {
+      "id": "M12_GPU_ACCEL_AMD_AMF_AND_PROXY_QUIET",
+      "title": "Akselerasi GPU AMD AMF (2.86x Real-time), Card Status GPU Studio, Peredaman Log Proxy Startup, dan Sanitasi FontFace Encoding",
+      "prd_sections": ["Seksi 3.3: Modul 3", "Seksi 3.8: Modul 8"],
+      "owner_role": "frontend-engineer",
+      "status": "VERIFIED_PASS",
+      "verified_at": "2026-10-11",
+      "qa_reviewer": "qa-engineer",
+      "tech_critic_approval": true
     }
   ],
   "in_progress_milestones": [],
@@ -100,5 +120,5 @@
     "C5: Reviewer Independence (No Self-Review): Setiap deliverable wajib divalidasi oleh QA / Tech-Critic independen sebelum status dipromosikan ke VERIFIED_PASS"
   ],
   "open_questions": [],
-  "last_updated": "2026-10-10T07:40:00Z"
+  "last_updated": "2026-10-11T07:07:00Z"
 }
