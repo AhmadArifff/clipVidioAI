@@ -1,8 +1,8 @@
 # PRD: ClipVidio AI - Platform Architecture, Multi-Provider AI Engine & High-Speed Media Pipeline
 
 > **Dokumen Spesifikasi Produk (PRD)**  
-> **Versi**: 2.5.0  
-> **Status**: Approved & Fully Operational  
+> **Versi**: 2.6.0 (Bilingual Subtitle Intelligence & Anti-Delay Audio Sync Architecture)  
+> **Status**: Approved for Development  
 > **Owner**: Ahmad Arif / clipVidioAI Core Team  
 > **Governance Engine**: Agentic AI Multi-Role System (.agents)
 
@@ -247,6 +247,7 @@ Memungkinkan pengguna mengubah video 16:9 atau 1:1 menjadi format vertikal 9:16 
 | **v2.3.0** | Oktober 2026 | Pemulihan integrasi bypass YouTube: Supadata Residential Fallback, Webshare Proxying, Netscape Cookies sync, dan VisionOS emulation | Selesai (Verified Pass) |
 | **v2.4.0** | Oktober 2026 | Enterprise AI Router Multi-Provider: Integrasi OpenRouter (DeepSeek V3/R1) berdampingan dengan Google Gemini Multi-Key Rotation | Selesai (Verified Pass) |
 | **v2.5.0** | Oktober 2026 | GPU Hardware Acceleration (AMD AMF benchmark 2.86x real-time), Card Status GPU Studio, Peredaman Log Proxy Startup, dan Perbaikan FontFace encoding | Selesai (Verified Pass) |
+| **v2.6.0** | Oktober 2026 | Bilingual Subtitle Intelligence (Fokus Indonesian & English), Kalibrasi Audio-Text Offset Slider, dan Eliminasi Bentrok Subtitle Ganda | In Progress (Blueprint Approved) |
 
 ---
 
@@ -264,3 +265,53 @@ Seluruh pembaruan di masa mendatang wajib mematuhi standar kualitas berikut:
    * Jika hardware encoder GPU gagal atau kehabisan alokasi memori VRAM, proses render wajib melakukan *graceful fallback* ke encoder CPU (`libx264`) secara otomatis tanpa menggagalkan tugas pengguna.
 3. **Session Consistency**:
    * Setiap perubahan arsitektur atau keputusan fitur baru wajib dicatat dan diselaraskan pada dokumen PRD ini dan `.agents/session-state.json`.
+
+---
+
+## 8. Fitur 6: Bilingual Subtitle Intelligence (Indonesian & English Focus) & Audio-Text Synchronization Engine
+
+### 8.1 Latar Belakang & Analisis Masalah
+Berdasarkan investigasi pada kasus video dokumenter (misal insiden Moby Dick `Si0IAa-fgTA`):
+1. **Penyebab Terjadinya 2 Subtitle Bertumpuk**:
+   * **Subtitle 1 (Putih kecil di bar hitam)**: Berasal langsung dari piksel video asli YouTube (*hardsub* yang sudah dibakar oleh pembuat video asli ke dalam gambar).
+   * **Subtitle 2 (Besar tebal dengan warna viral)**: Merupakan subtitle hasil generate filter FFmpeg (`.ass`) buatan ClipVidio AI.
+   * Jika video sumber sudah memiliki hardsub bawaan, penambahan subtitle ASS di atasnya menciptakan benturan visual ganda (*cluttered overlapping text*).
+2. **Penyebab Muncul Bahasa Inggris padahal Diinginkan Bahasa Indonesia**:
+   * Video asli bersumber dari channel berbahasa Inggris yang kemudian di-dubbing atau diberi subtitle Indonesia.
+   * Pipeline `prioritize_transcripts()` sebelumnya otomatis memprioritaskan bahasa lisan asli ASR YouTube (`native_asr_lang`), sehingga selalu menarik track bahasa Inggris (`en`) tanpa memberikan kebebasan bagi pengguna untuk memilih Bahasa Indonesia (`id`).
+3. **Penyebab Delay Antara Dubbing Suara dan Teks Subtitle**:
+   * **Perbedaan Durasi Bahasa**: Waktu pelafalan narasi dubbing Indonesia memiliki panjang suku kata dan ritme bicara berbeda dari teks transkrip bahasa Inggris.
+   * **Segmentasi Blok YouTube**: Transkrip YouTube ASR sering kali memberikan rentang waktu per frasa panjang (3-5 detik) alih-alih per kata presisi, menghasilkan jeda (200ms - 500ms) saat kata dianimasikan satu per satu.
+
+### 8.2 Spesifikasi Fungsional: Bilingual Subtitle Selector
+* **Pilihan Bahasa Eksklusif (Fokus 2 Bahasa)**:
+  Antarmuka Input & Studio menyediakan pemilih bahasa subtitle yang tegas dan intuitif:
+  1. `🇮🇩 Bahasa Indonesia (id)` (Default untuk pengguna di Indonesia)
+  2. `🇺🇸 English (en)` (Untuk konten global / internasional)
+* **Logika Prioritas Pengambilan Transkrip Backend (`youtube_service.py`)**:
+  * Ketika pengguna memilih `id`:
+    1. Cari track manual Bahasa Indonesia (`id`, `id-ID`).
+    2. Cari track auto-generated ASR Bahasa Indonesia.
+    3. Cari track terjemahan otomatis ke Bahasa Indonesia (`t.translate('id')`).
+    4. Fallback ke bahasa Inggris jika Bahasa Indonesia tidak tersedia sama sekali.
+  * Ketika pengguna memilih `en`:
+    1. Cari track manual English (`en`, `en-US`, `en-GB`).
+    2. Cari track auto-generated ASR English.
+    3. Cari track terjemahan otomatis ke English (`t.translate('en')`).
+
+### 8.3 Anti-Delay & Audio-Text Synchronization Calibration
+Untuk memastikan teks subtitle beriringan secara presisi dengan suara dubbing narator:
+* **Slider Offset Kalibrasi Waktu (*Subtitle Timing Shift*)**:
+  * Menambahkan slider presisi di antarmuka Studio:
+    `Offset Sinkronisasi Subtitle: [-1000ms s.d. +1000ms]` (Step: 50ms, Default: `0ms`).
+  * Jika suara dubbing terasa lebih cepat daripada teks, pengguna cukup menggeser slider ke kiri (misal `-250ms`).
+  * Jika teks muncul mendahului suara dubbing, pengguna menggeser slider ke kanan (misal `+200ms`).
+* **Kalkulasi Offset pada Generator ASS (`video_engine.py`)**:
+  ```python
+  offset_sec = float(subtitle_timing_offset_ms or 0) / 1000.0
+  adjusted_start = max(0.0, word_start + offset_sec)
+  adjusted_end = max(adjusted_start + 0.05, word_end + offset_sec)
+  ```
+* **Opsi "Tanpa Subtitle (None)" untuk Video yang Sudah Punya Hardsub**:
+  * Jika video sumber terdeteksi sudah memiliki subtitle permanen di dalam gambar seperti pada video Moby Dick, pengguna dapat langsung mengklik opsi `Gaya Subtitle: None` agar ClipVidio AI tidak menimpa subtitle kedua, menghasilkan video yang bersih dan rapi.
+
