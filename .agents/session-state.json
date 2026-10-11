@@ -291,7 +291,7 @@
     },
     {
       "id": "T15",
-      "task": "Pilar 4: Retensi Visual Viral (Dynamic Hook Punch-In Zoom & Keyword Power Color/Emoji Subtitle Styling)",
+      "task": "Pilar 4: Retensi Visual Viral (Dynamic Hook Punch-In Zoom & Ultra-Quality Master Engine Card di Studio)",
       "owner_role": "frontend-engineer",
       "status": "done",
       "depends_on": ["T14"],
@@ -305,6 +305,63 @@
         }
       ],
       "verdict": "approved"
+    },
+    {
+      "id": "T16",
+      "task": "Perancangan Blueprint v3.1.0: Subtitle Keyword Emoji Accent & Viral Styling Engine (Alex Hormozi & MrBeast Style) pada PRD.md",
+      "owner_role": "product-manager",
+      "status": "done",
+      "depends_on": ["T15"],
+      "rework_iteration_count": 0,
+      "reviewed_by": [
+        {
+          "role": "tech-critic",
+          "verdict": "approved",
+          "timestamp": "2026-10-11T14:19:00Z",
+          "note": "Spesifikasi kamus 5 kategori emosional, tag ASS override warna, dan live preview disetujui masuk PRD.md"
+        }
+      ],
+      "verdict": "approved"
+    },
+    {
+      "id": "T17",
+      "task": "Implementasi Backend Lexical Classifier & Dynamic ASS Inline Accent Tags (video_engine.py & render_service.py) dengan kamus bilingual ID/EN dan deteksi pola regex angka/cuan",
+      "owner_role": "backend-engineer",
+      "status": "planned",
+      "depends_on": ["T16"],
+      "rework_iteration_count": 0,
+      "reviewed_by": [],
+      "verdict": "pending"
+    },
+    {
+      "id": "T18",
+      "task": "Penyelarasan Skema Kontrak API & Type Definitions (RenderSettingsModel, types.ts, dan kamus terjemahan i18n locales id.ts & en.ts)",
+      "owner_role": "backend-engineer",
+      "status": "planned",
+      "depends_on": ["T17"],
+      "rework_iteration_count": 0,
+      "reviewed_by": [],
+      "verdict": "pending"
+    },
+    {
+      "id": "T19",
+      "task": "Pengembangan Kontrol UI Studio & Live Synchronized Subtitle Karaoke Preview dengan Keyword Color Pop dan Emoji Badge di ClipStudioSection",
+      "owner_role": "frontend-engineer",
+      "status": "planned",
+      "depends_on": ["T18"],
+      "rework_iteration_count": 0,
+      "reviewed_by": [],
+      "verdict": "pending"
+    },
+    {
+      "id": "T20",
+      "task": "Verifikasi End-to-End Render Pipeline, Uji Kompatibilitas Font/Emoji ASS, dan Validasi Bebas Glitch Visual Output MP4",
+      "owner_role": "qa-engineer",
+      "status": "planned",
+      "depends_on": ["T19"],
+      "rework_iteration_count": 0,
+      "reviewed_by": [],
+      "verdict": "pending"
     }
   ],
   "open_questions": [],
@@ -318,6 +375,6 @@
   "last_reviewer_verdict": {
     "role": "tech-critic",
     "result": "approved",
-    "note": "Blueprint v3.0.0 (Ultra-Quality Output Pipeline: Unsharp Mask, -14 LUFS Mastering, Upper-Third Golden Framing, & Hook Punch-In Zoom) disetujui masuk ke roadmap resmi PRD.md dan session-state.json"
+    "note": "Perancangan v3.1.0 Subtitle Keyword Emoji Accent & Viral Styling resmi disahkan ke dalam PRD.md dan session-state.json"
   }
 }

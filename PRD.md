@@ -250,6 +250,7 @@ Memungkinkan pengguna mengubah video 16:9 atau 1:1 menjadi format vertikal 9:16 
 | **v2.6.0** | Oktober 2026 | Bilingual Subtitle Intelligence (Fokus Indonesian & English), Kalibrasi Audio-Text Offset Slider, dan Eliminasi Bentrok Subtitle Ganda | Selesai (Verified Pass) |
 | **v2.7.0** | Oktober 2026 | Live Synchronized Subtitle Karaoke Preview di Studio & Auto-Whisper Speech-to-Text Fallback untuk Video YouTube Nir-Subtitle | Selesai (Verified Pass) |
 | **v3.0.0** | Oktober 2026 | Ultra-Quality Output Pipeline: Unsharp Mask Sharpening, EBU R128 Broadcast Loudness (-14 LUFS), Auto-Ducking BGM, Subtitle Face Collision Avoidance, Podcast Dual Split, dan Dynamic Hook Punch-In Zoom | Selesai (Verified Pass) |
+| **v3.1.0** | Oktober 2026 | Viral Subtitle Keyword Accent & Auto-Emoji Engine (Alex Hormozi & MrBeast Styling): Emotional Dictionary Classifier (ID & EN), Custom Color Pop, Dynamic Emoji Injection, dan Studio Live Karaoke Preview | In Progress (Perancangan Disetujui) |
 
 ---
 
@@ -382,5 +383,57 @@ Fokus utama pembaruan versi 3.0.0 adalah **Kualitas Hasil Akhir Video (Render Ou
   * **Pattern Interrupt Punch-In Zoom**: Pada segmen hook pembuka (detik 0 s.d. 3) atau kalimat transisi penting, video menerapkan pembesaran halus 1.1x (*subtle punch-in zoom*) untuk memecah kebosanan mata penonton (*visual pattern interrupt*).
   * **Keyword Power Color Accent**: Kata-kata berbobot emosi tinggi di transkrip (misal: *"kaget"*, *"rahasia"*, *"cuan"*, *"bahaya"*) otomatis dirender dengan warna aksen menyala (Merah Api / Emas Cerah) dan ikon emoji relevan (🔥, 💡, 💰, 😱) yang terintegrasi langsung ke dalam berkas subtitle ASS.
 
+---
 
+## 11. Arsitektur Subtitle Keyword Emoji Accent & Viral Styling Engine (v3.1.0 Blueprint)
 
+### 11.1 Latar Belakang & Analisis Visual Retensi (Alex Hormozi / MrBeast Style)
+Klip video pendek dengan performa viral tertinggi di TikTok, Instagram Reels, dan YouTube Shorts mengandalkan tipografi subtitle yang dinamis dan ekspresif. Subtitle karaoke yang monokrom atau hanya menggunakan 1 warna sorotan seragam di setiap kata terasa datar bagi penonton modern.
+
+Gaya tipografi viral Alex Hormozi dan MrBeast memiliki karakteristik utama:
+1. **Pewarnaan Selektif Berdasarkan Emosi**: Kata-kata netral tetap berwarna putih atau kuning lembut, namun kata kunci berbobot (angka, uang, bahaya, ledakan emosi, ide jenius) langsung menyala dengan warna kontras tinggi (Neon Lime, Ember Fire, Royal Gold, Alert Crimson).
+2. **Visual Micro-Anchor (Auto-Emoji)**: Otomatis menyematkan ikon emoji ekspresif di depan atau di atas kata kunci untuk memicu asosiasi visual instan di otak penonton dalam hitungan milidetik.
+3. **Synchronized Live Preview**: Pengguna dapat melihat langsung efek warna menyala dan emoji pada pratinjau karaoke di studio sebelum menekan tombol render.
+
+### 11.2 Spesifikasi Keyword Intelligence Classifier (Bilingual ID & EN)
+Sistem klasifikasi teks kata kunci beroperasi pada tingkat kata tunggal maupun frasa pendek dengan kamus leksikal bilingual (Bahasa Indonesia & English) dan detektor ekspresi reguler (Regex) untuk angka finansial:
+
+| Kategori Emosi | Kata Kunci Contoh (ID & EN) / Pola Regex | Warna Aksen ASS (BGR Hex) | Warna Hex UI (RGB) | Ikon Emoji Relevan |
+|---|---|---|---|---|
+| **Finansial / Cuan** | `uang`, `cuan`, `modal`, `kaya`, `miliar`, `juta`, `rupiah`, `dolar`, `bisnis`, `untung`, `omset`, `gaji`, `harga`, `money`, `cash`, `million`, `dollar`, `rich`, `profit`, `revenue`, `cost`, regex: `\$?\d+[\.,]?\d*[kmb%]?`, `rp\s*\d+` | `&H0066FF00` (Neon Lime) | `#00FF66` | 💰, 💵, 📈 |
+| **Hype / Ledakan / Viral** | `rahasia`, `meledak`, `gila`, `keren`, `hebat`, `viral`, `dahsyat`, `trik`, `kunci`, `secret`, `insane`, `crazy`, `magic`, `explode`, `boom`, `beast`, `fire`, `power`, `epic` | `&H000033FF` (Flame Orange) | `#FF3300` | 🔥, ⚡, 🚀 |
+| **Peringatan / Bahaya / Larangan** | `bahaya`, `awas`, `stop`, `hati-hati`, `rugi`, `gagal`, `hancur`, `mati`, `salah`, `danger`, `warning`, `worst`, `fail`, `lose`, `scam`, `trap`, `never`, `mistake`, `error` | `&H003300FF` (Crimson Alert) | `#FF0033` | ⚠️, 🚨, ❌ |
+| **Ide / Otak / Solusi** | `ide`, `pikir`, `otak`, `cerdas`, `pintar`, `solusi`, `cara`, `rumus`, `ilmu`, `belajar`, `idea`, `think`, `brain`, `smart`, `solve`, `hack`, `formula`, `learn` | `&H0000D7FF` (Royal Gold) | `#FFD700` | 💡, 🧠, 🎯 |
+| **Kejutan / Reaksi Emosional** | `kaget`, `syok`, `heran`, `bingung`, `waduh`, `astaga`, `gokil`, `shock`, `unbelievable`, `wtf`, `omg`, `no way` | `&H00FF00FF` (Electric Magenta) | `#FF00FF` | 😱, 🤯, 👀 |
+
+### 11.3 Spesifikasi Penataan Gaya Tag ASS (Advanced SubStation Alpha)
+Generator subtitle pada `apps/api/backend/video_engine.py` dikembangkan dengan logika tag override inline yang presisi:
+* **Penetapan Warna Dinamis Per Kata**:
+  Jika kata aktif terdeteksi sebagai kata kunci berkategori khusus, tag override warna utama `\c` diganti dari `highlight_color` standar menjadi warna kategori yang bersangkutan:
+  `{\c&H0066FF00\3c&H00111111}CUAN{\c&H00FFFFFF\3c&H00111111}`
+* **Injeksi Emoji yang Resilien**:
+  Jika opsi `keyword_emoji_enabled` aktif, emoji yang dipetakan ditambahkan di depan kata kunci:
+  `{\c&H0066FF00}💰 CUAN{\c&H00FFFFFF}`
+  Sistem menyediakan opsi pemisahan:
+  1. `off`: Format karaoke standar tanpa deteksi kata kunci.
+  2. `accent_only`: Memberikan highlight warna spesifik tanpa emoji (cocok untuk tampilan minimalis profesional).
+  3. `accent_and_emoji`: Memberikan highlight warna spesifik disertai ikon emoji viral (gaya YouTube Shorts / TikTok MrBeast).
+
+### 11.4 Spesifikasi Live Karaoke Preview di Frontend Studio (React)
+Komponen `apps/web/src/components/ClipStudioSection.tsx` dan `ClipStudioModal.tsx` diselaraskan agar pratinjau browser 100% konsisten dengan hasil render video MP4:
+* Mengimpor kamus classifier kata kunci di sisi browser (`classifyKeyword(word)`).
+* Saat kata sedang aktif dalam playback video:
+  * Jika kata merupakan keyword dan mode aksen aktif: teks kata dirender dengan warna font khusus kategori tersebut, bayangan glow tebal, dan menampilkan badge emoji mini di atas/depan kata.
+  * Jika kata biasa: teks kata menggunakan warna highlight preset standar (misal Kuning Lemon untuk Viral Pop).
+* Pengguna dapat langsung melihat perubahan warna dan letak emoji saat menggeser slider waktu atau menekan tombol Play di Studio.
+
+### 11.5 Matriks Skema API & Komponen Terkait
+
+| File Sumber | Perubahan yang Diperlukan |
+|---|---|
+| [apps/api/backend/schemas/render.py](file:///c:/Users/ASUS/Documents/Web%20Dev/improving/Clipper-Vidio-YT/apps/api/backend/schemas/render.py) | Menambahkan `keyword_accent_mode: str = "accent_and_emoji"` (pilihan: `"off"`, `"accent_only"`, `"accent_and_emoji"`) |
+| [apps/api/backend/services/render_service.py](file:///c:/Users/ASUS/Documents/Web%20Dev/improving/Clipper-Vidio-YT/apps/api/backend/services/render_service.py) | Meneruskan `keyword_accent_mode` ke pemanggilan `generate_ass_file` pada single dan merged render |
+| [apps/api/backend/video_engine.py](file:///c:/Users/ASUS/Documents/Web%20Dev/improving/Clipper-Vidio-YT/apps/api/backend/video_engine.py) | Membangun modul `classify_keyword_token()`, memetakan warna BGR dan emoji, mengintegrasikan ke loop `Dialogue: 0,...` di `generate_ass_file` |
+| [apps/web/src/types.ts](file:///c:/Users/ASUS/Documents/Web%20Dev/improving/Clipper-Vidio-YT/apps/web/src/types.ts) | Menambahkan field `keywordAccentMode: 'off' \| 'accent_only' \| 'accent_and_emoji'` pada `RenderSettings` |
+| [apps/web/src/components/ClipStudioSection.tsx](file:///c:/Users/ASUS/Documents/Web%20Dev/improving/Clipper-Vidio-YT/apps/web/src/components/ClipStudioSection.tsx) | Menambahkan panel kontrol pemilih gaya aksen kata kunci viral dan rendering visual live karaoke preview |
+| [apps/web/src/locales/id.ts](file:///c:/Users/ASUS/Documents/Web%20Dev/improving/Clipper-Vidio-YT/apps/web/src/locales/id.ts) & `en.ts` | Menambahkan kamus terjemahan Bahasa Indonesia dan English untuk pengaturan aksen kata kunci |
