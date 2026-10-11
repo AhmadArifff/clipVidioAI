@@ -250,7 +250,7 @@ Memungkinkan pengguna mengubah video 16:9 atau 1:1 menjadi format vertikal 9:16 
 | **v2.6.0** | Oktober 2026 | Bilingual Subtitle Intelligence (Fokus Indonesian & English), Kalibrasi Audio-Text Offset Slider, dan Eliminasi Bentrok Subtitle Ganda | Selesai (Verified Pass) |
 | **v2.7.0** | Oktober 2026 | Live Synchronized Subtitle Karaoke Preview di Studio & Auto-Whisper Speech-to-Text Fallback untuk Video YouTube Nir-Subtitle | Selesai (Verified Pass) |
 | **v3.0.0** | Oktober 2026 | Ultra-Quality Output Pipeline: Unsharp Mask Sharpening, EBU R128 Broadcast Loudness (-14 LUFS), Auto-Ducking BGM, Subtitle Face Collision Avoidance, Podcast Dual Split, dan Dynamic Hook Punch-In Zoom | Selesai (Verified Pass) |
-| **v3.1.0** | Oktober 2026 | Viral Subtitle Keyword Accent & Auto-Emoji Engine (Alex Hormozi & MrBeast Styling): Emotional Dictionary Classifier (ID & EN), Custom Color Pop, Dynamic Emoji Injection, dan Studio Live Karaoke Preview | In Progress (Perancangan Disetujui) |
+| **v3.1.0** | Oktober 2026 | Viral Subtitle Keyword Accent & Auto-Emoji Engine (Alex Hormozi & MrBeast Styling): Emotional Dictionary Classifier (ID & EN), Custom Color Pop, Dynamic Emoji Injection, dan Studio Live Karaoke Preview | Selesai (Verified Pass) |
 
 ---
 

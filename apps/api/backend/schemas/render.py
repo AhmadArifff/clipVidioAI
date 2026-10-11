@@ -68,6 +68,8 @@ class RenderSettingsModel(BaseModel):
     audio_mastering_enabled: Optional[bool] = True # Digital broadcast loudness (-14 LUFS)
     smart_ducking_enabled: Optional[bool] = True   # Sidechain compression ducking BGM under voice
     hook_zoom_enabled: Optional[bool] = True       # Dynamic 1.1x hook punch-in zoom (0-2.5s)
+    # v3.1 Subtitle Keyword Emoji Accent & Viral Styling
+    keyword_accent_mode: Optional[str] = "accent_and_emoji" # "off" | "accent_only" | "accent_and_emoji"
 
 class RenderBatchRequest(BaseModel):
     video_url: str

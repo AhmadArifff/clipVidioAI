@@ -1037,7 +1037,7 @@ export const ClipTrimmerModal: React.FC<ClipTrimmerModalProps> = ({
                 </span>
               </div>
               <span style={{ fontFamily: 'monospace', color: 'rgba(255,255,255,0.4)' }}>
-                {formatSeconds(minTimelineStart)} — {formatSeconds(maxTimelineEnd)}
+                {formatSeconds(minTimelineStart)} - {formatSeconds(maxTimelineEnd)}
               </span>
             </div>
 

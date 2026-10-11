@@ -1769,6 +1769,108 @@ def escape_ass_text(text: str) -> str:
     return str(text).replace("{", "｛").replace("}", "｝").replace("\\", "＼")
 
 
+def classify_keyword_token(token: str) -> Optional[Dict[str, str]]:
+    """
+    Classifies a subtitle word token into one of 5 emotional viral keyword categories (Alex Hormozi & MrBeast style).
+    Returns a dict with 'category', 'bgr_color', 'hex_color', 'emoji', 'label', or None if not a keyword.
+    """
+    if not token:
+        return None
+    # Strip leading/trailing punctuation and symbols for matching, lowercase
+    cleaned = re.sub(r'^[^\w$]+|[^\w%kmb$]+$', '', token.strip().lower())
+    if not cleaned:
+        return None
+
+    # 1. Finance / Cuan / Money
+    if (
+        re.match(r'^\$?\d+[\.,]?\d*[kmb%]?$', cleaned)
+        or re.match(r'^rp\s*\d+', cleaned)
+        or re.match(r'^\d+%$', cleaned)
+        or re.match(r'^\d+x$', cleaned)
+        or cleaned in {
+            "uang", "cuan", "modal", "kaya", "miliar", "juta", "rupiah", "dolar", "bisnis",
+            "untung", "omset", "gaji", "harga", "investasi", "aset", "saldo", "dompet",
+            "jutawan", "miliarder", "penjualan", "pembeli", "profit", "rekening", "biaya",
+            "money", "cash", "million", "billion", "dollar", "rich", "revenue",
+            "cost", "invest", "asset", "income", "wealth", "funds", "crypto", "bitcoin",
+            "sales", "market", "pricing", "budget", "finance", "expensive", "cheap"
+        }
+    ):
+        return {
+            "category": "finance",
+            "bgr_color": "&H0066FF00",  # Neon Lime (#00FF66)
+            "hex_color": "#00FF66",
+            "emoji": "💰",
+            "label": "Finansial / Cuan"
+        }
+
+    # 2. Hype / Ledakan / Viral
+    if cleaned in {
+        "rahasia", "meledak", "gila", "keren", "hebat", "viral", "dahsyat", "trik", "kunci",
+        "ledakan", "sukses", "juara", "meroket", "mantap", "top", "bocor", "populer",
+        "terbaik", "gokil", "bombastis", "fantastis", "ajaib",
+        "secret", "insane", "crazy", "magic", "explode", "boom", "beast", "fire", "power",
+        "epic", "huge", "genius", "legend", "rocket", "blast", "unreal",
+        "massive", "ultimate", "secretly", "hacks", "hack", "killer"
+    }:
+        return {
+            "category": "hype",
+            "bgr_color": "&H000033FF",  # Flame Orange (#FF3300)
+            "hex_color": "#FF3300",
+            "emoji": "🔥",
+            "label": "Hype / Viral"
+        }
+
+    # 3. Peringatan / Bahaya / Larangan
+    if cleaned in {
+        "bahaya", "awas", "stop", "hati-hati", "rugi", "gagal", "hancur", "mati", "salah",
+        "larangan", "jebakan", "penipuan", "tipu", "ancaman", "ancam", "jangan", "dilarang",
+        "haram", "rusak", "parah", "berbahaya", "kehilangan", "musibah",
+        "danger", "warning", "worst", "fail", "lose", "scam", "trap", "never", "mistake",
+        "error", "toxic", "risk", "avoid", "ruin", "loss", "dead", "fake", "bad", "wrong"
+    }:
+        return {
+            "category": "warning",
+            "bgr_color": "&H003300FF",  # Crimson Alert (#FF0033)
+            "hex_color": "#FF0033",
+            "emoji": "⚠️",
+            "label": "Peringatan / Bahaya"
+        }
+
+    # 4. Ide / Otak / Solusi
+    if cleaned in {
+        "ide", "pikir", "otak", "cerdas", "pintar", "solusi", "cara", "rumus", "ilmu",
+        "belajar", "tips", "taktik", "metode", "strategi", "fokus", "jawaban", "paham",
+        "mengerti", "wawasan", "teori", "analisis",
+        "idea", "think", "brain", "smart", "solve", "hack", "formula", "learn", "tips",
+        "tactic", "method", "strategy", "focus", "answer", "insight", "logic", "skill",
+        "know", "mindset"
+    }:
+        return {
+            "category": "idea",
+            "bgr_color": "&H0000D7FF",  # Royal Gold (#FFD700)
+            "hex_color": "#FFD700",
+            "emoji": "💡",
+            "label": "Ide / Solusi"
+        }
+
+    # 5. Kejutan / Reaksi Emosional
+    if cleaned in {
+        "kaget", "syok", "heran", "bingung", "waduh", "astaga", "mustahil", "ngeri",
+        "aneh", "terkejut", "panik", "gempar",
+        "shock", "unbelievable", "wtf", "omg", "impossible", "whoa", "wild", "surprised"
+    }:
+        return {
+            "category": "shock",
+            "bgr_color": "&H00FF00FF",  # Shock Magenta (#FF00FF)
+            "hex_color": "#FF00FF",
+            "emoji": "😱",
+            "label": "Kejutan / Emosi"
+        }
+
+    return None
+
+
 def generate_ass_file(
     words: List[Dict[str, Any]],
     style_preset: str,
@@ -1792,7 +1894,8 @@ def generate_ass_file(
     font_size_px: Optional[int] = None,
     title_font_size_px: Optional[int] = None,
     title_text_case: Optional[str] = None,
-    subtitle_offset_ms: Optional[int] = 0
+    subtitle_offset_ms: Optional[int] = 0,
+    keyword_accent_mode: Optional[str] = "accent_and_emoji"
 ) -> str:
     """
     Generates an Advanced SubStation Alpha (.ass) subtitle and title file with karaoke / word-level animation.
@@ -1800,6 +1903,7 @@ def generate_ass_file(
     Uses \\an2\\pos(540, Y) for bottom or \\an5\\pos(540, Y) for center to permanently freeze subtitle in place.
     Keeps title and subtitle snug and close to video content (top & bottom) without touching.
     Supports subtitle_position_mode ('bottom' | 'center') with custom center Y position.
+    Supports v3.1 keyword_accent_mode ('off' | 'accent_only' | 'accent_and_emoji') for Alex Hormozi / MrBeast viral styling.
     """
     effective_title_preset = (title_font_size_preset or font_size_preset or "medium").lower()
     effective_title_case = title_text_case or text_case or "uppercase"
@@ -2057,17 +2161,30 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             et = max(st + 0.08, raw_et + offset_sec)
             if et <= st:
                 et = st + 0.08
-            valid_words.append({"word_text": w_text, "start": st, "end": et, "raw": w})
+
+            kw_info = classify_keyword_token(raw_text) if keyword_accent_mode != "off" else None
+            if kw_info and keyword_accent_mode == "accent_and_emoji" and kw_info.get("emoji"):
+                emoji_icon = kw_info["emoji"]
+                if not w_text.startswith(emoji_icon):
+                    w_text = f"{emoji_icon} {w_text}"
+
+            valid_words.append({
+                "word_text": w_text,
+                "start": st,
+                "end": et,
+                "raw": w,
+                "kw_info": kw_info
+            })
 
         valid_words.sort(key=lambda x: x["start"])
 
-        # Step B: Pack into compact chunks (1 to 3 words, max 16 chars) to strictly guarantee 1 single line
+        # Step B: Pack into compact chunks (1 to 3 words, max 18 chars) to strictly guarantee 1 single line
         chunks = []
         current_chunk = []
         current_chars = 0
         for item in valid_words:
             w_len = len(item["word_text"])
-            if len(current_chunk) >= 3 or (current_chunk and (current_chars + w_len > 16)):
+            if len(current_chunk) >= 3 or (current_chunk and (current_chars + w_len > 18)):
                 chunks.append(current_chunk)
                 current_chunk = [item]
                 current_chars = w_len
@@ -2127,9 +2244,14 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                 line_parts = []
                 for idx, item in enumerate(chunk):
                     w_txt = item["word_text"]
+                    kw_info = item.get("kw_info")
                     if idx == active_idx:
-                        # Highlight active word with color only (no font scale or bold toggle so metrics stay 100% identical)
-                        line_parts.append(r"{\c" + highlight_color + r"\3c" + outline_color + r"}" + w_txt + r"{\c" + primary_color + r"\3c" + outline_color + r"}")
+                        # Highlight active word with color only (use category color if keyword accent active)
+                        if keyword_accent_mode != "off" and kw_info and kw_info.get("bgr_color"):
+                            active_color = kw_info["bgr_color"]
+                        else:
+                            active_color = highlight_color
+                        line_parts.append(r"{\c" + active_color + r"\3c" + outline_color + r"}" + w_txt + r"{\c" + primary_color + r"\3c" + outline_color + r"}")
                     else:
                         line_parts.append(w_txt)
 

@@ -181,7 +181,8 @@ async def render_single_batch_clip(
                 font_size_px=settings.font_size_px,
                 title_font_size_px=settings.title_font_size_px,
                 title_text_case=settings.title_text_case or settings.text_case or "uppercase",
-                subtitle_offset_ms=settings.subtitle_offset_ms or 0
+                subtitle_offset_ms=settings.subtitle_offset_ms or 0,
+                keyword_accent_mode=settings.keyword_accent_mode or "accent_and_emoji"
             )
 
         # 3. Render Final Vertical MP4
@@ -497,7 +498,8 @@ async def render_merged_batch_clips(
                 font_size_px=settings.font_size_px,
                 title_font_size_px=settings.title_font_size_px,
                 title_text_case=settings.title_text_case or settings.text_case or "uppercase",
-                subtitle_offset_ms=settings.subtitle_offset_ms or 0
+                subtitle_offset_ms=settings.subtitle_offset_ms or 0,
+                keyword_accent_mode=settings.keyword_accent_mode or "accent_and_emoji"
             )
 
         # 4. Render Final Single MP4

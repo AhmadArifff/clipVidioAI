@@ -67,6 +67,7 @@ export type FacecamPosition = 'auto' | 'bottom_right' | 'top_right' | 'bottom_le
 export type FontSizeOption = 'small' | 'medium' | 'big' | 'custom';
 export type TextCaseOption = 'uppercase' | 'capitalize' | 'lowercase';
 export type HardwareAccelOption = 'auto' | 'nvenc' | 'amf' | 'qsv' | 'cpu' | 'browser_wasm';
+export type KeywordAccentMode = 'off' | 'accent_only' | 'accent_and_emoji';
 
 export interface FontItem {
   name: string;
@@ -189,6 +190,8 @@ export interface RenderSettings {
   audioMasteringEnabled?: boolean;
   smartDuckingEnabled?: boolean;
   hookZoomEnabled?: boolean;
+  // v3.1 Subtitle Keyword Emoji Accent & Viral Styling Engine
+  keywordAccentMode?: KeywordAccentMode;
 }
 
 export interface RenderClipStatus {

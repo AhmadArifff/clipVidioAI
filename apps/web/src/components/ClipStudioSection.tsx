@@ -21,6 +21,7 @@ import type {
   FontItem,
   BackgroundType,
   TranscriptLine,
+  KeywordAccentMode,
 } from '../types';
 import { BackgroundCustomizer } from './BackgroundCustomizer';
 
@@ -90,6 +91,89 @@ function getCaptionStyleColors(style: CaptionStyle): { primary: string; highligh
       return { primary: '#ffffff', highlight: '#ffffff' };
   }
 }
+
+export interface KeywordClassification {
+  category: 'finance' | 'hype' | 'warning' | 'idea' | 'shock';
+  hexColor: string;
+  emoji: string;
+  label: string;
+}
+
+const FINANCE_WORDS = new Set([
+  'uang', 'cuan', 'modal', 'kaya', 'miliar', 'juta', 'rupiah', 'dolar', 'bisnis',
+  'untung', 'omset', 'gaji', 'harga', 'investasi', 'aset', 'saldo', 'dompet',
+  'jutawan', 'miliarder', 'penjualan', 'pembeli', 'profit', 'rekening', 'biaya',
+  'money', 'cash', 'million', 'billion', 'dollar', 'rich', 'revenue',
+  'cost', 'invest', 'asset', 'income', 'wealth', 'funds', 'crypto', 'bitcoin',
+  'sales', 'market', 'pricing', 'budget', 'finance', 'expensive', 'cheap'
+]);
+
+const HYPE_WORDS = new Set([
+  'rahasia', 'meledak', 'gila', 'keren', 'hebat', 'viral', 'dahsyat', 'trik', 'kunci',
+  'ledakan', 'sukses', 'juara', 'meroket', 'mantap', 'top', 'bocor', 'populer',
+  'terbaik', 'gokil', 'bombastis', 'fantastis', 'ajaib',
+  'secret', 'insane', 'crazy', 'magic', 'explode', 'boom', 'beast', 'fire', 'power',
+  'epic', 'huge', 'genius', 'legend', 'rocket', 'blast', 'unreal',
+  'massive', 'ultimate', 'secretly', 'hacks', 'hack', 'killer'
+]);
+
+const WARNING_WORDS = new Set([
+  'bahaya', 'awas', 'stop', 'hati-hati', 'rugi', 'gagal', 'hancur', 'mati', 'salah',
+  'larangan', 'jebakan', 'penipuan', 'tipu', 'ancaman', 'ancam', 'jangan', 'dilarang',
+  'haram', 'rusak', 'parah', 'berbahaya', 'kehilangan', 'musibah',
+  'danger', 'warning', 'worst', 'fail', 'lose', 'scam', 'trap', 'never', 'mistake',
+  'error', 'toxic', 'risk', 'avoid', 'ruin', 'loss', 'dead', 'fake', 'bad', 'wrong'
+]);
+
+const IDEA_WORDS = new Set([
+  'ide', 'pikir', 'otak', 'cerdas', 'pintar', 'solusi', 'cara', 'rumus', 'ilmu',
+  'belajar', 'tips', 'taktik', 'metode', 'strategi', 'fokus', 'jawaban', 'paham',
+  'mengerti', 'wawasan', 'teori', 'analisis',
+  'idea', 'think', 'brain', 'smart', 'solve', 'hack', 'formula', 'learn', 'tips',
+  'tactic', 'method', 'strategy', 'focus', 'answer', 'insight', 'logic', 'skill',
+  'know', 'mindset'
+]);
+
+const SHOCK_WORDS = new Set([
+  'kaget', 'syok', 'heran', 'bingung', 'waduh', 'astaga', 'mustahil', 'ngeri',
+  'aneh', 'terkejut', 'panik', 'gempar',
+  'shock', 'unbelievable', 'wtf', 'omg', 'impossible', 'whoa', 'wild', 'surprised'
+]);
+
+export function classifyKeyword(token: string): KeywordClassification | null {
+  if (!token) return null;
+  const cleaned = token.replace(/^[^\w$]+|[^\w%kmb$]+$/g, '').toLowerCase().trim();
+  if (!cleaned) return null;
+
+  if (
+    /^\$?\d+[\.,]?\d*[kmb%]?$/.test(cleaned) ||
+    /^rp\s*\d+/.test(cleaned) ||
+    /^\d+%$/.test(cleaned) ||
+    /^\d+x$/.test(cleaned) ||
+    FINANCE_WORDS.has(cleaned)
+  ) {
+    return { category: 'finance', hexColor: '#00FF66', emoji: '💰', label: 'Finansial / Cuan' };
+  }
+
+  if (HYPE_WORDS.has(cleaned)) {
+    return { category: 'hype', hexColor: '#FF3300', emoji: '🔥', label: 'Hype / Viral' };
+  }
+
+  if (WARNING_WORDS.has(cleaned)) {
+    return { category: 'warning', hexColor: '#FF0033', emoji: '⚠️', label: 'Peringatan / Bahaya' };
+  }
+
+  if (IDEA_WORDS.has(cleaned)) {
+    return { category: 'idea', hexColor: '#FFD700', emoji: '💡', label: 'Ide / Solusi' };
+  }
+
+  if (SHOCK_WORDS.has(cleaned)) {
+    return { category: 'shock', hexColor: '#FF00FF', emoji: '😱', label: 'Kejutan / Emosi' };
+  }
+
+  return null;
+}
+
 
 const ClipRenderErrorBox: React.FC<{ errorMessage: string; t: any; onRetry?: () => void }> = ({ errorMessage, t, onRetry }) => {
   const [copied, setCopied] = useState(false);
@@ -243,6 +327,7 @@ export interface StudioPreferences {
   audioMasteringEnabled?: boolean;
   smartDuckingEnabled?: boolean;
   hookZoomEnabled?: boolean;
+  keywordAccentMode?: KeywordAccentMode;
 }
 
 export const DEFAULT_STUDIO_PREFS: Required<StudioPreferences> = {
@@ -289,6 +374,7 @@ export const DEFAULT_STUDIO_PREFS: Required<StudioPreferences> = {
   audioMasteringEnabled: true,
   smartDuckingEnabled: true,
   hookZoomEnabled: true,
+  keywordAccentMode: 'accent_and_emoji',
 };
 
 function getSavedStudioPreferences(): Partial<StudioPreferences> {
@@ -397,6 +483,8 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
   const [audioMasteringEnabled, setAudioMasteringEnabled] = useState<boolean>(() => getSavedStudioPreferences().audioMasteringEnabled ?? DEFAULT_STUDIO_PREFS.audioMasteringEnabled);
   const [smartDuckingEnabled, setSmartDuckingEnabled] = useState<boolean>(() => getSavedStudioPreferences().smartDuckingEnabled ?? DEFAULT_STUDIO_PREFS.smartDuckingEnabled);
   const [hookZoomEnabled, setHookZoomEnabled] = useState<boolean>(() => getSavedStudioPreferences().hookZoomEnabled ?? DEFAULT_STUDIO_PREFS.hookZoomEnabled);
+  // v3.1 Subtitle Keyword Emoji Accent state
+  const [keywordAccentMode, setKeywordAccentMode] = useState<KeywordAccentMode>(() => getSavedStudioPreferences().keywordAccentMode ?? DEFAULT_STUDIO_PREFS.keywordAccentMode);
 
   // Background Music (BGM) state
   const [bgmEnabled, setBgmEnabled] = useState<boolean>(false);
@@ -1072,7 +1160,7 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
       words: chosenChunk,
       activeWordIndex: activeIndexInChunk,
     };
-  }, [currentTime, subtitleOffsetMs, fullTranscript, currentPreviewClip, captionStyle]);
+  }, [currentTime, subtitleOffsetMs, fullTranscript, currentPreviewClip, captionStyle, keywordAccentMode]);
 
   const handleClearTempClick = () => {
     setShowClearConfirmModal(true);
@@ -1667,6 +1755,7 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
       audioMasteringEnabled,
       smartDuckingEnabled,
       hookZoomEnabled,
+      keywordAccentMode,
     };
     try {
       localStorage.setItem(STUDIO_PREFS_KEY, JSON.stringify(prefs));
@@ -1717,6 +1806,7 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
     audioMasteringEnabled,
     smartDuckingEnabled,
     hookZoomEnabled,
+    keywordAccentMode,
   ]);
 
   const handleResetToDefaults = () => {
@@ -1764,6 +1854,7 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
     setAudioMasteringEnabled(DEFAULT_STUDIO_PREFS.audioMasteringEnabled);
     setSmartDuckingEnabled(DEFAULT_STUDIO_PREFS.smartDuckingEnabled);
     setHookZoomEnabled(DEFAULT_STUDIO_PREFS.hookZoomEnabled);
+    setKeywordAccentMode(DEFAULT_STUDIO_PREFS.keywordAccentMode);
     handleResetTitlePosition();
     handleResetSubtitlePosition();
     try {
@@ -1857,6 +1948,8 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
       audioMasteringEnabled,
       smartDuckingEnabled,
       hookZoomEnabled,
+      // v3.1 Subtitle Keyword Emoji Accent & Viral Styling
+      keywordAccentMode,
     });
   };
 
@@ -3196,6 +3289,52 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                   <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', margin: '0.35rem 0 0 0', lineHeight: 1.35 }}>
                     💡 {t.studio.subtitleOffsetHint || "Geser ke kiri (-ms) jika subtitle muncul terlambat dari dubbing suara, atau ke kanan (+ms) jika subtitle muncul terlalu cepat."}
                   </p>
+                </div>
+
+                {/* v3.1 Subtitle Keyword Emoji Accent & Viral Styling */}
+                <div className="studio-sub-toggle" style={{ marginTop: '0.9rem', flexDirection: 'column', alignItems: 'stretch', padding: '0.75rem 0.85rem', borderRadius: '8px', background: 'linear-gradient(145deg, rgba(239, 68, 68, 0.08), rgba(245, 158, 11, 0.05))', border: '1px solid rgba(245, 158, 11, 0.28)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem', flexWrap: 'wrap', gap: '0.4rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                      <span className="sub-toggle-label" style={{ margin: 0, fontWeight: 700, color: '#f59e0b' }}>
+                        {t.studio.keywordAccentTitle || '🔥 Subtitle Keyword Accent & Viral Emoji (Alex Hormozi Style)'}
+                      </span>
+                      <span style={{ fontSize: '0.64rem', fontWeight: 700, padding: '0.1rem 0.45rem', borderRadius: '4px', background: 'rgba(245, 158, 11, 0.2)', color: '#fbbf24', border: '1px solid rgba(245, 158, 11, 0.35)' }}>
+                        VIRAL RETENTION
+                      </span>
+                    </div>
+                  </div>
+                  <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: '0 0 0.55rem 0', lineHeight: 1.4 }}>
+                    {t.studio.keywordAccentDesc || 'Highlight kata bernilai tinggi (cuan, rahasia, bahaya) dengan warna pop emosional & auto-emoji.'}
+                  </p>
+                  <div className="toggle-pill-group" style={{ width: '100%' }}>
+                    <button
+                      type="button"
+                      className={`pill-btn ${keywordAccentMode === 'accent_and_emoji' ? 'active' : ''}`}
+                      onClick={() => setKeywordAccentMode('accent_and_emoji')}
+                      style={{ fontSize: '0.74rem', padding: '0.3rem 0.6rem', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.3rem' }}
+                    >
+                      <span>🔥</span>
+                      <span>{t.studio.keywordAccentAndEmoji || 'Warna Aksen + Auto-Emoji (Viral)'}</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={`pill-btn ${keywordAccentMode === 'accent_only' ? 'active' : ''}`}
+                      onClick={() => setKeywordAccentMode('accent_only')}
+                      style={{ fontSize: '0.74rem', padding: '0.3rem 0.6rem', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.3rem' }}
+                    >
+                      <span>🎨</span>
+                      <span>{t.studio.keywordAccentOnly || 'Hanya Warna Aksen'}</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={`pill-btn ${keywordAccentMode === 'off' ? 'active' : ''}`}
+                      onClick={() => setKeywordAccentMode('off')}
+                      style={{ fontSize: '0.74rem', padding: '0.3rem 0.6rem', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.3rem' }}
+                    >
+                      <span>⚪</span>
+                      <span>{t.studio.keywordAccentOff || 'Mati (Standar)'}</span>
+                    </button>
+                  </div>
                 </div>
               </>
             )}
@@ -4764,7 +4903,13 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                         liveSubtitleInfo.words.map((word, wIdx) => {
                           const isWordActive = wIdx === liveSubtitleInfo.activeWordIndex;
                           const colors = getCaptionStyleColors(captionStyle);
-                          const wordColor = isWordActive ? colors.highlight : colors.primary;
+                          const kw = keywordAccentMode !== 'off' ? classifyKeyword(word) : null;
+                          const wordColor = isWordActive
+                            ? (kw ? kw.hexColor : colors.highlight)
+                            : colors.primary;
+
+                          const displayEmoji = (keywordAccentMode === 'accent_and_emoji' && kw) ? `${kw.emoji} ` : '';
+                          const textVal = `${displayEmoji}${applyLetterCase(word, textCase)}`;
 
                           return (
                             <React.Fragment key={`${word}_${wIdx}`}>
@@ -4774,10 +4919,12 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                                   display: 'inline-block',
                                   transform: isWordActive ? 'scale(1.12)' : 'scale(1.0)',
                                   transition: 'transform 0.08s ease, color 0.08s ease',
-                                  filter: isWordActive ? 'drop-shadow(0 0 6px rgba(255,255,255,0.4))' : 'none',
+                                  filter: isWordActive
+                                    ? `drop-shadow(0 0 6px ${kw ? kw.hexColor : 'rgba(255,255,255,0.45)'})`
+                                    : 'none',
                                 }}
                               >
-                                {applyLetterCase(word, textCase)}
+                                {textVal}
                               </span>
                               {wIdx < liveSubtitleInfo.words.length - 1 ? ' ' : ''}
                             </React.Fragment>
@@ -4788,19 +4935,28 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                           {captionStyle === 'viral_pop' && (
                             <>
                               <span style={{ color: '#ffffff' }}>{applyLetterCase('VIRAL', textCase)}</span>{' '}
-                              <span style={{ color: '#FFE600' }}>{applyLetterCase('POP', textCase)}</span>
+                              <span style={{ color: keywordAccentMode !== 'off' ? '#00FF66' : '#FFE600' }}>
+                                {keywordAccentMode === 'accent_and_emoji' ? '💰 ' : ''}
+                                {applyLetterCase('CUAN', textCase)}
+                              </span>
                             </>
                           )}
                           {captionStyle === 'beast_punch' && (
                             <>
                               <span style={{ color: '#ffffff' }}>{applyLetterCase('UNREAL', textCase)}</span>{' '}
-                              <span style={{ color: '#00FF66' }}>{applyLetterCase('HACK', textCase)}</span>
+                              <span style={{ color: keywordAccentMode !== 'off' ? '#FF3300' : '#00FF66' }}>
+                                {keywordAccentMode === 'accent_and_emoji' ? '🔥 ' : ''}
+                                {applyLetterCase('HACK', textCase)}
+                              </span>
                             </>
                           )}
                           {captionStyle === 'cyber_violet' && (
                             <>
                               <span style={{ color: '#ffffff' }}>{applyLetterCase('CYBER', textCase)}</span>{' '}
-                              <span style={{ color: '#D946EF' }}>{applyLetterCase('PUNCH', textCase)}</span>
+                              <span style={{ color: keywordAccentMode !== 'off' ? '#FF00FF' : '#D946EF' }}>
+                                {keywordAccentMode === 'accent_and_emoji' ? '😱 ' : ''}
+                                {applyLetterCase('PUNCH', textCase)}
+                              </span>
                             </>
                           )}
                           {captionStyle === 'fire_red' && (

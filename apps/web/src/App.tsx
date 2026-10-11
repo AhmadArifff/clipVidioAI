@@ -532,6 +532,8 @@ export default function App() {
             audio_mastering_enabled: settings.audioMasteringEnabled !== undefined ? settings.audioMasteringEnabled : true,
             smart_ducking_enabled: settings.smartDuckingEnabled !== undefined ? settings.smartDuckingEnabled : true,
             hook_zoom_enabled: settings.hookZoomEnabled !== undefined ? settings.hookZoomEnabled : true,
+            // v3.1 Subtitle Keyword Emoji Accent & Viral Styling
+            keyword_accent_mode: settings.keywordAccentMode || 'accent_and_emoji',
           },
           transcript: result.transcript,
         }),

@@ -327,41 +327,69 @@
       "id": "T17",
       "task": "Implementasi Backend Lexical Classifier & Dynamic ASS Inline Accent Tags (video_engine.py & render_service.py) dengan kamus bilingual ID/EN dan deteksi pola regex angka/cuan",
       "owner_role": "backend-engineer",
-      "status": "planned",
+      "status": "done",
       "depends_on": ["T16"],
       "rework_iteration_count": 0,
-      "reviewed_by": [],
-      "verdict": "pending"
+      "reviewed_by": [
+        {
+          "role": "qa-engineer",
+          "verdict": "approved",
+          "timestamp": "2026-10-12T06:05:00Z",
+          "note": "Classifier leksikal 5 kategori emosi dan penataan tag ASS override warna tervalidasi 100%"
+        }
+      ],
+      "verdict": "approved"
     },
     {
       "id": "T18",
       "task": "Penyelarasan Skema Kontrak API & Type Definitions (RenderSettingsModel, types.ts, dan kamus terjemahan i18n locales id.ts & en.ts)",
       "owner_role": "backend-engineer",
-      "status": "planned",
+      "status": "done",
       "depends_on": ["T17"],
       "rework_iteration_count": 0,
-      "reviewed_by": [],
-      "verdict": "pending"
+      "reviewed_by": [
+        {
+          "role": "policy-schema-enforcer",
+          "verdict": "approved",
+          "timestamp": "2026-10-12T06:07:00Z",
+          "note": "Skema Pydantic, TypeScript, dan kamus bilingual sinkron tanpa breaking changes"
+        }
+      ],
+      "verdict": "approved"
     },
     {
       "id": "T19",
       "task": "Pengembangan Kontrol UI Studio & Live Synchronized Subtitle Karaoke Preview dengan Keyword Color Pop dan Emoji Badge di ClipStudioSection",
       "owner_role": "frontend-engineer",
-      "status": "planned",
+      "status": "done",
       "depends_on": ["T18"],
       "rework_iteration_count": 0,
-      "reviewed_by": [],
-      "verdict": "pending"
+      "reviewed_by": [
+        {
+          "role": "ui-ux-designer",
+          "verdict": "approved",
+          "timestamp": "2026-10-12T06:10:00Z",
+          "note": "Kartu kontrol 3 mode dan live canvas karaoke preview merefleksikan warna emosional dan emoji secara real-time"
+        }
+      ],
+      "verdict": "approved"
     },
     {
       "id": "T20",
       "task": "Verifikasi End-to-End Render Pipeline, Uji Kompatibilitas Font/Emoji ASS, dan Validasi Bebas Glitch Visual Output MP4",
       "owner_role": "qa-engineer",
-      "status": "planned",
+      "status": "done",
       "depends_on": ["T19"],
       "rework_iteration_count": 0,
-      "reviewed_by": [],
-      "verdict": "pending"
+      "reviewed_by": [
+        {
+          "role": "tech-critic",
+          "verdict": "approved",
+          "timestamp": "2026-10-12T06:13:00Z",
+          "note": "Render MP4 1080x1920 sukses diproduksi dengan subtitle ber-emoji dan warna menyala tanpa text jitter"
+        }
+      ],
+      "verdict": "approved"
     }
   ],
   "open_questions": [],
@@ -375,6 +403,6 @@
   "last_reviewer_verdict": {
     "role": "tech-critic",
     "result": "approved",
-    "note": "Perancangan v3.1.0 Subtitle Keyword Emoji Accent & Viral Styling resmi disahkan ke dalam PRD.md dan session-state.json"
+    "note": "Implementasi v3.1.0 Subtitle Keyword Emoji Accent & Viral Styling Engine (Alex Hormozi & MrBeast) lulus uji verifikasi build dan render E2E"
   }
 }
