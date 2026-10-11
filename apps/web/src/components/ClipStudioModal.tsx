@@ -299,9 +299,16 @@ export const ClipStudioModal: React.FC<ClipStudioModalProps> = ({
                 >
                   {t.studio.streamerPip}
                 </button>
+                <button
+                  type="button"
+                  className={`streamer-btn ${streamerPreset === 'podcast_split' ? 'active' : ''}`}
+                  onClick={() => setStreamerPreset('podcast_split')}
+                >
+                  {t.studio.streamerPodcast || '🎙️ Podcast Dual Split'}
+                </button>
               </div>
 
-              {streamerPreset !== 'none' && (
+              {streamerPreset !== 'none' && streamerPreset !== 'podcast_split' && (
                 <div style={{ marginTop: '0.85rem' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.45rem' }}>
                     <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-secondary)' }}>

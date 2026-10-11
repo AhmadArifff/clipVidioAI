@@ -63,6 +63,11 @@ class RenderSettingsModel(BaseModel):
     # Multi-Segment Merged Highlight Video
     render_mode: Optional[str] = "separate"  # "separate" | "merged"
     compilation_title: Optional[str] = None
+    # v3.0 Ultra-Quality Render Engine
+    video_polish_enabled: Optional[bool] = True    # Micro-sharpening & BT.709 color matrix
+    audio_mastering_enabled: Optional[bool] = True # Digital broadcast loudness (-14 LUFS)
+    smart_ducking_enabled: Optional[bool] = True   # Sidechain compression ducking BGM under voice
+    hook_zoom_enabled: Optional[bool] = True       # Dynamic 1.1x hook punch-in zoom (0-2.5s)
 
 class RenderBatchRequest(BaseModel):
     video_url: str

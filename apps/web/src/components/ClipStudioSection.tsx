@@ -239,6 +239,10 @@ export interface StudioPreferences {
   foregroundShadow?: boolean;
   subtitleOffsetMs?: number;
   subtitleLanguage?: 'id' | 'en';
+  videoPolishEnabled?: boolean;
+  audioMasteringEnabled?: boolean;
+  smartDuckingEnabled?: boolean;
+  hookZoomEnabled?: boolean;
 }
 
 export const DEFAULT_STUDIO_PREFS: Required<StudioPreferences> = {
@@ -281,6 +285,10 @@ export const DEFAULT_STUDIO_PREFS: Required<StudioPreferences> = {
   titleSuffix: '',
   subtitleOffsetMs: 0,
   subtitleLanguage: 'id',
+  videoPolishEnabled: true,
+  audioMasteringEnabled: true,
+  smartDuckingEnabled: true,
+  hookZoomEnabled: true,
 };
 
 function getSavedStudioPreferences(): Partial<StudioPreferences> {
@@ -383,6 +391,12 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
 
   // Original Voice Audio Boost (0% - 200%, default 100%)
   const [originalAudioVolume, setOriginalAudioVolume] = useState<number>(() => getSavedStudioPreferences().originalAudioVolume ?? DEFAULT_STUDIO_PREFS.originalAudioVolume);
+
+  // v3.0 Ultra-Quality Render Engine states
+  const [videoPolishEnabled, setVideoPolishEnabled] = useState<boolean>(() => getSavedStudioPreferences().videoPolishEnabled ?? DEFAULT_STUDIO_PREFS.videoPolishEnabled);
+  const [audioMasteringEnabled, setAudioMasteringEnabled] = useState<boolean>(() => getSavedStudioPreferences().audioMasteringEnabled ?? DEFAULT_STUDIO_PREFS.audioMasteringEnabled);
+  const [smartDuckingEnabled, setSmartDuckingEnabled] = useState<boolean>(() => getSavedStudioPreferences().smartDuckingEnabled ?? DEFAULT_STUDIO_PREFS.smartDuckingEnabled);
+  const [hookZoomEnabled, setHookZoomEnabled] = useState<boolean>(() => getSavedStudioPreferences().hookZoomEnabled ?? DEFAULT_STUDIO_PREFS.hookZoomEnabled);
 
   // Background Music (BGM) state
   const [bgmEnabled, setBgmEnabled] = useState<boolean>(false);
@@ -1444,6 +1458,13 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
         subCenterY: 50,
       };
     }
+    if (preset === 'podcast_split') {
+      return {
+        titleY: lines >= 3 ? 4.5 : 5.5,
+        subtitleY: 20.0,
+        subCenterY: 50,
+      };
+    }
     if (ratio === '16:9_landscape') {
       return {
         titleY: lines >= 3 ? 5.5 : lines === 2 ? 6.5 : 8.0,
@@ -1491,6 +1512,12 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
     if (preset === 'split_top_cam') {
       return {
         maxTitleY: 35.0,
+        maxSubY: 50.0,
+      };
+    }
+    if (preset === 'podcast_split') {
+      return {
+        maxTitleY: 40.0,
         maxSubY: 50.0,
       };
     }
@@ -1636,6 +1663,10 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
       titleSuffix,
       subtitleOffsetMs,
       subtitleLanguage,
+      videoPolishEnabled,
+      audioMasteringEnabled,
+      smartDuckingEnabled,
+      hookZoomEnabled,
     };
     try {
       localStorage.setItem(STUDIO_PREFS_KEY, JSON.stringify(prefs));
@@ -1682,6 +1713,10 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
     titleSuffix,
     subtitleOffsetMs,
     subtitleLanguage,
+    videoPolishEnabled,
+    audioMasteringEnabled,
+    smartDuckingEnabled,
+    hookZoomEnabled,
   ]);
 
   const handleResetToDefaults = () => {
@@ -1725,6 +1760,10 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
     setFileNameSuffix(DEFAULT_STUDIO_PREFS.fileNameSuffix);
     setTitlePrefix(DEFAULT_STUDIO_PREFS.titlePrefix);
     setTitleSuffix(DEFAULT_STUDIO_PREFS.titleSuffix);
+    setVideoPolishEnabled(DEFAULT_STUDIO_PREFS.videoPolishEnabled);
+    setAudioMasteringEnabled(DEFAULT_STUDIO_PREFS.audioMasteringEnabled);
+    setSmartDuckingEnabled(DEFAULT_STUDIO_PREFS.smartDuckingEnabled);
+    setHookZoomEnabled(DEFAULT_STUDIO_PREFS.hookZoomEnabled);
     handleResetTitlePosition();
     handleResetSubtitlePosition();
     try {
@@ -1813,6 +1852,11 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
       // Multi-Segment Merged Highlight Video
       renderMode,
       compilationTitle: compilationTitle.trim() || undefined,
+      // v3.0 Ultra-Quality Render Engine
+      videoPolishEnabled,
+      audioMasteringEnabled,
+      smartDuckingEnabled,
+      hookZoomEnabled,
     });
   };
 
@@ -2083,9 +2127,22 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
               >
                 {t.studio.streamerPip}
               </button>
+              <button
+                type="button"
+                className={`streamer-btn ${streamerPreset === 'podcast_split' ? 'active' : ''}`}
+                onClick={() => {
+                  setStreamerPreset('podcast_split');
+                  const defaults = getDefaultPositions(aspectRatio, titleLineCount, 'podcast_split');
+                  setTitleYPercent(defaults.titleY);
+                  setSubtitleYPercent(defaults.subtitleY);
+                  setIsCustomTitleY(false);
+                }}
+              >
+                {t.studio.streamerPodcast || '🎙️ Podcast Dual Split'}
+              </button>
             </div>
 
-            {streamerPreset !== 'none' && (
+            {streamerPreset !== 'none' && streamerPreset !== 'podcast_split' && (
               <div className="streamer-facecam-position-wrap" style={{ marginTop: '0.85rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.45rem' }}>
                   <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
@@ -3766,7 +3823,148 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
             )}
           </div>
 
-          {/* 8. Hardware Acceleration & Video Encoder */}
+          {/* 8. Ultra-Quality Master Engine (v3.0) */}
+          <div className="studio-card-group" style={{ border: '1px solid rgba(56, 189, 248, 0.28)', background: 'linear-gradient(145deg, rgba(15, 23, 42, 0.75), rgba(8, 14, 28, 0.85))' }}>
+            <div className="group-header" style={{ marginBottom: '0.45rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span className="group-title" style={{ color: '#38bdf8' }}>{t.studio.ultraQualityTitle || '✨ Ultra-Quality Master Engine (v3.0)'}</span>
+                <span style={{ fontSize: '0.66rem', fontWeight: 700, padding: '0.15rem 0.5rem', borderRadius: '4px', background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', border: '1px solid rgba(56, 189, 248, 0.3)' }}>
+                  PRO OUTPUT
+                </span>
+              </div>
+            </div>
+            <p style={{ fontSize: '0.74rem', color: 'var(--text-muted)', margin: '0 0 0.85rem 0', lineHeight: 1.45 }}>
+              {t.studio.ultraQualityDesc || 'Peningkatan kualitas visual HD, loudness broadcast, dan retensi hook otomatis.'}
+            </p>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.65rem' }}>
+              {/* Pillar 1: Visual Sharpening & BT.709 */}
+              <div
+                onClick={() => setVideoPolishEnabled(!videoPolishEnabled)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '0.65rem 0.85rem',
+                  borderRadius: '8px',
+                  background: videoPolishEnabled ? 'rgba(56, 189, 248, 0.1)' : 'rgba(255, 255, 255, 0.03)',
+                  border: `1px solid ${videoPolishEnabled ? 'rgba(56, 189, 248, 0.4)' : 'rgba(255, 255, 255, 0.08)'}`,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: '0.8rem', fontWeight: 600, color: videoPolishEnabled ? '#e0f2fe' : '#94a3b8' }}>
+                    {t.studio.ultraSharpenLabel || '🔍 Micro-Sharpening & BT.709'}
+                  </div>
+                  <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: '0.1rem' }}>
+                    Unsharp Mask + Rec.709 Colorspace
+                  </div>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={videoPolishEnabled}
+                  onChange={e => setVideoPolishEnabled(e.target.checked)}
+                  style={{ cursor: 'pointer', accentColor: '#38bdf8', transform: 'scale(1.15)' }}
+                />
+              </div>
+
+              {/* Pillar 2a: Broadcast Loudness Mastering */}
+              <div
+                onClick={() => setAudioMasteringEnabled(!audioMasteringEnabled)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '0.65rem 0.85rem',
+                  borderRadius: '8px',
+                  background: audioMasteringEnabled ? 'rgba(168, 85, 247, 0.1)' : 'rgba(255, 255, 255, 0.03)',
+                  border: `1px solid ${audioMasteringEnabled ? 'rgba(168, 85, 247, 0.4)' : 'rgba(255, 255, 255, 0.08)'}`,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: '0.8rem', fontWeight: 600, color: audioMasteringEnabled ? '#f3e8ff' : '#94a3b8' }}>
+                    {t.studio.ultraAudioLabel || '🔊 Broadcast Loudness (-14 LUFS)'}
+                  </div>
+                  <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: '0.1rem' }}>
+                    EBU R128 / YouTube Shorts Standard
+                  </div>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={audioMasteringEnabled}
+                  onChange={e => setAudioMasteringEnabled(e.target.checked)}
+                  style={{ cursor: 'pointer', accentColor: '#a855f7', transform: 'scale(1.15)' }}
+                />
+              </div>
+
+              {/* Pillar 2b: Smart Auto-Ducking BGM */}
+              <div
+                onClick={() => setSmartDuckingEnabled(!smartDuckingEnabled)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '0.65rem 0.85rem',
+                  borderRadius: '8px',
+                  background: smartDuckingEnabled ? 'rgba(34, 197, 94, 0.1)' : 'rgba(255, 255, 255, 0.03)',
+                  border: `1px solid ${smartDuckingEnabled ? 'rgba(34, 197, 94, 0.4)' : 'rgba(255, 255, 255, 0.08)'}`,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: '0.8rem', fontWeight: 600, color: smartDuckingEnabled ? '#dcfce7' : '#94a3b8' }}>
+                    {t.studio.ultraDuckingLabel || '🎚️ Smart Auto-Ducking BGM'}
+                  </div>
+                  <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: '0.1rem' }}>
+                    Sidechain 3.5:1 Voice Priority
+                  </div>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={smartDuckingEnabled}
+                  onChange={e => setSmartDuckingEnabled(e.target.checked)}
+                  style={{ cursor: 'pointer', accentColor: '#22c55e', transform: 'scale(1.15)' }}
+                />
+              </div>
+
+              {/* Pillar 4: Dynamic Hook Punch-In Zoom */}
+              <div
+                onClick={() => setHookZoomEnabled(!hookZoomEnabled)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '0.65rem 0.85rem',
+                  borderRadius: '8px',
+                  background: hookZoomEnabled ? 'rgba(245, 158, 11, 0.1)' : 'rgba(255, 255, 255, 0.03)',
+                  border: `1px solid ${hookZoomEnabled ? 'rgba(245, 158, 11, 0.4)' : 'rgba(255, 255, 255, 0.08)'}`,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: '0.8rem', fontWeight: 600, color: hookZoomEnabled ? '#fef3c7' : '#94a3b8' }}>
+                    {t.studio.ultraHookZoomLabel || '⚡ Dynamic Hook Zoom (0-2.5s)'}
+                  </div>
+                  <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: '0.1rem' }}>
+                    1.1x Viral Punch-In Retention
+                  </div>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={hookZoomEnabled}
+                  onChange={e => setHookZoomEnabled(e.target.checked)}
+                  style={{ cursor: 'pointer', accentColor: '#f59e0b', transform: 'scale(1.15)' }}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* 9. Hardware Acceleration & Video Encoder */}
           <div className="studio-card-group">
             <div className="group-header" style={{ marginBottom: '0.65rem' }}>
               <span className="group-title">{t.studio.hwTitle}</span>
@@ -4369,8 +4567,30 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                     </>
                   )}
 
+                  {/* Top Podcast Speaker 1 Box if podcast_split */}
+                  {streamerPreset === 'podcast_split' && (
+                    <>
+                      <div className="wireframe-split-cam-box aspect-916" style={{ height: '48%', position: 'relative' }}>
+                        <div className="wireframe-facecam-skeleton">
+                          <div className="skeleton-grid-mesh"></div>
+                          <div className="skeleton-avatar">
+                            <span style={{ fontSize: '1.8rem' }}>🎙️</span>
+                          </div>
+                          <div className="skeleton-label-wrap">
+                            <span className="skeleton-main-label">HOST / SPEAKER 1</span>
+                            <span className="skeleton-sub-label">LEFT 50% SOURCE FRAME</span>
+                          </div>
+                        </div>
+                        <div className="wireframe-cam-badge" style={{ background: 'rgba(56, 189, 248, 0.2)', borderColor: 'rgba(56, 189, 248, 0.4)', color: '#7dd3fc' }}>
+                          <span className="live-dot" style={{ background: '#38bdf8' }}></span> SPEAKER 1 (HOST)
+                        </div>
+                      </div>
+                      <div className="wireframe-split-divider"></div>
+                    </>
+                  )}
+
                   {/* Content scaled by aspect ratio with real playable video */}
-                  <div className={`wireframe-content-box aspect-${aspectRatio.replace(':', '').replace('_', '')} ${streamerPreset === 'split_top_cam' ? 'split-mode' : ''}`}>
+                  <div className={`wireframe-content-box aspect-${aspectRatio.replace(':', '').replace('_', '')} ${streamerPreset === 'split_top_cam' || streamerPreset === 'podcast_split' ? 'split-mode' : ''}`}>
                     <div className="wireframe-content-inner">
                       {/* HTML5 or YouTube Player slot - ALWAYS STABLY MOUNTED */}
                       {videoUrl && (videoUrl.endsWith('.mp4') || videoUrl.endsWith('.webm') || videoUrl.endsWith('.mov') || videoUrl.endsWith('.mkv') || videoUrl.includes('/api/video') || videoUrl.startsWith('blob:') || videoId?.startsWith('upload_') || videoId?.startsWith('gdrive_')) ? (

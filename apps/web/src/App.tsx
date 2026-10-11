@@ -527,6 +527,11 @@ export default function App() {
             // Multi-Segment Merged Highlight Video
             render_mode: settings.renderMode || 'separate',
             compilation_title: settings.compilationTitle || null,
+            // v3.0 Ultra-Quality Render Engine
+            video_polish_enabled: settings.videoPolishEnabled !== undefined ? settings.videoPolishEnabled : true,
+            audio_mastering_enabled: settings.audioMasteringEnabled !== undefined ? settings.audioMasteringEnabled : true,
+            smart_ducking_enabled: settings.smartDuckingEnabled !== undefined ? settings.smartDuckingEnabled : true,
+            hook_zoom_enabled: settings.hookZoomEnabled !== undefined ? settings.hookZoomEnabled : true,
           },
           transcript: result.transcript,
         }),

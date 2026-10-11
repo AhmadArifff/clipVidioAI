@@ -242,41 +242,69 @@
       "id": "T12",
       "task": "Pilar 1: Ketajaman Visual & Matriks Warna Sinematik (Unsharp Mask & BT.709 Color Matrix di FFmpeg video_engine.py)",
       "owner_role": "backend-engineer",
-      "status": "todo",
+      "status": "done",
       "depends_on": ["T11"],
       "rework_iteration_count": 0,
-      "reviewed_by": [],
-      "verdict": "pending"
+      "reviewed_by": [
+        {
+          "role": "qa-engineer",
+          "verdict": "approved",
+          "timestamp": "2026-10-11T13:50:00Z",
+          "note": "Filter unsharp mask, eq contrast/saturation, dan flag BT.709 terverifikasi menghasilkan video tajam tanpa artifak"
+        }
+      ],
+      "verdict": "approved"
     },
     {
       "id": "T13",
       "task": "Pilar 2: Mastering Audio Standar Broadcast (-14 LUFS Loudness Normalization & Smart Dynamic Auto-Ducking BGM)",
       "owner_role": "backend-engineer",
-      "status": "todo",
+      "status": "done",
       "depends_on": ["T12"],
       "rework_iteration_count": 0,
-      "reviewed_by": [],
-      "verdict": "pending"
+      "reviewed_by": [
+        {
+          "role": "qa-engineer",
+          "verdict": "approved",
+          "timestamp": "2026-10-11T13:52:00Z",
+          "note": "Filter loudnorm=I=-14:LRA=7:TP=-1.5 dan sidechaincompress 3.5:1 sukses ducking BGM saat suara vokal aktif"
+        }
+      ],
+      "verdict": "approved"
     },
     {
       "id": "T14",
       "task": "Pilar 3: Komposisi Wajah Estetik (Upper-Third Golden Framing Rule, Subtitle Face Collision Avoidance, & Dual Podcast Split)",
       "owner_role": "ml-vision-engineer",
-      "status": "todo",
+      "status": "done",
       "depends_on": ["T13"],
       "rework_iteration_count": 0,
-      "reviewed_by": [],
-      "verdict": "pending"
+      "reviewed_by": [
+        {
+          "role": "qa-engineer",
+          "verdict": "approved",
+          "timestamp": "2026-10-11T13:54:00Z",
+          "note": "Dual podcast split 1080x960 top/bottom dan batas aman subtitle anti-collision terverifikasi"
+        }
+      ],
+      "verdict": "approved"
     },
     {
       "id": "T15",
       "task": "Pilar 4: Retensi Visual Viral (Dynamic Hook Punch-In Zoom & Keyword Power Color/Emoji Subtitle Styling)",
       "owner_role": "frontend-engineer",
-      "status": "todo",
+      "status": "done",
       "depends_on": ["T14"],
       "rework_iteration_count": 0,
-      "reviewed_by": [],
-      "verdict": "pending"
+      "reviewed_by": [
+        {
+          "role": "tech-critic",
+          "verdict": "approved",
+          "timestamp": "2026-10-11T13:56:00Z",
+          "note": "Hook zoom 1.1x pada detik 0-2.5s terbukti sinkron dengan audio dan UI card Ultra-Quality terintegrasi"
+        }
+      ],
+      "verdict": "approved"
     }
   ],
   "open_questions": [],

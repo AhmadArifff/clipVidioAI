@@ -230,7 +230,11 @@ async def render_single_batch_clip(
             foreground_scale=float(getattr(settings, "foreground_scale", 100.0) or 100.0),
             foreground_position_y=float(getattr(settings, "foreground_position_y", 50.0) or 50.0),
             foreground_border_radius=int(getattr(settings, "foreground_border_radius", 0) or 0),
-            foreground_shadow=bool(getattr(settings, "foreground_shadow", False))
+            foreground_shadow=bool(getattr(settings, "foreground_shadow", False)),
+            video_polish_enabled=bool(getattr(settings, "video_polish_enabled", True)),
+            audio_mastering_enabled=bool(getattr(settings, "audio_mastering_enabled", True)),
+            smart_ducking_enabled=bool(getattr(settings, "smart_ducking_enabled", True)),
+            hook_zoom_enabled=bool(getattr(settings, "hook_zoom_enabled", True))
         )
 
         if not os.path.exists(out_path) or not is_valid_mp4(out_path):
@@ -544,7 +548,11 @@ async def render_merged_batch_clips(
             foreground_scale=float(getattr(settings, "foreground_scale", 100.0) or 100.0),
             foreground_position_y=float(getattr(settings, "foreground_position_y", 50.0) or 50.0),
             foreground_border_radius=int(getattr(settings, "foreground_border_radius", 0) or 0),
-            foreground_shadow=bool(getattr(settings, "foreground_shadow", False))
+            foreground_shadow=bool(getattr(settings, "foreground_shadow", False)),
+            video_polish_enabled=bool(getattr(settings, "video_polish_enabled", True)),
+            audio_mastering_enabled=bool(getattr(settings, "audio_mastering_enabled", True)),
+            smart_ducking_enabled=bool(getattr(settings, "smart_ducking_enabled", True)),
+            hook_zoom_enabled=bool(getattr(settings, "hook_zoom_enabled", True))
         )
 
         if not os.path.exists(out_path) or not is_valid_mp4(out_path):

@@ -1932,15 +1932,19 @@ def generate_ass_file(
         if subtitle_y_percent is not None:
             sub_y = int(round(1920 * (1.0 - (float(subtitle_y_percent) / 100.0))))
         else:
-            if streamer_preset == "split_top_cam":
+            if streamer_preset in ["split_top_cam", "podcast_split"]:
                 default_sub_pct = 18.0 if (target_aspect_ratio in ["9:16", "1:1"]) else (10.0 if target_aspect_ratio == "4:3" else 18.0)
                 sub_y = int(round(1920 * (1.0 - (default_sub_pct / 100.0))))
+            elif target_aspect_ratio == "9:16":
+                # Default 21% from bottom (golden lower-third safe zone, clear of platform overlays)
+                sub_y = int(round(1920 * (1.0 - 0.21)))
             else:
                 default_sub_y = content_bot + est_sub_h + 12
                 sub_y = default_sub_y
 
-        if streamer_preset == "split_top_cam" or target_aspect_ratio == "9:16":
-            sub_y = max(60, min(1880, sub_y))
+        if streamer_preset in ["split_top_cam", "podcast_split"] or target_aspect_ratio == "9:16":
+            # Subtitle Face Collision Avoidance: clamp so bottom subtitles never creep above y=1200 into face area
+            sub_y = max(1200, min(1720, sub_y))
         else:
             min_safe_sub_y = content_bot + est_sub_h + 8
             sub_y = max(sub_y, min_safe_sub_y)
@@ -2757,6 +2761,17 @@ def build_ffmpeg_filtergraph(
 
         current_v = "[layout_base]"
 
+    elif streamer_preset == "podcast_split":
+        # Dual Podcast Split: Top half is Speaker 1 (left side of 16:9), Bottom half is Speaker 2 (right side of 16:9)
+        # Each cropped and scaled to 1080x960, stacked vertically to fill a 1080x1920 vertical video
+        filters.append(
+            f"[0:v]split=2[spk1_raw][spk2_raw];"
+            f"[spk1_raw]crop='min(iw, ih*9/8)':'ih':'max(0, iw*0.25-(min(iw, ih*9/8))/2)':'0',scale=1080:960[spk1_box];"
+            f"[spk2_raw]crop='min(iw, ih*9/8)':'ih':'max(0, min(iw-(min(iw, ih*9/8)), iw*0.75-(min(iw, ih*9/8))/2))':'0',scale=1080:960[spk2_box];"
+            f"[spk1_box][spk2_box]vstack=inputs=2[layout_base]"
+        )
+        current_v = "[layout_base]"
+
     elif streamer_preset == "pip_corner":
         # PIP Box tightly cropped on face (320x240)
         pip_cam_h = "min(ih, max(220, ih*0.35))"
@@ -2851,19 +2866,50 @@ def build_ffmpeg_filtergraph(
 
         current_v = "[layout_base]"
 
-    scale_factor = max(0.40, min(1.0, float(foreground_scale) / 100.0))
-    pos_y_factor = max(0.0, min(1.0, float(foreground_position_y) / 100.0))
-    has_custom_bg = (bg_input_idx is not None) or (background_type in ["color", "gradient", "custom_upload"]) or (background_type == "preset" and background_value != "black") or (background_style == "blurred")
+    else:
+        scale_factor = max(0.40, min(1.0, float(foreground_scale) / 100.0))
+        pos_y_factor = max(0.0, min(1.0, float(foreground_position_y) / 100.0))
+        has_custom_bg = (bg_input_idx is not None) or (background_type in ["color", "gradient", "custom_upload"]) or (background_type == "preset" and background_value != "black") or (background_style == "blurred")
 
-    if aspect_ratio == "9:16":
-        safe_cx = float(face_cx)
-        if 0.46 <= safe_cx <= 0.54:
-            safe_cx = 0.50
-        safe_cx = max(0.22, min(0.78, safe_cx))
-        crop_ratio_safe = max(0.0, min(1.0, (safe_cx - 0.158) / 0.684))
-        crop_916 = f"crop=ih*9/16:ih:(iw-ih*9/16)*{crop_ratio_safe:.3f}:0"
+        if aspect_ratio == "9:16":
+            safe_cx = float(face_cx)
+            if 0.46 <= safe_cx <= 0.54:
+                safe_cx = 0.50
+            safe_cx = max(0.22, min(0.78, safe_cx))
+            crop_ratio_safe = max(0.0, min(1.0, (safe_cx - 0.158) / 0.684))
+            crop_916 = f"crop=ih*9/16:ih:(iw-ih*9/16)*{crop_ratio_safe:.3f}:0"
 
-        if has_custom_bg or scale_factor < 0.99 or abs(pos_y_factor - 0.5) > 0.05:
+            if has_custom_bg or scale_factor < 0.99 or abs(pos_y_factor - 0.5) > 0.05:
+                bg_filters, bg_tag = _generate_background_canvas_filter(
+                    canvas_w=1080, canvas_h=1920,
+                    background_type=background_type, background_value=background_value,
+                    bg_input_idx=bg_input_idx, background_style=background_style
+                )
+                filters.extend(bg_filters)
+
+                fg_w = int(round(1080 * scale_factor))
+                fg_w = fg_w if fg_w % 2 == 0 else fg_w - 1
+                fg_h = int(round(fg_w * 16 / 9))
+                fg_h = fg_h if fg_h % 2 == 0 else fg_h - 1
+                overlay_y = int(round((1920 - fg_h) * pos_y_factor))
+
+                filters.append(
+                    f"[0:v]{crop_916},scale={fg_w}:{fg_h}[fg_916];"
+                    f"{bg_tag}[fg_916]overlay=(1080-{fg_w})/2:{overlay_y}[layout_base]"
+                )
+            else:
+                filters.append(
+                    f"[0:v]{crop_916},scale=1080:1920[layout_base]"
+                )
+            current_v = "[layout_base]"
+
+        elif aspect_ratio == "1:1":
+            safe_cx = float(face_cx)
+            if 0.46 <= safe_cx <= 0.54:
+                safe_cx = 0.50
+            safe_cx = max(0.15, min(0.85, safe_cx))
+            crop_11 = f"crop='min(iw,ih)':'min(iw,ih)':'max(0,min(iw-ih,iw*{safe_cx:.3f}-ih/2))':'(ih-min(iw,ih))/2'"
+
             bg_filters, bg_tag = _generate_background_canvas_filter(
                 canvas_w=1080, canvas_h=1920,
                 background_type=background_type, background_value=background_value,
@@ -2873,107 +2919,77 @@ def build_ffmpeg_filtergraph(
 
             fg_w = int(round(1080 * scale_factor))
             fg_w = fg_w if fg_w % 2 == 0 else fg_w - 1
-            fg_h = int(round(fg_w * 16 / 9))
+            fg_h = fg_w
+            overlay_y = int(round((1920 - fg_h) * pos_y_factor))
+
+            filters.append(
+                f"[0:v]{crop_11},scale={fg_w}:{fg_h}[fg_square];"
+                f"{bg_tag}[fg_square]overlay=(1080-{fg_w})/2:{overlay_y}[layout_base]"
+            )
+            current_v = "[layout_base]"
+
+        elif aspect_ratio == "4:3":
+            safe_cx = float(face_cx)
+            if 0.46 <= safe_cx <= 0.54:
+                safe_cx = 0.50
+            safe_cx = max(0.15, min(0.85, safe_cx))
+            crop_43 = f"crop='min(iw,ih*4/3)':'min(ih,iw*3/4)':'max(0,min(iw-ih*4/3,iw*{safe_cx:.3f}-(ih*4/3)/2))':'(ih-min(ih,iw*3/4))/2'"
+
+            bg_filters, bg_tag = _generate_background_canvas_filter(
+                canvas_w=1080, canvas_h=1920,
+                background_type=background_type, background_value=background_value,
+                bg_input_idx=bg_input_idx, background_style=background_style
+            )
+            filters.extend(bg_filters)
+
+            fg_w = int(round(1080 * scale_factor))
+            fg_w = fg_w if fg_w % 2 == 0 else fg_w - 1
+            fg_h = int(round(fg_w * 3 / 4))
             fg_h = fg_h if fg_h % 2 == 0 else fg_h - 1
             overlay_y = int(round((1920 - fg_h) * pos_y_factor))
 
             filters.append(
-                f"[0:v]{crop_916},scale={fg_w}:{fg_h}[fg_916];"
-                f"{bg_tag}[fg_916]overlay=(1080-{fg_w})/2:{overlay_y}[layout_base]"
+                f"[0:v]{crop_43},scale={fg_w}:{fg_h}[fg_43];"
+                f"{bg_tag}[fg_43]overlay=(1080-{fg_w})/2:{overlay_y}[layout_base]"
             )
-        else:
+            current_v = "[layout_base]"
+
+        elif aspect_ratio == "16:9_landscape":
+            safe_cx = float(face_cx)
+            if 0.46 <= safe_cx <= 0.54:
+                safe_cx = 0.50
+            safe_cx = max(0.15, min(0.85, safe_cx))
+            crop_169_land = f"crop='min(iw,ih*16/9)':'min(ih,iw*9/16)':'max(0,min(iw-ih*16/9,iw*{safe_cx:.3f}-(ih*16/9)/2))':'(ih-min(ih,iw*9/16))/2',scale=1920:1080"
             filters.append(
-                f"[0:v]{crop_916},scale=1080:1920[layout_base]"
+                f"[0:v]{crop_169_land}[layout_base]"
             )
-        current_v = "[layout_base]"
+            current_v = "[layout_base]"
 
-    elif aspect_ratio == "1:1":
-        safe_cx = float(face_cx)
-        if 0.46 <= safe_cx <= 0.54:
-            safe_cx = 0.50
-        safe_cx = max(0.15, min(0.85, safe_cx))
-        crop_11 = f"crop='min(iw,ih)':'min(iw,ih)':'max(0,min(iw-ih,iw*{safe_cx:.3f}-ih/2))':'(ih-min(iw,ih))/2'"
+        else:  # 16:9 Letterbox
+            safe_cx = float(face_cx)
+            if 0.46 <= safe_cx <= 0.54:
+                safe_cx = 0.50
+            safe_cx = max(0.15, min(0.85, safe_cx))
+            crop_169 = f"crop='min(iw,ih*16/9)':'min(ih,iw*9/16)':'max(0,min(iw-ih*16/9,iw*{safe_cx:.3f}-(ih*16/9)/2))':'(ih-min(ih,iw*9/16))/2'"
 
-        bg_filters, bg_tag = _generate_background_canvas_filter(
-            canvas_w=1080, canvas_h=1920,
-            background_type=background_type, background_value=background_value,
-            bg_input_idx=bg_input_idx, background_style=background_style
-        )
-        filters.extend(bg_filters)
+            bg_filters, bg_tag = _generate_background_canvas_filter(
+                canvas_w=1080, canvas_h=1920,
+                background_type=background_type, background_value=background_value,
+                bg_input_idx=bg_input_idx, background_style=background_style
+            )
+            filters.extend(bg_filters)
 
-        fg_w = int(round(1080 * scale_factor))
-        fg_w = fg_w if fg_w % 2 == 0 else fg_w - 1
-        fg_h = fg_w
-        overlay_y = int(round((1920 - fg_h) * pos_y_factor))
+            fg_w = int(round(1080 * scale_factor))
+            fg_w = fg_w if fg_w % 2 == 0 else fg_w - 1
+            fg_h = int(round(fg_w * 9 / 16))
+            fg_h = fg_h if fg_h % 2 == 0 else fg_h - 1
+            overlay_y = int(round((1920 - fg_h) * pos_y_factor))
 
-        filters.append(
-            f"[0:v]{crop_11},scale={fg_w}:{fg_h}[fg_square];"
-            f"{bg_tag}[fg_square]overlay=(1080-{fg_w})/2:{overlay_y}[layout_base]"
-        )
-        current_v = "[layout_base]"
-
-    elif aspect_ratio == "4:3":
-        safe_cx = float(face_cx)
-        if 0.46 <= safe_cx <= 0.54:
-            safe_cx = 0.50
-        safe_cx = max(0.15, min(0.85, safe_cx))
-        crop_43 = f"crop='min(iw,ih*4/3)':'min(ih,iw*3/4)':'max(0,min(iw-ih*4/3,iw*{safe_cx:.3f}-(ih*4/3)/2))':'(ih-min(ih,iw*3/4))/2'"
-
-        bg_filters, bg_tag = _generate_background_canvas_filter(
-            canvas_w=1080, canvas_h=1920,
-            background_type=background_type, background_value=background_value,
-            bg_input_idx=bg_input_idx, background_style=background_style
-        )
-        filters.extend(bg_filters)
-
-        fg_w = int(round(1080 * scale_factor))
-        fg_w = fg_w if fg_w % 2 == 0 else fg_w - 1
-        fg_h = int(round(fg_w * 3 / 4))
-        fg_h = fg_h if fg_h % 2 == 0 else fg_h - 1
-        overlay_y = int(round((1920 - fg_h) * pos_y_factor))
-
-        filters.append(
-            f"[0:v]{crop_43},scale={fg_w}:{fg_h}[fg_43];"
-            f"{bg_tag}[fg_43]overlay=(1080-{fg_w})/2:{overlay_y}[layout_base]"
-        )
-        current_v = "[layout_base]"
-
-    elif aspect_ratio == "16:9_landscape":
-        safe_cx = float(face_cx)
-        if 0.46 <= safe_cx <= 0.54:
-            safe_cx = 0.50
-        safe_cx = max(0.15, min(0.85, safe_cx))
-        crop_169_land = f"crop='min(iw,ih*16/9)':'min(ih,iw*9/16)':'max(0,min(iw-ih*16/9,iw*{safe_cx:.3f}-(ih*16/9)/2))':'(ih-min(ih,iw*9/16))/2',scale=1920:1080"
-        filters.append(
-            f"[0:v]{crop_169_land}[layout_base]"
-        )
-        current_v = "[layout_base]"
-
-    else:  # 16:9 Letterbox
-        safe_cx = float(face_cx)
-        if 0.46 <= safe_cx <= 0.54:
-            safe_cx = 0.50
-        safe_cx = max(0.15, min(0.85, safe_cx))
-        crop_169 = f"crop='min(iw,ih*16/9)':'min(ih,iw*9/16)':'max(0,min(iw-ih*16/9,iw*{safe_cx:.3f}-(ih*16/9)/2))':'(ih-min(ih,iw*9/16))/2'"
-
-        bg_filters, bg_tag = _generate_background_canvas_filter(
-            canvas_w=1080, canvas_h=1920,
-            background_type=background_type, background_value=background_value,
-            bg_input_idx=bg_input_idx, background_style=background_style
-        )
-        filters.extend(bg_filters)
-
-        fg_w = int(round(1080 * scale_factor))
-        fg_w = fg_w if fg_w % 2 == 0 else fg_w - 1
-        fg_h = int(round(fg_w * 9 / 16))
-        fg_h = fg_h if fg_h % 2 == 0 else fg_h - 1
-        overlay_y = int(round((1920 - fg_h) * pos_y_factor))
-
-        filters.append(
-            f"[0:v]{crop_169},scale={fg_w}:{fg_h}[fg_169];"
-            f"{bg_tag}[fg_169]overlay=(1080-{fg_w})/2:{overlay_y}[layout_base]"
-        )
-        current_v = "[layout_base]"
+            filters.append(
+                f"[0:v]{crop_169},scale={fg_w}:{fg_h}[fg_169];"
+                f"{bg_tag}[fg_169]overlay=(1080-{fg_w})/2:{overlay_y}[layout_base]"
+            )
+            current_v = "[layout_base]"
 
     # 2. Subtitles & Title Burning via libass (.ass)
     # (If ass_subtitles_path is provided, it contains BOTH the title and subtitles rendered with exact matching fonts)
@@ -3071,7 +3087,12 @@ def render_clip_to_mp4(
     foreground_scale: float = 100.0,
     foreground_position_y: float = 50.0,
     foreground_border_radius: int = 0,
-    foreground_shadow: bool = False
+    foreground_shadow: bool = False,
+    # v3.0 Ultra-Quality Render Engine
+    video_polish_enabled: bool = True,
+    audio_mastering_enabled: bool = True,
+    smart_ducking_enabled: bool = True,
+    hook_zoom_enabled: bool = True
 ) -> str:
     """
     Renders the final short-form video with layout, aspect ratio, custom backgrounds,
@@ -3147,6 +3168,24 @@ def render_clip_to_mp4(
 
     filter_chains = [filter_complex]
 
+    # Dynamic Hook Punch-In Zoom (0 to 2.5s) for viral hook viewer retention
+    if hook_zoom_enabled and dur >= 4.0:
+        hook_dur = min(2.5, dur * 0.25)
+        if aspect_ratio == "16:9_landscape":
+            zw, zh = 2112, 1188
+            cw, ch = 1920, 1080
+        else:
+            zw, zh = 1188, 2112
+            cw, ch = 1080, 1920
+
+        filter_chains.append(
+            f"{out_video_map}split=2[v_hk_in][v_hk_rest];"
+            f"[v_hk_in]trim=start=0:end={hook_dur:.2f},setpts=PTS-STARTPTS,scale={zw}:{zh},crop={cw}:{ch}:(in_w-{cw})/2:(in_h-{ch})/2[v_hk_zoomed];"
+            f"[v_hk_rest]trim=start={hook_dur:.2f},setpts=PTS-STARTPTS[v_hk_normal];"
+            f"[v_hk_zoomed][v_hk_normal]concat=n=2:v=1:a=0[v_hooked]"
+        )
+        out_video_map = "[v_hooked]"
+
     # 1. Apply Title Overlay (Full-Color Emojis & Titles)
     if title_overlay_path and os.path.exists(title_overlay_path):
         t_idx = input_idx_counter
@@ -3208,16 +3247,25 @@ def render_clip_to_mp4(
             filter_chains.append(drawtext_cmd)
             out_video_map = "[v_watermarked]"
 
-    # 2. Audio Processing (Original Audio with Boost, BGM with start offset, and Hook SFX at frame 0)
+    # Visual Micro-Sharpening & Color Vibrancy Polish (BT.709-optimized)
+    if video_polish_enabled:
+        filter_chains.append(
+            f"{out_video_map}unsharp=lx=5:ly=5:la=0.75:cx=3:cy=3:ca=0.35,eq=contrast=1.03:saturation=1.05[v_polished]"
+        )
+        out_video_map = "[v_polished]"
+
+    # 2. Audio Processing (Original Voice with Boost, BGM with smart ducking & start offset, Hook SFX at frame 0, and Loudness Mastering)
     audio_inputs_to_mix = []
     has_orig_audio = check_has_audio(video_path)
+    orig_voice_tag = None
     if has_orig_audio:
         orig_vol = max(0.0, min(2.0, float(original_audio_volume)))
         if abs(orig_vol - 1.0) > 0.01:
             filter_chains.append(f"[0:a:0]volume={orig_vol:.3f}[v_orig_boosted]")
-            audio_inputs_to_mix.append("[v_orig_boosted]")
+            orig_voice_tag = "[v_orig_boosted]"
         else:
-            audio_inputs_to_mix.append("[0:a:0]")
+            orig_voice_tag = "[0:a:0]"
+        audio_inputs_to_mix.append(orig_voice_tag)
 
     dur = max(1.0, float(clip_duration))
 
@@ -3235,7 +3283,16 @@ def render_clip_to_mp4(
         filter_chains.append(
             f"[{bgm_idx}:a]asetpts=PTS-STARTPTS,volume={vol:.3f},afade=t=out:st={fade_st:.2f}:d=1.5[bgm_proc]"
         )
-        audio_inputs_to_mix.append("[bgm_proc]")
+        bgm_stream_tag = "[bgm_proc]"
+
+        # Smart Dynamic Auto-Ducking: Duck BGM under voice whenever dialogue audio is present
+        if orig_voice_tag and smart_ducking_enabled:
+            filter_chains.append(
+                f"{bgm_stream_tag}{orig_voice_tag}sidechaincompress=threshold=0.08:ratio=3.5:attack=50:release=350[bgm_ducked]"
+            )
+            bgm_stream_tag = "[bgm_ducked]"
+
+        audio_inputs_to_mix.append(bgm_stream_tag)
 
     # Hook SFX input placed at the very first frame (t=0)
     if hook_sfx_enabled and hook_sfx_path and os.path.exists(hook_sfx_path):
@@ -3249,20 +3306,30 @@ def render_clip_to_mp4(
         )
         audio_inputs_to_mix.append("[sfx_proc]")
 
-    # Mix audio streams together
+    # Mix audio streams together & Apply Digital Broadcast Loudness Mastering (-14 LUFS)
     if len(audio_inputs_to_mix) > 1:
         mix_inputs_str = "".join(audio_inputs_to_mix)
-        filter_chains.append(
-            f"{mix_inputs_str}amix=inputs={len(audio_inputs_to_mix)}:duration=first:dropout_transition=2:normalize=0[a_final]"
-        )
-        out_audio_map = "[a_final]"
+        if audio_mastering_enabled:
+            filter_chains.append(
+                f"{mix_inputs_str}amix=inputs={len(audio_inputs_to_mix)}:duration=first:dropout_transition=2:normalize=0,loudnorm=I=-14:LRA=7:TP=-1.5[a_mastered]"
+            )
+            out_audio_map = "[a_mastered]"
+        else:
+            filter_chains.append(
+                f"{mix_inputs_str}amix=inputs={len(audio_inputs_to_mix)}:duration=first:dropout_transition=2:normalize=0[a_final]"
+            )
+            out_audio_map = "[a_final]"
     elif len(audio_inputs_to_mix) == 1:
         single_stream = audio_inputs_to_mix[0]
-        if single_stream == "[0:a:0]":
-            out_audio_map = "0:a:0"
+        if audio_mastering_enabled:
+            filter_chains.append(f"{single_stream}loudnorm=I=-14:LRA=7:TP=-1.5[a_mastered]")
+            out_audio_map = "[a_mastered]"
         else:
-            filter_chains.append(f"{single_stream}anull[a_final]")
-            out_audio_map = "[a_final]"
+            if single_stream == "[0:a:0]":
+                out_audio_map = "0:a:0"
+            else:
+                filter_chains.append(f"{single_stream}anull[a_final]")
+                out_audio_map = "[a_final]"
     else:
         out_audio_map = "0:a:0?"
 
@@ -3281,6 +3348,7 @@ def render_clip_to_mp4(
         "-map", out_audio_map,
         *v_codec_args,
         "-c:a", "aac", "-b:a", "192k",
+        "-colorspace", "bt709", "-color_primaries", "bt709", "-color_trc", "bt709",
         "-pix_fmt", "yuv420p",
         "-movflags", "+faststart",
         "-shortest",
@@ -3320,6 +3388,7 @@ def render_clip_to_mp4(
                 "-map", out_audio_map,
                 "-c:v", "libx264", "-preset", "veryfast", "-crf", "22",
                 "-c:a", "aac", "-b:a", "192k",
+                "-colorspace", "bt709", "-color_primaries", "bt709", "-color_trc", "bt709",
                 "-pix_fmt", "yuv420p",
                 "-movflags", "+faststart",
                 "-shortest",
