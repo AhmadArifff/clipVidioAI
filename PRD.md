@@ -199,7 +199,7 @@ Memungkinkan pengguna mengubah video 16:9 atau 1:1 menjadi format vertikal 9:16 
 
 | Metode | Endpoint | Deskripsi |
 |---|---|---|
-| `POST` | `/api/analyze-youtube` | Streaming SSE analisis klip video dengan AI (Gemini / OpenRouter) |
+| `POST` | `/api/analyze` | Streaming SSE analisis klip video dengan AI (Gemini / OpenRouter) |
 | `GET` | `/api/models` | Mengambil daftar model AI aktif dari Gemini atau OpenRouter |
 | `GET` | `/api/hardware-accel` | Mengambil status deteksi akselerasi GPU (AMF, NVENC, QSV, CPU) |
 | `POST` | `/api/render-batch` | Mendaftarkan antrean batch render video (terpisah atau kompilasi) |
