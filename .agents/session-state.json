@@ -237,6 +237,46 @@
         }
       ],
       "verdict": "approved"
+    },
+    {
+      "id": "T12",
+      "task": "Pilar 1: Ketajaman Visual & Matriks Warna Sinematik (Unsharp Mask & BT.709 Color Matrix di FFmpeg video_engine.py)",
+      "owner_role": "backend-engineer",
+      "status": "todo",
+      "depends_on": ["T11"],
+      "rework_iteration_count": 0,
+      "reviewed_by": [],
+      "verdict": "pending"
+    },
+    {
+      "id": "T13",
+      "task": "Pilar 2: Mastering Audio Standar Broadcast (-14 LUFS Loudness Normalization & Smart Dynamic Auto-Ducking BGM)",
+      "owner_role": "backend-engineer",
+      "status": "todo",
+      "depends_on": ["T12"],
+      "rework_iteration_count": 0,
+      "reviewed_by": [],
+      "verdict": "pending"
+    },
+    {
+      "id": "T14",
+      "task": "Pilar 3: Komposisi Wajah Estetik (Upper-Third Golden Framing Rule, Subtitle Face Collision Avoidance, & Dual Podcast Split)",
+      "owner_role": "ml-vision-engineer",
+      "status": "todo",
+      "depends_on": ["T13"],
+      "rework_iteration_count": 0,
+      "reviewed_by": [],
+      "verdict": "pending"
+    },
+    {
+      "id": "T15",
+      "task": "Pilar 4: Retensi Visual Viral (Dynamic Hook Punch-In Zoom & Keyword Power Color/Emoji Subtitle Styling)",
+      "owner_role": "frontend-engineer",
+      "status": "todo",
+      "depends_on": ["T14"],
+      "rework_iteration_count": 0,
+      "reviewed_by": [],
+      "verdict": "pending"
     }
   ],
   "open_questions": [],
@@ -250,6 +290,6 @@
   "last_reviewer_verdict": {
     "role": "tech-critic",
     "result": "approved",
-    "note": "Milestone v2.7.0 (Live Synchronized Karaoke Preview di Studio & Auto-Whisper Fallback Engine) berhasil diimplementasikan, diverifikasi, dan disetujui 100%"
+    "note": "Blueprint v3.0.0 (Ultra-Quality Output Pipeline: Unsharp Mask, -14 LUFS Mastering, Upper-Third Golden Framing, & Hook Punch-In Zoom) disetujui masuk ke roadmap resmi PRD.md dan session-state.json"
   }
 }

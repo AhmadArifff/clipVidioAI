@@ -1,7 +1,7 @@
 # PRD: ClipVidio AI - Platform Architecture, Multi-Provider AI Engine & High-Speed Media Pipeline
 
 > **Dokumen Spesifikasi Produk (PRD)**  
-> **Versi**: 2.6.0 (Bilingual Subtitle Intelligence & Anti-Delay Audio Sync Architecture)  
+> **Versi**: 3.0.0 (Ultra-Quality Output & Viral Retention Media Pipeline Blueprint)  
 > **Status**: Approved for Development  
 > **Owner**: Ahmad Arif / clipVidioAI Core Team  
 > **Governance Engine**: Agentic AI Multi-Role System (.agents)
@@ -249,6 +249,7 @@ Memungkinkan pengguna mengubah video 16:9 atau 1:1 menjadi format vertikal 9:16 
 | **v2.5.0** | Oktober 2026 | GPU Hardware Acceleration (AMD AMF benchmark 2.86x real-time), Card Status GPU Studio, Peredaman Log Proxy Startup, dan Perbaikan FontFace encoding | Selesai (Verified Pass) |
 | **v2.6.0** | Oktober 2026 | Bilingual Subtitle Intelligence (Fokus Indonesian & English), Kalibrasi Audio-Text Offset Slider, dan Eliminasi Bentrok Subtitle Ganda | Selesai (Verified Pass) |
 | **v2.7.0** | Oktober 2026 | Live Synchronized Subtitle Karaoke Preview di Studio & Auto-Whisper Speech-to-Text Fallback untuk Video YouTube Nir-Subtitle | Selesai (Verified Pass) |
+| **v3.0.0** | Oktober 2026 | Ultra-Quality Output Pipeline: Unsharp Mask Sharpening, EBU R128 Broadcast Loudness (-14 LUFS), Auto-Ducking BGM, Upper-Third Framing, dan Dynamic Hook Punch-In Zoom | In Progress (Blueprint Approved) |
 
 ---
 
@@ -340,5 +341,46 @@ Untuk memastikan teks subtitle beriringan secara presisi dengan suara dubbing na
     3. `yt-dlp` mengunduh stream audio ringan (`m4a` / `bestaudio`) ke direktori temporer.
     4. Mesin OpenAI Whisper lokal (`whisper.load_model('base')`) mengekstrak dialog audio menjadi transkrip ber-timestamp presisi.
     5. Transkrip hasil olahan Whisper langsung diteruskan ke modul kurasi AI (Gemini / OpenRouter) untuk menemukan segmen klip viral.
+
+---
+
+## 10. Arsitektur Ultra-Quality Output & Viral Retention Media Pipeline (v3.0.0 Blueprint)
+
+Fokus utama pembaruan versi 3.0.0 adalah **Kualitas Hasil Akhir Video (Render Output Quality)**. Setiap klip yang dihasilkan dirancang agar memiliki ketajaman visual, kejernihan audio, dan daya tahan retensi penonton setara dengan video hasil edit studio profesional di TikTok, YouTube Shorts, dan Instagram Reels.
+
+### 10.1 Pilar 1: Ketajaman Visual & Matriks Warna Sinematik (Ultra-Sharp 1080p)
+* **Latar Belakang & Masalah**: Platform media sosial menerapkan algoritma kompresi bitrate agresif saat video diunggah, yang kerap menyebabkan video 9:16 terlihat buram atau kehilangan detail tekstur halus.
+* **Spesifikasi Teknis Filtergraph FFmpeg**:
+  * **Cinematic Unsharp Mask**: Mengaplikasikan filter penajaman tepi piksel mikro:
+    `unsharp=lx=5:ly=5:la=0.8:cx=3:cy=3:ca=0.4`
+    Filter ini meningkatkan kontras mikrotekstur pada mata, rambut, dan ekspresi wajah tanpa menghasilkan efek noise atau artefak halo.
+  * **Color Space & Color Primaries BT.709**:
+    Menetapkan flag warna secara eksplisit:
+    `-colorspace bt709 -color_primaries bt709 -color_trc bt709 -pix_fmt yuv420p`
+    Dilengkapi filter koreksi kontras halus (`eq=contrast=1.04:saturation=1.06`) untuk memastikan video tidak kusam atau pudar saat diputar di layar OLED smartphone.
+
+### 10.2 Pilar 2: Mastering Audio Standar Broadcast (-14 LUFS Loudness & Smart Auto-Ducking)
+* **Latar Belakang & Masalah**: Klip video pendek sering mengalami masalah volume suara narasi yang terlalu pelan, teredam musik latar (BGM), atau volume yang melonjak secara tidak nyaman.
+* **Spesifikasi Teknis Filter Audio FFmpeg**:
+  * **EBU R128 Digital Broadcast Loudness Normalization**:
+    Menerapkan standar industri media sosial:
+    `loudnorm=I=-14:LRA=7:TP=-1.5`
+    Target kenyaringan terukur pada **-14 LUFS** (Loudness Units Full Scale) dengan True Peak maksimal **-1.5 dBTP**, menjamin suara narasi terdengar lantang, tebal, dan jernih tanpa distorsi clipping.
+  * **Smart Dynamic Auto-Ducking BGM**:
+    Menggunakan sidechain compression atau multi-input ducking: saat narator mulai berbicara, volume BGM secara otomatis meredup halus sebesar 70% (-10 dB), dan saat narator berhenti atau jeda bernapas, volume BGM kembali naik secara elegan.
+
+### 10.3 Pilar 3: Komposisi Wajah Estetik (Upper-Third Golden Rule & Subtitle Collision Avoidance)
+* **Latar Belakang & Masalah**: Pemotongan video konvensional sering menempatkan wajah di tengah bawah yang canggung, atau teks subtitle menumpuk tepat di atas mulut/dagu pembicara.
+* **Spesifikasi Teknis Auto-Framing**:
+  * **Upper-Third Golden Framing Rule**: Berdasarkan output koordinat deteksi wajah OpenCV YuNet (`faceBox`), sistem menghitung translasi sumbu Y sehingga garis mata pembicara selalu diposisikan pada 33% dari atas kanvas 9:16 (zona fokus psikologis mata penonton).
+  * **Face-Aware Collision Avoidance**: Generator subtitle ASS secara matematis memeriksa batas bawah kotak wajah (`face_bottom_y`). Subtitle otomatis menyesuaikan offset vertikal (`safe_subtitle_y`) ke ruang kosong di bawah dagu atau di atas kepala, menjamin teks **tidak pernah menutupi ekspresi wajah pembicara**.
+  * **Podcast Dual-Speaker Split Screen Mode**: Ketika terdeteksi 2 wajah di sisi kiri dan kanan, layout otomatis beralih ke format vertikal bertumpuk (Host di separuh atas, Tamu di separuh bawah) dengan framing independen.
+
+### 10.4 Pilar 4: Retensi Visual Viral (Dynamic Punch-In Zoom & Keyword Emoji Styling)
+* **Latar Belakang & Masalah**: Penonton video pendek memutuskan bertahan atau swipe-away dalam 3 detik pertama. Video dengan framing statis monoton memiliki tingkat drop-off tinggi.
+* **Spesifikasi Teknis Retensi**:
+  * **Pattern Interrupt Punch-In Zoom**: Pada segmen hook pembuka (detik 0 s.d. 3) atau kalimat transisi penting, video menerapkan pembesaran halus 1.1x (*subtle punch-in zoom*) untuk memecah kebosanan mata penonton (*visual pattern interrupt*).
+  * **Keyword Power Color Accent**: Kata-kata berbobot emosi tinggi di transkrip (misal: *"kaget"*, *"rahasia"*, *"cuan"*, *"bahaya"*) otomatis dirender dengan warna aksen menyala (Merah Api / Emas Cerah) dan ikon emoji relevan (🔥, 💡, 💰, 😱) yang terintegrasi langsung ke dalam berkas subtitle ASS.
+
 
 
