@@ -57,6 +57,9 @@ class RenderSettingsModel(BaseModel):
     watermark_x: Optional[float] = 90.0
     watermark_y: Optional[float] = 8.0
     hardware_accel: Optional[str] = "auto"
+    # Subtitle Audio Timing Calibration & Language
+    subtitle_offset_ms: Optional[int] = 0        # Timing shift in ms (-1000ms to +1000ms)
+    subtitle_language: Optional[str] = "id"      # Subtitle language "id" | "en"
     # Multi-Segment Merged Highlight Video
     render_mode: Optional[str] = "separate"  # "separate" | "merged"
     compilation_title: Optional[str] = None

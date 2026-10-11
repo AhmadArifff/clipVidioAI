@@ -111,6 +111,10 @@ export default function App() {
   const [subtitlesSource, setSubtitlesSource] = useState<'youtube' | 'manual'>('youtube');
   const [manualSubtitlesContent, setManualSubtitlesContent] = useState<string>('');
   const [manualSubtitlesFileName, setManualSubtitlesFileName] = useState<string>('');
+  const [subtitleLanguage, setSubtitleLanguage] = useState<'id' | 'en'>(() => {
+    const saved = localStorage.getItem('clipvidio_subtitle_lang');
+    return (saved === 'en' || saved === 'id') ? saved : 'id';
+  });
 
   const parseTimeToSeconds = (val: string): number | null => {
     const clean = val.trim();
@@ -517,6 +521,9 @@ export default function App() {
             watermark_y: settings.watermarkY !== undefined ? settings.watermarkY : 8.0,
             // Hardware Acceleration / Encoder
             hardware_accel: settings.hardwareAccel || 'auto',
+            // Subtitle Audio Sync Offset & Language
+            subtitle_offset_ms: settings.subtitleOffsetMs || 0,
+            subtitle_language: settings.subtitleLanguage || 'id',
             // Multi-Segment Merged Highlight Video
             render_mode: settings.renderMode || 'separate',
             compilation_title: settings.compilationTitle || null,
@@ -1133,10 +1140,18 @@ export default function App() {
             rel: 0,
             controls: 1,
             fs: 1,
+            cc_load_policy: 0,
+            iv_load_policy: 3,
           },
           events: {
-            onReady: () => {
+            onReady: (event: any) => {
               console.log('YouTube Player Ready');
+              try {
+                if (event?.target && typeof event.target.unloadModule === 'function') {
+                  event.target.unloadModule('captions');
+                  event.target.unloadModule('cc');
+                }
+              } catch (_) {}
             },
             onStateChange: (event: any) => {
               // YT.PlayerState.PLAYING = 1
@@ -1424,8 +1439,9 @@ export default function App() {
       const promptSuffix = customPrompt.trim() ? `_prompt_${customPrompt.trim().replace(/[^a-zA-Z0-9]/g, '_')}` : '';
       const modelSuffix = `_model_${selectedModel}`;
       const clipsSuffix = clipCountMode === 'auto' ? '_clips_auto' : `_clips_${targetClipCount}`;
-      const cacheKey = `clipvidio_cache_${videoId}_${durationPref}${modelSuffix}${clipsSuffix}${promptSuffix}${rangeSuffix}${manualSuffix}`;
-      const legacyCacheKey = `cheat_clip_cache_${videoId}_${durationPref}${modelSuffix}${clipsSuffix}${promptSuffix}${rangeSuffix}${manualSuffix}`;
+      const langSuffix = `_lang_${subtitleLanguage}`;
+      const cacheKey = `clipvidio_cache_${videoId}_${durationPref}${modelSuffix}${clipsSuffix}${promptSuffix}${rangeSuffix}${manualSuffix}${langSuffix}`;
+      const legacyCacheKey = `cheat_clip_cache_${videoId}_${durationPref}${modelSuffix}${clipsSuffix}${promptSuffix}${rangeSuffix}${manualSuffix}${langSuffix}`;
 
       const cachedData = localStorage.getItem(cacheKey) || localStorage.getItem(legacyCacheKey);
       if (cachedData) {
@@ -1511,6 +1527,7 @@ export default function App() {
           subtitles_filename: subtitlesSource === 'manual' ? manualSubtitlesFileName : undefined,
           target_clip_count: clipCountMode === 'auto' ? 'auto' : targetClipCount,
           cookies: userCookies || undefined,
+          subtitle_language: subtitleLanguage,
         }),
       });
 
@@ -3228,6 +3245,68 @@ Transcript:
                 </div>
               )}
             </div>
+
+            {subtitlesSource === 'youtube' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem', marginTop: '0.4rem', padding: '0.75rem 0.9rem', borderRadius: '8px', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.07)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.6rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                      🌐 {t.form.subtitleLanguage || 'Bahasa Subtitle & Transkrip:'}
+                    </span>
+                    <span className="status-pill pill-active" style={{ fontSize: '0.68rem', padding: '0.1rem 0.45rem' }}>
+                      {subtitleLanguage === 'id' ? 'ID (Utama)' : 'EN (Original)'}
+                    </span>
+                  </div>
+                  <div className="toggle-pill-group" style={{ display: 'inline-flex', gap: '0.4rem' }}>
+                    <button
+                      type="button"
+                      className={`pill-btn ${subtitleLanguage === 'id' ? 'active' : ''}`}
+                      onClick={() => {
+                        setSubtitleLanguage('id');
+                        localStorage.setItem('clipvidio_subtitle_lang', 'id');
+                      }}
+                      disabled={loading}
+                      style={{
+                        fontSize: '0.78rem',
+                        padding: '0.25rem 0.75rem',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        fontWeight: 600,
+                        border: subtitleLanguage === 'id' ? '1px solid rgba(239, 68, 68, 0.7)' : '1px solid rgba(255, 255, 255, 0.1)',
+                        background: subtitleLanguage === 'id' ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.25), rgba(185, 28, 28, 0.35))' : 'rgba(255, 255, 255, 0.04)',
+                        color: subtitleLanguage === 'id' ? '#fca5a5' : 'var(--text-secondary)',
+                      }}
+                    >
+                      {t.form.subtitleLangId || '🇮🇩 Indonesia (id)'}
+                    </button>
+                    <button
+                      type="button"
+                      className={`pill-btn ${subtitleLanguage === 'en' ? 'active' : ''}`}
+                      onClick={() => {
+                        setSubtitleLanguage('en');
+                        localStorage.setItem('clipvidio_subtitle_lang', 'en');
+                      }}
+                      disabled={loading}
+                      style={{
+                        fontSize: '0.78rem',
+                        padding: '0.25rem 0.75rem',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        fontWeight: 600,
+                        border: subtitleLanguage === 'en' ? '1px solid rgba(59, 130, 246, 0.7)' : '1px solid rgba(255, 255, 255, 0.1)',
+                        background: subtitleLanguage === 'en' ? 'linear-gradient(135deg, rgba(59, 130, 246, 0.25), rgba(29, 78, 216, 0.35))' : 'rgba(255, 255, 255, 0.04)',
+                        color: subtitleLanguage === 'en' ? '#93c5fd' : 'var(--text-secondary)',
+                      }}
+                    >
+                      {t.form.subtitleLangEn || '🇺🇸 English (en)'}
+                    </button>
+                  </div>
+                </div>
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', lineHeight: 1.35 }}>
+                  💡 {t.form.subtitleLangTip || 'Fokus 2 bahasa: Pilih Bahasa Indonesia atau English. Jika video berbahasa Inggris dan Anda memilih Indonesia, transkrip terjemahan resmi bahasa Indonesia akan diprioritaskan.'}
+                </span>
+              </div>
+            )}
 
             {subtitlesSource === 'youtube' && (
               <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', opacity: 0.8, display: 'block', marginTop: '0.15rem', lineHeight: '1.4' }}>

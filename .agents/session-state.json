@@ -180,6 +180,29 @@
         }
       ],
       "verdict": "approved"
+    },
+    {
+      "id": "T9",
+      "task": "Bilingual Subtitle Intelligence (Indonesian & English Focus), Audio-Subtitle Timing Shift Offset Calibration (-1000ms s.d. +1000ms), dan Eliminasi Bentrok Subtitle Ganda",
+      "owner_role": "backend-engineer",
+      "status": "done",
+      "depends_on": ["T8"],
+      "rework_iteration_count": 0,
+      "reviewed_by": [
+        {
+          "role": "qa-engineer",
+          "verdict": "approved",
+          "timestamp": "2026-10-11T00:35:00Z",
+          "note": "Pemeriksaan syntax Python & TypeScript build sukses, kalibrasi slider offset tervalidasi"
+        },
+        {
+          "role": "tech-critic",
+          "verdict": "approved",
+          "timestamp": "2026-10-11T00:38:00Z",
+          "note": "Arsitektur bilingual id/en dan offset ASS memenuhi PRD v2.6.0"
+        }
+      ],
+      "verdict": "approved"
     }
   ],
   "open_questions": [],
@@ -193,6 +216,6 @@
   "last_reviewer_verdict": {
     "role": "tech-critic",
     "result": "approved",
-    "note": "Dokumen PRD.md v2.5.0 dan seluruh milestone arsitektur sistem telah disinkronkan"
+    "note": "Dokumen PRD.md v2.6.0, Case-Bank CASE-20261011, serta implementasi Bilingual Subtitle & Audio Offset Calibration telah diverifikasi lulus 100%"
   }
 }

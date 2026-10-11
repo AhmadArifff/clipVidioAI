@@ -42,6 +42,7 @@ class AnalyzeRequest(BaseModel):
     target_clip_count: Optional[Union[int, str]] = Field(None, description="Optional target number of clips or 'auto'")
     proxy: Optional[str] = Field(None, description="Optional custom proxy URL")
     cookies: Optional[str] = Field(None, description="Optional user YouTube cookies from browser LocalStorage")
+    subtitle_language: Optional[str] = Field("id", description="Preferred subtitle transcript language: 'id' or 'en'")
 
 class HeatmapPoint(BaseModel):
     start_time: float
@@ -66,3 +67,4 @@ class AnalyzeResponse(BaseModel):
     model: Optional[str] = None
     video_url: Optional[str] = None
     source_type: Optional[str] = "youtube"
+    subtitle_language: Optional[str] = "id"

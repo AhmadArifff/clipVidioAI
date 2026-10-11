@@ -247,7 +247,7 @@ Memungkinkan pengguna mengubah video 16:9 atau 1:1 menjadi format vertikal 9:16 
 | **v2.3.0** | Oktober 2026 | Pemulihan integrasi bypass YouTube: Supadata Residential Fallback, Webshare Proxying, Netscape Cookies sync, dan VisionOS emulation | Selesai (Verified Pass) |
 | **v2.4.0** | Oktober 2026 | Enterprise AI Router Multi-Provider: Integrasi OpenRouter (DeepSeek V3/R1) berdampingan dengan Google Gemini Multi-Key Rotation | Selesai (Verified Pass) |
 | **v2.5.0** | Oktober 2026 | GPU Hardware Acceleration (AMD AMF benchmark 2.86x real-time), Card Status GPU Studio, Peredaman Log Proxy Startup, dan Perbaikan FontFace encoding | Selesai (Verified Pass) |
-| **v2.6.0** | Oktober 2026 | Bilingual Subtitle Intelligence (Fokus Indonesian & English), Kalibrasi Audio-Text Offset Slider, dan Eliminasi Bentrok Subtitle Ganda | In Progress (Blueprint Approved) |
+| **v2.6.0** | Oktober 2026 | Bilingual Subtitle Intelligence (Fokus Indonesian & English), Kalibrasi Audio-Text Offset Slider, dan Eliminasi Bentrok Subtitle Ganda | Selesai (Verified Pass) |
 
 ---
 

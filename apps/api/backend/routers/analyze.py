@@ -345,7 +345,7 @@ async def analyze_video(request: AnalyzeRequest):
                     "overall_progress": 25,
                     "stage": "Video Verified",
                     "detail": f"Loaded video \"{title[:45]}\" ({int(duration)}s, {metadata.get('width')}x{metadata.get('height')})",
-                    "message": f"Loaded video — \"{title[:45]}\" ({int(duration)}s)"
+                    "message": f"Loaded video  -  \"{title[:45]}\" ({int(duration)}s)"
                 })
             except Exception as e:
                 yield _sse({"error": f"Failed to probe uploaded video metadata: {str(e)}", "status": 500})
@@ -369,7 +369,7 @@ async def analyze_video(request: AnalyzeRequest):
                     "step_progress": 100,
                     "overall_progress": 50,
                     "stage": "Acoustic Peaks Decoded",
-                    "detail": f"Acoustic engagement heatmap parsed — {len(heatmap)} audience interest data points generated.",
+                    "detail": f"Acoustic engagement heatmap parsed  -  {len(heatmap)} audience interest data points generated.",
                     "message": f"Acoustic energy heatmap loaded ({len(heatmap)} points)."
                 })
             except Exception as e:
@@ -403,8 +403,8 @@ async def analyze_video(request: AnalyzeRequest):
                         "step_progress": 100,
                         "overall_progress": 70,
                         "stage": "Subtitles Ready",
-                        "detail": f"Custom subtitles parsed — {len(transcript_lines)} timestamped lines loaded.",
-                        "message": f"Custom subtitles parsed — {len(transcript_lines)} lines loaded successfully."
+                        "detail": f"Custom subtitles parsed  -  {len(transcript_lines)} timestamped lines loaded.",
+                        "message": f"Custom subtitles parsed  -  {len(transcript_lines)} lines loaded successfully."
                     })
                 except Exception as e:
                     yield _sse({"error": f"Failed to parse manual subtitles: {str(e)}", "status": 400})
@@ -467,7 +467,7 @@ async def analyze_video(request: AnalyzeRequest):
                         "step_progress": 100,
                         "overall_progress": 70,
                         "stage": "Dialogue Transcribed",
-                        "detail": f"Whisper speech-to-text complete — {len(transcript_lines)} timestamped dialogue sentences ready.",
+                        "detail": f"Whisper speech-to-text complete  -  {len(transcript_lines)} timestamped dialogue sentences ready.",
                         "message": f"Whisper transcribed {len(transcript_lines)} dialogue segments successfully."
                     })
                 except Exception as e:
@@ -499,7 +499,7 @@ async def analyze_video(request: AnalyzeRequest):
                 "overall_progress": 8,
                 "stage": "Connecting to YouTube",
                 "detail": "Connecting to YouTube & fetching video metadata...",
-                "message": "Connecting to YouTube — fetching video title and duration..."
+                "message": "Connecting to YouTube  -  fetching video title and duration..."
             })
 
             channel = ""
@@ -517,7 +517,7 @@ async def analyze_video(request: AnalyzeRequest):
                     "overall_progress": 25,
                     "stage": "Video Verified",
                     "detail": f"Loaded metadata for \"{title[:45]}\" ({int(duration)}s)",
-                    "message": f"Connected — \"{title[:45]}\" ({int(duration)}s)"
+                    "message": f"Connected  -  \"{title[:45]}\" ({int(duration)}s)"
                 })
             except Exception as e:
                 if is_mock:
@@ -557,8 +557,8 @@ async def analyze_video(request: AnalyzeRequest):
                     "step_progress": 100,
                     "overall_progress": 50,
                     "stage": "Retention Decoded",
-                    "detail": f"Viewer retention heatmap loaded — {len(heatmap)} audience interest data points parsed.",
-                    "message": f"Viewer retention heatmap loaded — {len(heatmap)} data points scraped."
+                    "detail": f"Viewer retention heatmap loaded  -  {len(heatmap)} audience interest data points parsed.",
+                    "message": f"Viewer retention heatmap loaded  -  {len(heatmap)} data points scraped."
                 })
             else:
                 yield _sse({
@@ -566,8 +566,8 @@ async def analyze_video(request: AnalyzeRequest):
                     "step_progress": 100,
                     "overall_progress": 50,
                     "stage": "Dialogue Fallback",
-                    "detail": "No heatmap curve available — relying on full transcript dialogue analysis.",
-                    "message": "No heatmap available for this video — will rely on transcript content analysis."
+                    "detail": "No heatmap curve available  -  relying on full transcript dialogue analysis.",
+                    "message": "No heatmap available for this video  -  will rely on transcript content analysis."
                 })
 
             # ── Step 3: Transcript ───────────────────────────────────────────────
@@ -589,8 +589,8 @@ async def analyze_video(request: AnalyzeRequest):
                         "step_progress": 100,
                         "overall_progress": 70,
                         "stage": "Subtitles Ready",
-                        "detail": f"Custom subtitles parsed — {len(transcript_lines)} timestamped lines loaded.",
-                        "message": f"Custom subtitles parsed — {len(transcript_lines)} lines loaded successfully."
+                        "detail": f"Custom subtitles parsed  -  {len(transcript_lines)} timestamped lines loaded.",
+                        "message": f"Custom subtitles parsed  -  {len(transcript_lines)} lines loaded successfully."
                     })
                 except Exception as e:
                     yield _sse({"error": f"Failed to parse manual subtitles: {str(e)}", "status": 400})
@@ -620,8 +620,9 @@ async def analyze_video(request: AnalyzeRequest):
                 })
 
                 try:
+                    target_sub_lang = request.subtitle_language or "id"
                     task = asyncio.create_task(
-                        asyncio.to_thread(fetch_transcript, video_id, request.proxy, progress_callback, request.cookies)
+                        asyncio.to_thread(fetch_transcript, video_id, request.proxy, progress_callback, request.cookies, target_sub_lang)
                     )
 
                     while not task.done():
@@ -640,8 +641,8 @@ async def analyze_video(request: AnalyzeRequest):
                         "step_progress": 100,
                         "overall_progress": 70,
                         "stage": "Subtitles Ready",
-                        "detail": f"Subtitles loaded — {len(transcript_lines)} dialogue sentences with timestamps ready.",
-                        "message": f"Subtitles loaded — {len(transcript_lines)} lines parsed successfully."
+                        "detail": f"Subtitles loaded  -  {len(transcript_lines)} dialogue sentences with timestamps ready.",
+                        "message": f"Subtitles loaded  -  {len(transcript_lines)} lines parsed successfully."
                     })
                 except Exception as e:
                     if is_mock:
@@ -661,8 +662,8 @@ async def analyze_video(request: AnalyzeRequest):
                             "step_progress": 100,
                             "overall_progress": 70,
                             "stage": "Subtitles Ready",
-                            "detail": "Mock mode — 9 sample dialogue lines loaded.",
-                            "message": "Mock mode — using sample transcript."
+                            "detail": "Mock mode  -  9 sample dialogue lines loaded.",
+                            "message": "Mock mode  -  using sample transcript."
                         })
                     else:
                         if is_live or live_status in ('is_live', 'is_upcoming', 'post_live'):
@@ -861,7 +862,7 @@ async def analyze_video(request: AnalyzeRequest):
 
         MAX_LINES = 3500 if is_long_video else 2000
         if len(transcript_dump) > MAX_LINES:
-            logger.warning(f"Transcript {len(transcript_dump)} lines — truncating to {MAX_LINES}.")
+            logger.warning(f"Transcript {len(transcript_dump)} lines  -  truncating to {MAX_LINES}.")
             transcript_dump = transcript_dump[:MAX_LINES]
 
         transcript_text = "\n".join(transcript_dump)
@@ -1107,9 +1108,9 @@ async def analyze_video(request: AnalyzeRequest):
                                 "step_progress": 25,
                                 "overall_progress": 75,
                                 "stage": "Transient Retry",
-                                "detail": f"{model_name} busy — waiting {wait}s before retry ({attempt + 1}/{MAX_RETRIES})...",
+                                "detail": f"{model_name} busy  -  waiting {wait}s before retry ({attempt + 1}/{MAX_RETRIES})...",
                                 "model": model_name,
-                                "message": f"{model_name} is busy — waiting {wait}s before retry {attempt + 1}/{MAX_RETRIES}..."
+                                "message": f"{model_name} is busy  -  waiting {wait}s before retry {attempt + 1}/{MAX_RETRIES}..."
                             })
                             await asyncio.sleep(wait)
 
@@ -1229,9 +1230,9 @@ async def analyze_video(request: AnalyzeRequest):
                                         "step_progress": 40,
                                         "overall_progress": 78,
                                         "stage": "Flash Model Fallback",
-                                        "detail": f"{model_name} returned 0 clips — switching to {next_model_hint}...",
+                                        "detail": f"{model_name} returned 0 clips  -  switching to {next_model_hint}...",
                                         "model": next_model_hint,
-                                        "message": f"{model_name} returned 0 clips — switching to {next_model_hint}..."
+                                        "message": f"{model_name} returned 0 clips  -  switching to {next_model_hint}..."
                                     })
                                     last_error = Exception(f"{model_name} returned 0 clips")
                                     break
@@ -1272,9 +1273,9 @@ async def analyze_video(request: AnalyzeRequest):
                             "step_progress": 35,
                             "overall_progress": 76,
                             "stage": "Flash Fallback",
-                            "detail": f"{model_name} {err_summary} — switching to fallback {next_model_hint}...",
+                            "detail": f"{model_name} {err_summary}  -  switching to fallback {next_model_hint}...",
                             "model": next_model_hint,
-                            "message": f"{model_name} {err_summary} — switching to flash fallback model {next_model_hint}..."
+                            "message": f"{model_name} {err_summary}  -  switching to flash fallback model {next_model_hint}..."
                         })
 
                 if analysis_data is not None:
@@ -1411,7 +1412,7 @@ async def analyze_video(request: AnalyzeRequest):
             "stage": "Clip Verification & Alignment",
             "detail": f"Verified {clip_count} clip segments with precise video timestamps and key quotes in {lang_name}.",
             "model": successful_model or requested_model,
-            "message": f"Found {clip_count} viral clip candidates ({lang_name}) with {successful_model or requested_model} — reconstructing transcripts..."
+            "message": f"Found {clip_count} viral clip candidates ({lang_name}) with {successful_model or requested_model}  -  reconstructing transcripts..."
         })
         logger.info(f"Gemini analysis complete with {successful_model or requested_model}. Found {clip_count} clips in {lang_name}.")
 
@@ -1494,7 +1495,8 @@ async def analyze_video(request: AnalyzeRequest):
             transcript=response_transcript,
             model=successful_model or requested_model,
             video_url=video_url,
-            source_type=source_type
+            source_type=source_type,
+            subtitle_language=request.subtitle_language or "id"
         )
 
         yield _sse({"done": True, "result": final_result.model_dump()})

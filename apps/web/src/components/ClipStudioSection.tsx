@@ -215,6 +215,8 @@ export interface StudioPreferences {
   foregroundPositionY?: number;
   foregroundBorderRadius?: number;
   foregroundShadow?: boolean;
+  subtitleOffsetMs?: number;
+  subtitleLanguage?: 'id' | 'en';
 }
 
 export const DEFAULT_STUDIO_PREFS: Required<StudioPreferences> = {
@@ -255,6 +257,8 @@ export const DEFAULT_STUDIO_PREFS: Required<StudioPreferences> = {
   fileNameSuffix: '',
   titlePrefix: '',
   titleSuffix: '',
+  subtitleOffsetMs: 0,
+  subtitleLanguage: 'id',
 };
 
 function getSavedStudioPreferences(): Partial<StudioPreferences> {
@@ -346,6 +350,8 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
   const [subtitleYPercent, setSubtitleYPercent] = useState<number>(() => getSavedStudioPreferences().subtitleYPercent ?? DEFAULT_STUDIO_PREFS.subtitleYPercent);
   const [subtitlePositionMode, setSubtitlePositionMode] = useState<SubtitlePositionMode>(() => getSavedStudioPreferences().subtitlePositionMode ?? DEFAULT_STUDIO_PREFS.subtitlePositionMode);
   const [subtitleCenterYPercent, setSubtitleCenterYPercent] = useState<number>(() => getSavedStudioPreferences().subtitleCenterYPercent ?? DEFAULT_STUDIO_PREFS.subtitleCenterYPercent);
+  const [subtitleOffsetMs, setSubtitleOffsetMs] = useState<number>(() => getSavedStudioPreferences().subtitleOffsetMs ?? DEFAULT_STUDIO_PREFS.subtitleOffsetMs);
+  const [subtitleLanguage, setSubtitleLanguage] = useState<'id' | 'en'>(() => getSavedStudioPreferences().subtitleLanguage ?? DEFAULT_STUDIO_PREFS.subtitleLanguage);
   const [isCustomTitleY, setIsCustomTitleY] = useState<boolean>(() => getSavedStudioPreferences().isCustomTitleY ?? DEFAULT_STUDIO_PREFS.isCustomTitleY);
   const [titleDuration, setTitleDuration] = useState<TitleDurationOption>(() => getSavedStudioPreferences().titleDuration ?? DEFAULT_STUDIO_PREFS.titleDuration);
   const [isClearingTemp, setIsClearingTemp] = useState<boolean>(false);
@@ -1514,6 +1520,8 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
       fileNameSuffix,
       titlePrefix,
       titleSuffix,
+      subtitleOffsetMs,
+      subtitleLanguage,
     };
     try {
       localStorage.setItem(STUDIO_PREFS_KEY, JSON.stringify(prefs));
@@ -1558,6 +1566,8 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
     fileNameSuffix,
     titlePrefix,
     titleSuffix,
+    subtitleOffsetMs,
+    subtitleLanguage,
   ]);
 
   const handleResetToDefaults = () => {
@@ -1591,6 +1601,8 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
     setTitleYPercent(DEFAULT_STUDIO_PREFS.titleYPercent);
     setSubtitleYPercent(DEFAULT_STUDIO_PREFS.subtitleYPercent);
     setSubtitleCenterYPercent(DEFAULT_STUDIO_PREFS.subtitleCenterYPercent);
+    setSubtitleOffsetMs(DEFAULT_STUDIO_PREFS.subtitleOffsetMs);
+    setSubtitleLanguage(DEFAULT_STUDIO_PREFS.subtitleLanguage);
     setIsCustomTitleY(DEFAULT_STUDIO_PREFS.isCustomTitleY);
     setBgmVolume(DEFAULT_STUDIO_PREFS.bgmVolume);
     setHookSfxVolume(DEFAULT_STUDIO_PREFS.hookSfxVolume);
@@ -1655,6 +1667,8 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
       subtitleYPercent: safeSubtitleY,
       subtitlePositionMode,
       subtitleCenterYPercent: safeSubCenterY,
+      subtitleOffsetMs,
+      subtitleLanguage,
       selectedClips: enrichedSelectedClips,
       // Background Music
       bgmEnabled: !!bgmFilePath,
@@ -2891,6 +2905,127 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                     </div>
                   </div>
                 )}
+
+                {/* Subtitle Audio Timing Calibration (Delay / Sync Offset) */}
+                <div className="studio-sub-toggle" style={{ marginTop: '0.9rem', flexDirection: 'column', alignItems: 'stretch', padding: '0.75rem 0.85rem', borderRadius: '8px', background: 'rgba(255, 255, 255, 0.025)', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.45rem', flexWrap: 'wrap', gap: '0.4rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                      <span className="sub-toggle-label" style={{ margin: 0, fontWeight: 600 }}>
+                        ⏱️ {t.studio.subtitleOffsetLabel || "Kalibrasi Sinkronisasi Audio & Subtitle:"}
+                      </span>
+                      <span
+                        className={`status-pill ${subtitleOffsetMs !== 0 ? 'pill-active' : ''}`}
+                        style={{ fontSize: '0.68rem', padding: '0.12rem 0.5rem' }}
+                      >
+                        {subtitleOffsetMs === 0
+                          ? (t.studio.subtitleOffsetZero || "In Sync (0 ms)")
+                          : subtitleOffsetMs < 0
+                          ? `${subtitleOffsetMs} ms (${Math.abs(subtitleOffsetMs / 1000).toFixed(2)}s lebih awal)`
+                          : `+${subtitleOffsetMs} ms (${(subtitleOffsetMs / 1000).toFixed(2)}s lebih lambat)`}
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
+                        <input
+                          type="number"
+                          min="-1000"
+                          max="1000"
+                          step="50"
+                          value={subtitleOffsetMs}
+                          onChange={(e) => {
+                            const val = parseInt(e.target.value, 10);
+                            setSubtitleOffsetMs(isNaN(val) ? 0 : Math.max(-1000, Math.min(1000, val)));
+                          }}
+                          className="studio-text-input"
+                          style={{
+                            width: '64px',
+                            padding: '0.2rem 0.4rem',
+                            fontSize: '0.75rem',
+                            textAlign: 'center',
+                            borderRadius: '5px',
+                            border: subtitleOffsetMs !== 0 ? '1px solid var(--primary, #38bdf8)' : '1px solid rgba(255,255,255,0.15)',
+                          }}
+                          title="Ketik offset dalam milidetik (-1000 s/d +1000 ms)"
+                        />
+                        <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>ms</span>
+                      </div>
+                      <button
+                        type="button"
+                        className="reset-btn"
+                        onClick={() => setSubtitleOffsetMs(0)}
+                        title="Kembalikan offset waktu ke 0 ms"
+                        style={{
+                          fontSize: '0.72rem',
+                          padding: '0.15rem 0.45rem',
+                          border: '1px solid rgba(255,255,255,0.15)',
+                          background: 'transparent',
+                          color: 'var(--text-muted)',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {t.studio.resetPosition || "Reset (0ms)"}
+                      </button>
+                    </div>
+                  </div>
+
+                  <input
+                    type="range"
+                    min="-1000"
+                    max="1000"
+                    step="50"
+                    value={subtitleOffsetMs}
+                    onChange={(e) => setSubtitleOffsetMs(Number(e.target.value))}
+                    className="position-slider"
+                  />
+
+                  <div className="quick-presets-row" style={{ display: 'flex', gap: '0.35rem', marginTop: '0.4rem', flexWrap: 'wrap' }}>
+                    <button
+                      type="button"
+                      className={`pill-btn ${subtitleOffsetMs === -300 ? 'active' : ''}`}
+                      onClick={() => setSubtitleOffsetMs(-300)}
+                      style={{ fontSize: '0.7rem', padding: '0.15rem 0.45rem' }}
+                    >
+                      -300 ms (Lebih Awal)
+                    </button>
+                    <button
+                      type="button"
+                      className={`pill-btn ${subtitleOffsetMs === -150 ? 'active' : ''}`}
+                      onClick={() => setSubtitleOffsetMs(-150)}
+                      style={{ fontSize: '0.7rem', padding: '0.15rem 0.45rem' }}
+                    >
+                      -150 ms
+                    </button>
+                    <button
+                      type="button"
+                      className={`pill-btn ${subtitleOffsetMs === 0 ? 'active' : ''}`}
+                      onClick={() => setSubtitleOffsetMs(0)}
+                      style={{ fontSize: '0.7rem', padding: '0.15rem 0.45rem' }}
+                    >
+                      0 ms (Normal)
+                    </button>
+                    <button
+                      type="button"
+                      className={`pill-btn ${subtitleOffsetMs === 150 ? 'active' : ''}`}
+                      onClick={() => setSubtitleOffsetMs(150)}
+                      style={{ fontSize: '0.7rem', padding: '0.15rem 0.45rem' }}
+                    >
+                      +150 ms
+                    </button>
+                    <button
+                      type="button"
+                      className={`pill-btn ${subtitleOffsetMs === 300 ? 'active' : ''}`}
+                      onClick={() => setSubtitleOffsetMs(300)}
+                      style={{ fontSize: '0.7rem', padding: '0.15rem 0.45rem' }}
+                    >
+                      +300 ms (Lebih Lambat)
+                    </button>
+                  </div>
+
+                  <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', margin: '0.35rem 0 0 0', lineHeight: 1.35 }}>
+                    💡 {t.studio.subtitleOffsetHint || "Geser ke kiri (-ms) jika subtitle muncul terlambat dari dubbing suara, atau ke kanan (+ms) jika subtitle muncul terlalu cepat."}
+                  </p>
+                </div>
               </>
             )}
           </div>

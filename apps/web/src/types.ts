@@ -35,6 +35,7 @@ export interface AnalyzeResponse {
   model?: string;
   video_url?: string;
   source_type?: 'youtube' | 'upload' | 'gdrive';
+  subtitle_language?: string;
 }
 
 export type AspectRatioOption = '9:16' | '1:1' | '4:3' | '16:9' | '16:9_landscape';
@@ -177,6 +178,9 @@ export interface RenderSettings {
   watermarkY?: number; // 0 to 100%
   // Hardware Acceleration / Video Encoder
   hardwareAccel?: HardwareAccelOption;
+  // Subtitle Audio Calibration & Language
+  subtitleOffsetMs?: number; // -1000 to +1000 ms
+  subtitleLanguage?: 'id' | 'en';
   // Multi-Segment Merged Highlight Video
   renderMode?: 'separate' | 'merged';
   compilationTitle?: string;

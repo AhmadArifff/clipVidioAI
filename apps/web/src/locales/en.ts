@@ -86,6 +86,10 @@ export const en = {
     subtitlesTipTitle: "Subtitles Tip:",
     subtitlesTipDesc: "If auto transcript fails or subtitles are unavailable, you can download subtitles manually using",
     andUploadOption: "and upload them using the Upload Custom Subtitles option.",
+    subtitleLanguage: "Subtitle & Transcript Language:",
+    subtitleLangId: "🇮🇩 Indonesian (id)",
+    subtitleLangEn: "🇺🇸 English (en)",
+    subtitleLangTip: "Focused bilingual option: Choose Indonesian or English. If the video is in English and you select Indonesian, official translated captions will be prioritized.",
 
     // Analysis Range
     analysisRange: "Analysis Range",
@@ -392,6 +396,9 @@ export const en = {
     subtitlesDisabled: "Disabled",
     subtitlesDisabledNotice: "Subtitles are disabled. Live preview and final export will have no burned subtitles.",
     strictlyOneLine: "Strictly 1 Line",
+    subtitleOffsetLabel: "Audio & Subtitle Timing Calibration:",
+    subtitleOffsetZero: "In Sync (0 ms)",
+    subtitleOffsetHint: "Shift slider left (-ms) if subtitles appear delayed after spoken dubbing, or right (+ms) if subtitles pop up too early.",
     fileNameTitle: "📁 Video File Name Option",
     fileNameBadge: "Optional",
     fileNamePrefixLabel: "Filename Prefix (Optional):",

@@ -1791,7 +1791,8 @@ def generate_ass_file(
     title_font_name: Optional[str] = None,
     font_size_px: Optional[int] = None,
     title_font_size_px: Optional[int] = None,
-    title_text_case: Optional[str] = None
+    title_text_case: Optional[str] = None,
+    subtitle_offset_ms: Optional[int] = 0
 ) -> str:
     """
     Generates an Advanced SubStation Alpha (.ass) subtitle and title file with karaoke / word-level animation.
@@ -2038,15 +2039,20 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 
     # 4. Add Subtitle Events if captions are enabled (guaranteed ZERO vertical glitch / jumping)
     if words and style_preset != "none":
-        # Step A: Sanitize and sort all word timestamps
+        # Step A: Sanitize and sort all word timestamps with optional timing shift calibration
+        offset_sec = float(subtitle_offset_ms or 0) / 1000.0
         valid_words = []
         for w in words:
             raw_text = clean_caption_text(w.get("word", "").strip())
             if not raw_text:
                 continue
             w_text = escape_ass_text(apply_text_case(raw_text, text_case))
-            st = max(0.0, float(w.get("start", 0.0)))
-            et = max(st + 0.08, float(w.get("end", st + 0.25)))
+            raw_st = float(w.get("start", 0.0))
+            raw_et = float(w.get("end", raw_st + 0.25))
+            st = max(0.0, raw_st + offset_sec)
+            et = max(st + 0.08, raw_et + offset_sec)
+            if et <= st:
+                et = st + 0.08
             valid_words.append({"word_text": w_text, "start": st, "end": et, "raw": w})
 
         valid_words.sort(key=lambda x: x["start"])

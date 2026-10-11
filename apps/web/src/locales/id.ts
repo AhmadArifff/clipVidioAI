@@ -88,6 +88,10 @@ export const id: Translations = {
     subtitlesTipTitle: "Tips Subtitle:",
     subtitlesTipDesc: "Jika transkrip otomatis gagal atau subtitle tidak tersedia, unduh subtitle secara manual melalui",
     andUploadOption: "dan unggah menggunakan opsi Unggah Subtitle Manual di atas.",
+    subtitleLanguage: "Bahasa Subtitle & Transkrip:",
+    subtitleLangId: "🇮🇩 Indonesia (id)",
+    subtitleLangEn: "🇺🇸 English (en)",
+    subtitleLangTip: "Fokus 2 bahasa: Pilih Bahasa Indonesia atau English. Jika video berbahasa Inggris dan Anda memilih Indonesia, transkrip terjemahan resmi bahasa Indonesia akan diprioritaskan.",
 
     // Analysis Range
     analysisRange: "Rentang Analisis",
@@ -394,6 +398,9 @@ export const id: Translations = {
     subtitlesDisabled: "Nonaktif",
     subtitlesDisabledNotice: "Subtitle saat ini dinonaktifkan. Pratinjau dan ekspor video tidak akan mencetak subtitle.",
     strictlyOneLine: "Tepat 1 Baris",
+    subtitleOffsetLabel: "Kalibrasi Sinkronisasi Audio & Subtitle:",
+    subtitleOffsetZero: "Tepat Waktu (0 ms)",
+    subtitleOffsetHint: "Geser ke kiri (-ms) jika subtitle muncul terlambat dari dubbing suara, atau ke kanan (+ms) jika subtitle muncul terlalu cepat.",
     fileNameTitle: "📁 Opsi Nama Berkas Video",
     fileNameBadge: "Opsional",
     fileNamePrefixLabel: "Awalan Nama Berkas (Opsional):",

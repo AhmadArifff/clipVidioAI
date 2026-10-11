@@ -77,16 +77,15 @@ def normalize_transcript(fetched_data) -> List[dict]:
     return results
 
 
-def prioritize_transcripts(transcripts: list) -> list:
+def prioritize_transcripts(transcripts: list, preferred_lang: Optional[str] = "id") -> list:
     """
-    Sorts transcript tracks ensuring the video's authentic original spoken language is prioritized
-    over foreign/translated tracks:
-    1. If YouTube provides an auto-generated track (is_generated=True), its language code is
-       the authentic native spoken language of the video.
-       - A manual human track matching that native language is highest priority (rank 0).
-       - The native auto-generated ASR track is rank 1.
-    2. If no auto-generated track exists, prioritize manual tracks before generated tracks.
+    Sorts transcript tracks prioritizing the user's preferred language (e.g. 'id' or 'en'),
+    followed by the video's authentic original spoken language:
+    1. If a track matches preferred_lang: manual track = rank 0, auto-generated = rank 1.
+    2. Then, tracks matching the video's authentic native spoken language: manual = rank 10, auto = rank 11.
+    3. Other languages: manual = rank 20, auto = rank 21.
     """
+    pref = (preferred_lang or "").lower().split("-")[0]
     native_asr_lang = None
     for t in transcripts:
         if getattr(t, 'is_generated', False):
@@ -100,14 +99,13 @@ def prioritize_transcripts(transcripts: list) -> list:
         base_code = code.split('-')[0]
         is_gen = getattr(t, 'is_generated', False)
 
-        if native_asr_lang:
-            if base_code == native_asr_lang:
-                return 0 if not is_gen else 1
-            # If not matching native audio language, manual comes before auto
-            return 2 if not is_gen else 3
-        else:
-            # Fallback when no ASR track: manual tracks always beat auto-generated
+        if pref and base_code == pref:
             return 0 if not is_gen else 1
+
+        if native_asr_lang and base_code == native_asr_lang:
+            return 10 if not is_gen else 11
+
+        return 20 if not is_gen else 21
 
     return sorted(transcripts, key=rank_track)
 
@@ -285,8 +283,13 @@ _supadata_usage_cache = {
 _CACHE_TTL_SECONDS = 30
 
 
-def fetch_transcript_supadata(video_id: str, error_collector: Optional[List[str]] = None) -> List[dict]:
-    """Fetches transcript from Supadata API, rotating through available keys if rate limits/quotas occur."""
+def fetch_transcript_supadata(
+    video_id: str,
+    error_collector: Optional[List[str]] = None,
+    preferred_lang: Optional[str] = "id"
+) -> List[dict]:
+    """Fetches transcript from Supadata API, rotating through available keys if rate limits/quotas occur.
+    Tries preferred_lang first, and gracefully falls back to default track if 404 occurs."""
     global _supadata_key_index, _supadata_usage_cache
     keys = get_supadata_keys()
     if not keys:
@@ -305,13 +308,29 @@ def fetch_transcript_supadata(video_id: str, error_collector: Optional[List[str]
     for key in rotated_keys:
         masked_key = f"{key[:7]}...{key[-4:]}" if len(key) >= 11 else "***"
         try:
-            logger.info(f"Attempting Supadata transcript fetch with key {masked_key}")
+            logger.info(f"Attempting Supadata transcript fetch with key {masked_key} (lang={preferred_lang or 'default'})")
+            params = {"videoId": video_id}
+            if preferred_lang:
+                params["lang"] = preferred_lang
+
             response = requests.get(
                 "https://api.supadata.ai/v1/youtube/transcript",
                 headers={"x-api-key": key},
-                params={"videoId": video_id},
+                params=params,
                 timeout=12
             )
+            # If 404 with specific lang, fallback to default transcript without lang param
+            if response.status_code == 404 and preferred_lang:
+                logger.info(f"Supadata returned 404 for lang={preferred_lang}, retrying without lang filter...")
+                fallback_resp = requests.get(
+                    "https://api.supadata.ai/v1/youtube/transcript",
+                    headers={"x-api-key": key},
+                    params={"videoId": video_id},
+                    timeout=12
+                )
+                if fallback_resp.status_code == 200:
+                    response = fallback_resp
+
             if response.status_code == 200:
                 data = response.json()
                 content = data.get("content") or []
@@ -466,9 +485,14 @@ def get_supadata_usage_data(force: bool = False) -> dict:
     return res
 
 
-def fetch_transcript_ytdlp(video_id: str, proxy: Optional[str] = None, cookies_content: Optional[str] = None) -> List[dict]:
+def fetch_transcript_ytdlp(
+    video_id: str,
+    proxy: Optional[str] = None,
+    cookies_content: Optional[str] = None,
+    preferred_lang: Optional[str] = "id"
+) -> List[dict]:
     """Attempts to extract captions using yt-dlp's player response directly (free, no quota used).
-    Can be run direct (proxy=None) or routed through a proxy."""
+    Can be run direct (proxy=None) or routed through a proxy. Prioritizes preferred_lang."""
     with ephemeral_cookies_file(cookies_content) as temp_cookies:
         ydl_opts = {
             'skip_download': True,
@@ -494,16 +518,19 @@ def fetch_transcript_ytdlp(video_id: str, proxy: Optional[str] = None, cookies_c
             
             # Identify the video's native audio language
             audio_lang = (info.get('audio_language') or info.get('language') or '').lower().split('-')[0]
+            pref = (preferred_lang or "").lower().split("-")[0]
             
-            # Build priority: native language first, then whatever matches
+            # Build priority: preferred language first, then native language, then fallbacks
             langs_to_try = []
-            if audio_lang:
+            if pref:
+                langs_to_try.append(pref)
+            if audio_lang and audio_lang not in langs_to_try:
                 langs_to_try.append(audio_lang)
-            for l in ['en', 'id', 'es', 'pt', 'fr', 'de', 'ja', 'ko', 'zh-Hans', 'zh-Hant', 'ar', 'hi', 'ru']:
+            for l in ['id', 'en', 'es', 'pt', 'fr', 'de', 'ja', 'ko', 'zh-Hans', 'zh-Hant', 'ar', 'hi', 'ru']:
                 if l not in langs_to_try:
                     langs_to_try.append(l)
 
-            # Manual subtitles first, then auto captions in native language
+            # Manual subtitles first, then auto captions
             for lang_dict, is_auto in [(subtitles, False), (auto_subtitles, True)]:
                 ordered_langs = [l for l in langs_to_try if l in lang_dict] + [l for l in lang_dict if l not in langs_to_try]
                 for lang in ordered_langs:
@@ -539,17 +566,18 @@ def fetch_transcript(
     video_id: str,
     custom_proxy: Optional[str] = None,
     on_progress: Optional[Callable[[str, str, int], None]] = None,
-    cookies_content: Optional[str] = None
+    cookies_content: Optional[str] = None,
+    preferred_lang: Optional[str] = "id"
 ) -> List[dict]:
     """Retrieves subtitles using a comprehensive multi-tier fallback pipeline:
-      Tier 1: Supadata API (if keys configured) — cloud residential rotation
+      Tier 1: Supadata API (if keys configured)  -  cloud residential rotation
       Tier 2: YouTubeTranscriptApi Python API (Proxy + Shared Session + Browser Headers + Translation fallback)
       Tier 3: YouTubeTranscriptApi CLI Subprocess (Proxy)
       Tier 4: yt-dlp Native Extraction (Proxy)
       Tier 5: Direct YouTubeTranscriptApi Python API (Direct, Shared Session + Browser Headers)
       Tier 6: Direct YouTubeTranscriptApi CLI Subprocess (Direct)
       Tier 7: Direct yt-dlp Native Extraction (Direct)
-    If all tiers fail, raises detailed HTTPException with full diagnostics and solutions.
+    Prioritizes user's preferred language (e.g. 'id' or 'en') with automatic translation if track is translatable.
     """
     def notify(stage: str, detail: str, pct: int):
         if on_progress:
@@ -558,7 +586,7 @@ def fetch_transcript(
             except Exception:
                 pass
 
-    priority_langs = ['id', 'en', 'es', 'pt', 'fr', 'de', 'ja', 'ko', 'zh-Hans', 'zh-Hant', 'ar', 'hi', 'ru']
+    pref_code = (preferred_lang or "id").lower().split("-")[0]
     keys = get_supadata_keys()
     proxy_url = custom_proxy or get_proxy_url()
     proxy_cfg = get_youtube_transcript_proxy_config(custom_proxy)
@@ -566,12 +594,12 @@ def fetch_transcript(
 
     # ── Tier 1: Supadata API (if keys configured) ─────────────────────────────
     if keys:
-        logger.info(f"[Tier 1] Attempting transcript retrieval via Supadata API ({len(keys)} keys configured)...")
+        logger.info(f"[Tier 1] Attempting transcript retrieval via Supadata API ({len(keys)} keys configured, lang={pref_code})...")
         notify("Tier 1/7: Supadata Cloud API", f"Trying Method 1/7: Supadata Cloud API ({len(keys)} keys rotation)...", 30)
-        supadata_data = fetch_transcript_supadata(video_id, error_collector=attempt_history)
+        supadata_data = fetch_transcript_supadata(video_id, error_collector=attempt_history, preferred_lang=pref_code)
         if supadata_data:
             return normalize_transcript(supadata_data)
-        logger.info("[Tier 1] Supadata API unsuccessful — proceeding to proxy fallback tiers...")
+        logger.info("[Tier 1] Supadata API unsuccessful  -  proceeding to proxy fallback tiers...")
     else:
         attempt_history.append("Tier 1 (Supadata API): Not configured (no keys in SUPADATA_API_KEYS)")
 
@@ -586,18 +614,48 @@ def fetch_transcript(
             client = create_http_client(timeout=15.0)
             proxy_api = YouTubeTranscriptApi(proxy_config=proxy_cfg, http_client=client)
 
-            # 2. List all transcripts and prioritize Indonesian and English
+            # List all transcripts and prioritize preferred language
             try:
                 all_transcripts = list(proxy_api.list(video_id))
-                target_tracks = prioritize_transcripts(all_transcripts)
-                
+                target_tracks = prioritize_transcripts(all_transcripts, preferred_lang=pref_code)
+
+                # Phase 2A: Direct match for preferred language
+                for t in target_tracks:
+                    code = (getattr(t, 'language_code', '') or '').lower().split('-')[0]
+                    if code == pref_code:
+                        try:
+                            data = t.fetch()
+                            res = normalize_transcript(data)
+                            if res:
+                                _shared_cookie_jar.update(client.cookies)
+                                logger.info(f"[Tier 2] Direct transcript fetched ({t.language_code} - {t.language}): {len(res)} lines")
+                                return res
+                        except Exception:
+                            continue
+
+                # Phase 2B: Automatic translation to preferred language if translatable
+                for t in target_tracks:
+                    if getattr(t, 'is_translatable', False):
+                        try:
+                            translated_t = t.translate(pref_code)
+                            data = translated_t.fetch()
+                            res = normalize_transcript(data)
+                            if res:
+                                _shared_cookie_jar.update(client.cookies)
+                                logger.info(f"[Tier 2] Translated transcript into '{pref_code}' fetched ({t.language_code} -> {pref_code}): {len(res)} lines")
+                                return res
+                        except Exception as trans_err:
+                            logger.debug(f"[Tier 2] Translation to {pref_code} failed: {trans_err}")
+                            continue
+
+                # Phase 2C: Fallback to any available track in prioritized order
                 for t in target_tracks:
                     try:
                         data = t.fetch()
                         res = normalize_transcript(data)
                         if res:
                             _shared_cookie_jar.update(client.cookies)
-                            logger.info(f"[Tier 2] Transcript fetched via proxy Python API ({t.language_code} - {t.language}): {len(res)} lines")
+                            logger.info(f"[Tier 2] Fallback transcript fetched ({t.language_code} - {t.language}): {len(res)} lines")
                             return res
                     except Exception:
                         continue
@@ -615,7 +673,7 @@ def fetch_transcript(
         try:
             cli_data = fetch_transcript_cli(
                 video_id,
-                priority_langs=None,
+                priority_langs=[pref_code, 'id', 'en'] if pref_code else None,
                 proxy_url=proxy_url,
                 custom_proxy=custom_proxy,
                 timeout=20
@@ -629,7 +687,7 @@ def fetch_transcript(
         # ── Tier 4: yt-dlp Native Extraction with Proxy ──────────────────────────
         notify("Tier 4/7: Proxy yt-dlp Native", "Trying Method 4/7: yt-dlp native caption extraction via proxy...", 70)
         try:
-            ytdlp_proxy_data = fetch_transcript_ytdlp(video_id, proxy=proxy_url, cookies_content=cookies_content)
+            ytdlp_proxy_data = fetch_transcript_ytdlp(video_id, proxy=proxy_url, cookies_content=cookies_content, preferred_lang=pref_code)
             if ytdlp_proxy_data:
                 res = normalize_transcript(ytdlp_proxy_data)
                 if res:
@@ -653,8 +711,38 @@ def fetch_transcript(
 
         try:
             all_transcripts = list(direct_api.list(video_id))
-            target_tracks = prioritize_transcripts(all_transcripts)
-            
+            target_tracks = prioritize_transcripts(all_transcripts, preferred_lang=pref_code)
+
+            # Phase 5A: Direct match for preferred language
+            for t in target_tracks:
+                code = (getattr(t, 'language_code', '') or '').lower().split('-')[0]
+                if code == pref_code:
+                    try:
+                        data = t.fetch()
+                        res = normalize_transcript(data)
+                        if res:
+                            _shared_cookie_jar.update(direct_client.cookies)
+                            logger.info(f"[Tier 5] Direct transcript fetched ({t.language_code} - {t.language}): {len(res)} lines")
+                            return res
+                    except Exception:
+                        continue
+
+            # Phase 5B: Automatic translation to preferred language if translatable
+            for t in target_tracks:
+                if getattr(t, 'is_translatable', False):
+                    try:
+                        translated_t = t.translate(pref_code)
+                        data = translated_t.fetch()
+                        res = normalize_transcript(data)
+                        if res:
+                            _shared_cookie_jar.update(direct_client.cookies)
+                            logger.info(f"[Tier 5] Translated transcript into '{pref_code}' fetched ({t.language_code} -> {pref_code}): {len(res)} lines")
+                            return res
+                    except Exception as trans_err:
+                        logger.debug(f"[Tier 5] Translation to {pref_code} failed: {trans_err}")
+                        continue
+
+            # Phase 5C: Fallback to any available track in prioritized order
             for transcript in target_tracks:
                 try:
                     data = transcript.fetch()
@@ -677,7 +765,12 @@ def fetch_transcript(
     # ── Tier 6: Direct YouTubeTranscriptApi CLI Subprocess ────────────────────
     notify("Tier 6/7: Direct CLI Subprocess", "Trying Method 6/7: Direct isolated CLI subprocess...", 88)
     try:
-        direct_cli_data = fetch_transcript_cli(video_id, priority_langs=None, proxy_url=None, timeout=15)
+        direct_cli_data = fetch_transcript_cli(
+            video_id,
+            priority_langs=[pref_code, 'id', 'en'] if pref_code else None,
+            proxy_url=None,
+            timeout=15
+        )
         if direct_cli_data:
             logger.info(f"[Tier 6] Transcript fetched via direct CLI subprocess: {len(direct_cli_data)} lines")
             return direct_cli_data
@@ -687,7 +780,7 @@ def fetch_transcript(
     # ── Tier 7: Direct yt-dlp Native Extraction ──────────────────────────────
     notify("Tier 7/7: Direct yt-dlp Native", "Trying Method 7/7: Direct yt-dlp native caption extraction...", 94)
     try:
-        direct_ytdlp_data = fetch_transcript_ytdlp(video_id, proxy=None, cookies_content=cookies_content)
+        direct_ytdlp_data = fetch_transcript_ytdlp(video_id, proxy=None, cookies_content=cookies_content, preferred_lang=pref_code)
         if direct_ytdlp_data:
             res = normalize_transcript(direct_ytdlp_data)
             if res:
