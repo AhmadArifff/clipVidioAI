@@ -181,7 +181,7 @@ ClipVidio AI dilengkapi rangkaian kapabilitas setara studio profesional:
 1. **Frontend Code-Splitting & Modular Refactoring:**
    * Memecah file raksasa `src/App.tsx` (221 KB) dan `ClipStudioSection.tsx` (223 KB) menjadi komponen-komponen kecil dengan `React.lazy()` untuk memangkas waktu *First Contentful Paint (FCP)*.
 2. **Optimasi Computer Vision (Frame Skipping Face Detection):**
-   * Saat ini deteksi wajah memindai setiap frame video. Mengubahnya dengan memindai 1 frame setiap 3–5 frame lalu melakukan interpolasi linier bounding box akan **mempercepat render hingga 300%** dengan akurasi yang tetap mulus.
+   * Saat ini deteksi wajah memindai setiap frame video. Mengubahnya dengan memindai 1 frame setiap 3 - 5 frame lalu melakukan interpolasi linier bounding box akan **mempercepat render hingga 300%** dengan akurasi yang tetap mulus.
 3. **Local Offline Transcription (Faster-Whisper):**
    * Menambahkan modul `faster-whisper` di backend sehingga video lokal tanpa subtitle YouTube dapat langsung ditranskrip secara offline tanpa perlu dependensi layanan cloud pihak ketiga.
 4. **Asynchronous Background Task Queue:**
