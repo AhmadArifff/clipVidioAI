@@ -390,6 +390,103 @@
         }
       ],
       "verdict": "approved"
+    },
+    {
+      "id": "T21",
+      "task": "Penyusunan Master Blueprint Section 12 di PRD.md dan Pemetaan Sub-tugas v3.2.0 (Smart BGM Compositing, Dynamic Auto-Ducking -14 LUFS & Hook Punch-In Zoom)",
+      "owner_role": "product-manager",
+      "status": "done",
+      "depends_on": ["T20"],
+      "rework_iteration_count": 0,
+      "reviewed_by": [
+        {
+          "role": "tech-critic",
+          "verdict": "approved",
+          "timestamp": "2026-10-12T07:12:00Z",
+          "note": "Spesifikasi Section 12 PRD.md terstruktur komprehensif tanpa em dash"
+        }
+      ],
+      "verdict": "approved"
+    },
+    {
+      "id": "T22",
+      "task": "Pengembangan Router Audio (audio.py), Pustaka Preset BGM Bebas Royalti (Lo-Fi, Phonk, Cinematic, Upbeat) dan Sistem Upload Audio Aman Berbasis Streaming Chunk",
+      "owner_role": "backend-engineer",
+      "status": "todo",
+      "depends_on": ["T21"],
+      "rework_iteration_count": 0,
+      "reviewed_by": [],
+      "verdict": "pending"
+    },
+    {
+      "id": "T23",
+      "task": "Implementasi Filtergraph FFmpeg: Looping BGM, Sidechain Auto-Ducking, EBU R128 Broadcast Normalization (-14 LUFS), dan Dynamic 3-Second Hook Punch-In Zoom",
+      "owner_role": "backend-engineer",
+      "status": "todo",
+      "depends_on": ["T22"],
+      "rework_iteration_count": 0,
+      "reviewed_by": [],
+      "verdict": "pending"
+    },
+    {
+      "id": "T24",
+      "task": "Integrasi Skema Pydantic, Tipe TypeScript, Panel Studio UI Audio & BGM Compositing (Selector, Mini Preview Player, Volume Slider, Ducking Toggle, Zoom Toggle) dan Lokalisasi Bilingual",
+      "owner_role": "frontend-engineer",
+      "status": "todo",
+      "depends_on": ["T23"],
+      "rework_iteration_count": 0,
+      "reviewed_by": [],
+      "verdict": "pending"
+    },
+    {
+      "id": "T25",
+      "task": "Pengujian Render Pipeline E2E (Single & Merged), Validasi Keseimbangan Audio/Sidechain Ducking, dan Verifikasi Build Bebas Glitch",
+      "owner_role": "qa-engineer",
+      "status": "todo",
+      "depends_on": ["T24"],
+      "rework_iteration_count": 0,
+      "reviewed_by": [],
+      "verdict": "pending"
+    },
+    {
+      "id": "T26",
+      "task": "Implementasi Dual Face Detection Clustering dan Stacked Vertical Split-Screen Filtergraph (9:16) untuk Video Podcast Horizontal (v3.3.0)",
+      "owner_role": "backend-engineer",
+      "status": "todo",
+      "depends_on": ["T25"],
+      "rework_iteration_count": 0,
+      "reviewed_by": [],
+      "verdict": "pending"
+    },
+    {
+      "id": "T27",
+      "task": "Pengembangan Active-Speaker Dynamic Switching dan Opsi Layout Podcast Split pada Antarmuka Studio (v3.3.0)",
+      "owner_role": "frontend-engineer",
+      "status": "todo",
+      "depends_on": ["T26"],
+      "rework_iteration_count": 0,
+      "reviewed_by": [],
+      "verdict": "pending"
+    },
+    {
+      "id": "T28",
+      "task": "Pengembangan Endpoint AI Copywriting Generator (/api/clips/{id}/generate-copy) untuk 3 Hook Titles, Multi-Platform Captions dan 15 Viral Hashtags (v3.4.0)",
+      "owner_role": "backend-engineer",
+      "status": "todo",
+      "depends_on": ["T25"],
+      "rework_iteration_count": 0,
+      "reviewed_by": [],
+      "verdict": "pending"
+    },
+    {
+      "id": "T29",
+      "task": "Integrasi Kartu Copy Deck Interaktif dengan 1-Click Clipboard Copy di Studio dan Ekspor Otomatis metadata.txt ke Paket ZIP (v3.4.0)",
+      "owner_role": "frontend-engineer",
+      "status": "todo",
+      "depends_on": ["T28"],
+      "rework_iteration_count": 0,
+      "reviewed_by": [],
+      "verdict": "pending"
     }
   ],
   "open_questions": [],
@@ -403,6 +500,6 @@
   "last_reviewer_verdict": {
     "role": "tech-critic",
     "result": "approved",
-    "note": "Implementasi v3.1.0 Subtitle Keyword Emoji Accent & Viral Styling Engine (Alex Hormozi & MrBeast) lulus uji verifikasi build dan render E2E"
+    "note": "Perancangan v3.2.0 (Smart BGM & Hook Zoom), v3.3.0 (Podcast Split), dan v3.4.0 (AI Social Copywriting) telah lengkap terdaftar di PRD.md dan session-state.json"
   }
 }

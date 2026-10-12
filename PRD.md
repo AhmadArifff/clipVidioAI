@@ -251,6 +251,9 @@ Memungkinkan pengguna mengubah video 16:9 atau 1:1 menjadi format vertikal 9:16 
 | **v2.7.0** | Oktober 2026 | Live Synchronized Subtitle Karaoke Preview di Studio & Auto-Whisper Speech-to-Text Fallback untuk Video YouTube Nir-Subtitle | Selesai (Verified Pass) |
 | **v3.0.0** | Oktober 2026 | Ultra-Quality Output Pipeline: Unsharp Mask Sharpening, EBU R128 Broadcast Loudness (-14 LUFS), Auto-Ducking BGM, Subtitle Face Collision Avoidance, Podcast Dual Split, dan Dynamic Hook Punch-In Zoom | Selesai (Verified Pass) |
 | **v3.1.0** | Oktober 2026 | Viral Subtitle Keyword Accent & Auto-Emoji Engine (Alex Hormozi & MrBeast Styling): Emotional Dictionary Classifier (ID & EN), Custom Color Pop, Dynamic Emoji Injection, dan Studio Live Karaoke Preview | Selesai (Verified Pass) |
+| **v3.2.0** | Oktober 2026 | Smart BGM Compositing, Dynamic Auto-Ducking (Sidechain Compression), EBU R128 (-14 LUFS) Broadcast Mastering, Hook SFX, dan 3-Second Pattern Interrupt Punch-In Zoom | Tahap Perancangan & Implementasi |
+| **v3.3.0** | Oktober 2026 | Podcast Multi-Speaker Split & Dynamic Active-Speaker Layout Engine: Dual Face Tracking, Stacked 9:16 Vertical Layout, dan Audio-Driven Speaker Switching | Tahap Perancangan Terverifikasi |
+| **v3.4.0** | Oktober 2026 | AI Social Copywriting Pack: 3 Hook Titles, Multi-Platform Interactive Captions, 15 Viral Hashtags Generator, dan 1-Click Copy Deck | Tahap Perancangan Terverifikasi |
 
 ---
 
@@ -437,3 +440,142 @@ Komponen `apps/web/src/components/ClipStudioSection.tsx` dan `ClipStudioModal.ts
 | [apps/web/src/types.ts](file:///c:/Users/ASUS/Documents/Web%20Dev/improving/Clipper-Vidio-YT/apps/web/src/types.ts) | Menambahkan field `keywordAccentMode: 'off' \| 'accent_only' \| 'accent_and_emoji'` pada `RenderSettings` |
 | [apps/web/src/components/ClipStudioSection.tsx](file:///c:/Users/ASUS/Documents/Web%20Dev/improving/Clipper-Vidio-YT/apps/web/src/components/ClipStudioSection.tsx) | Menambahkan panel kontrol pemilih gaya aksen kata kunci viral dan rendering visual live karaoke preview |
 | [apps/web/src/locales/id.ts](file:///c:/Users/ASUS/Documents/Web%20Dev/improving/Clipper-Vidio-YT/apps/web/src/locales/id.ts) & `en.ts` | Menambahkan kamus terjemahan Bahasa Indonesia dan English untuk pengaturan aksen kata kunci |
+
+---
+
+## 12. Arsitektur Smart BGM Compositing, Dynamic Auto-Ducking (-14 LUFS) & Hook Punch-In Zoom Engine (v3.2.0 Blueprint)
+
+### 12.1 Latar Belakang & Analisis Kebutuhan Audio-Visual Retensi
+Setelah merampungkan mesin tipografi kata kunci dan auto-emoji (v3.1.0), faktor penentu terbesar berikutnya yang membedakan klip video pendek amatir dengan video viral berkualitas agensi adalah:
+1. **Atmosfer Audio & Musik Latar (BGM)**: Video narasi tanpa musik latar terasa dingin dan monoton. Namun BGM yang disetel manual dengan volume konstan kerap bertabrakan dengan dialog narator, membuat kata-kata sulit dipahami penonton.
+2. **Kenyaringan Standar Industri (Broadcast Loudness)**: Berbagai video pendek di TikTok/Reels memiliki volume yang tidak konsisten (terlalu pelan atau distorsi pecah). Menerapkan standar EBU R128 (-14 LUFS) menjamin kenyaringan konsisten dan tebal di semua jenis speaker smartphone.
+3. **Pattern Interrupt 3 Detik Pertama (Hook Punch-In Zoom)**: Penonton media sosial memutuskan untuk bertahan atau scroll pergi dalam 3 detik pertama. Pembesaran mikro (*subtle punch-in zoom* 1.12x - 1.15x) pada segmen pembuka memecah kebiasaan visual penonton secara psikologis (*pattern interrupt*), meningkatkan rasio retensi 3-detik awal secara drastis.
+
+### 12.2 Spesifikasi Preset Pustaka BGM & Custom Audio Upload
+Sistem menyediakan katalog musik latar bebas royalti bawaan dan endpoint upload mandiri:
+* **Struktur Direktori**:
+  * `apps/api/backend/audio/presets/`: Menyimpan file musik latar bebas royalti (.mp3) berkualitas tinggi.
+  * `apps/api/backend/audio/uploads/`: Menyimpan file audio yang diunggah pengguna.
+* **Kategori Musik Bawaan**:
+  1. `lofi_chill`: Beat santai, hangat, cocok untuk podcast, storytelling, dan edukasi.
+  2. `phonk_hype`: Beat energik, ritme cepat, cocok untuk momen motivasi, aksi, dan gaming.
+  3. `cinematic_mystery`: Suasana dramatis, misteri, cocok untuk video teori konspirasi dan dokumenter.
+  4. `upbeat_vlog`: Musik ceria, dinamis, cocok untuk review produk, tutorial, dan tips praktis.
+  5. `none`: Tanpa musik latar (hanya audio asli video).
+* **Endpoint API**:
+  * `GET /api/audio/presets`: Mengembalikan daftar preset BGM (id, title, category, file_path, duration).
+  * `POST /api/audio/upload`: Mengunggah file audio kustom (`.mp3`, `.wav`, `.m4a`, `.aac`) maksimal 50 MB dengan validasi streaming chunk.
+  * `GET /api/audio/file/{filename}`: Melayani streaming byte-range audio untuk pemutaran preview di browser.
+
+### 12.3 Spesifikasi Filtergraph FFmpeg: Dynamic Auto-Ducking & EBU R128 (-14 LUFS)
+* **Logika Sidechain Auto-Ducking**:
+  * Input 0: Audio vokal video asli (`[0:a]`).
+  * Input 1: Stream musik latar BGM (`[1:a]`) yang di-looping otomatis (`-stream_loop -1`).
+  * Filter `sidechaincompress`:
+    Ketika vokal narator aktif (di atas threshold -24 dB), volume BGM diturunkan otomatis sebesar -70% (-10 dB) dengan attack time 150ms dan release time 600ms.
+    Ketika narator berhenti berbicara atau mengambil jeda napas, volume BGM kembali naik secara lembut ke level normal.
+* **EBU R128 Broadcast Normalization**:
+  Filter `loudnorm=I=-14:LRA=7:TP=-1.5` diaplikasikan pada hasil akhir penggabungan audio untuk menjamin batas kenyaringan terukur pada -14 LUFS dan True Peak maksimal -1.5 dBTP.
+
+### 12.4 Spesifikasi Dynamic Hook Punch-In Zoom (3-Second Pattern Interrupt)
+* **Logika Transformasi Video**:
+  * Pada rentang waktu `t = 0` hingga `t = 3.0` detik: Video diperbesar sebesar 1.15x dengan pusat pembesaran terarah ke koordinat wajah pembicara atau titik tengah kanvas.
+  * Pada rentang waktu `t = 3.0` hingga `t = 3.5` detik: Transisi mulus kembali ke skala 1.0x normal.
+  * Filter video FFmpeg: Menggunakan ekspresi dinamis `scale` dan `crop` berbasis waktu (`between(t, 0, 3)`) atau filter grafis komposit.
+* **Opsi Toggle**:
+  Pengguna dapat mengaktifkan atau menonaktifkan fitur ini melalui opsi `hook_punch_zoom_enabled` (default: `True`).
+
+### 12.5 Spesifikasi Antarmuka Studio (ClipStudioSection.tsx)
+* **Panel Kontrol "Audio & BGM Compositing"**:
+  1. **BGM Selector**: Dropdown pilihan preset musik (Lo-Fi, Phonk, Cinematic, Upbeat, Custom Upload, atau None).
+  2. **Mini Audio Preview Player**: Tombol Play / Pause untuk mendengarkan sampel musik langsung di dalam studio sebelum merender.
+  3. **Slider Volume BGM**: Pengatur level volume musik (0% hingga 100%, default 25%).
+  4. **Toggle Auto-Ducking**: Switch on/off kompresi sidechain suara (default Aktif).
+  5. **Toggle Hook Punch-In Zoom**: Switch on/off efek pembesaran 3 detik pertama pada kartu pengaturan framing.
+
+### 12.6 Matriks Skema API & Komponen Terkait
+
+| File Sumber | Perubahan yang Diperlukan |
+|---|---|
+| [apps/api/backend/schemas/render.py](file:///c:/Users/ASUS/Documents/Web%20Dev/improving/Clipper-Vidio-YT/apps/api/backend/schemas/render.py) | Menambahkan `bgm_preset: Optional[str] = "none"`, `bgm_volume: float = 0.25`, `auto_ducking: bool = True`, `hook_punch_zoom: bool = True` |
+| [apps/api/backend/routers/audio.py](file:///c:/Users/ASUS/Documents/Web%20Dev/improving/Clipper-Vidio-YT/apps/api/backend/routers/audio.py) | Router baru untuk melayani preset musik, streaming audio, dan upload audio mandiri |
+| [apps/api/backend/video_engine.py](file:///c:/Users/ASUS/Documents/Web%20Dev/improving/Clipper-Vidio-YT/apps/api/backend/video_engine.py) | Implementasi audio mixing pipeline dengan sidechain ducking, loudnorm -14 LUFS, dan filter dynamic punch-in zoom 3 detik |
+| [apps/api/backend/services/render_service.py](file:///c:/Users/ASUS/Documents/Web%20Dev/improving/Clipper-Vidio-YT/apps/api/backend/services/render_service.py) | Meneruskan parameter BGM dan zoom ke pemanggilan video engine pada single clip dan compilation render |
+| [apps/web/src/types.ts](file:///c:/Users/ASUS/Documents/Web%20Dev/improving/Clipper-Vidio-YT/apps/web/src/types.ts) | Menambahkan field audio dan zoom pada interface `RenderSettings` |
+| [apps/web/src/components/ClipStudioSection.tsx](file:///c:/Users/ASUS/Documents/Web%20Dev/improving/Clipper-Vidio-YT/apps/web/src/components/ClipStudioSection.tsx) | Panel kontrol Audio & BGM dengan preview audio player, slider volume, toggle ducking, dan toggle punch-in zoom |
+| [apps/web/src/locales/id.ts](file:///c:/Users/ASUS/Documents/Web%20Dev/improving/Clipper-Vidio-YT/apps/web/src/locales/id.ts) & `en.ts` | Kamus bilingual lengkap untuk konfigurasi BGM, ducking, dan hook zoom |
+
+---
+
+## 13. Arsitektur Podcast Multi-Speaker Split & Dynamic Active-Speaker Layout Engine (v3.3.0 Blueprint)
+
+### 13.1 Latar Belakang & Analisis Format Video Podcast
+Format video wawancara, talkshow, dan podcast YouTube umumnya direkam dalam orientasi horizontal 16:9 yang menampilkan dua orang (Host di sisi kiri dan Guest di sisi kanan, atau sebaliknya).
+Ketika video 16:9 dipotong langsung menjadi 9:16 vertikal dengan metode cropping konvensional:
+1. Hanya satu orang yang masuk ke frame sementara lawan bicaranya terpotong.
+2. Jika video dikecilkan (scale down), video menjadi terlalu kecil dengan ruang kosong hitam besar di atas dan bawah.
+
+Solusi standar industri (Opus Clip / Klap) adalah **Stacked Vertical Split-Screen**: membagi kanvas 9:16 menjadi dua zona (Host di bagian atas dan Guest di bagian bawah), atau melakukan **Active Speaker Framing** yang otomatis mengarahkan kamera ke orang yang sedang berbicara.
+
+### 13.2 Algoritma Deteksi Dual Face & Upper-Third Golden Framing
+Modul deteksi wajah OpenCV YuNet dan Haar Cascade di [video_engine.py](file:///c:/Users/ASUS/Documents/Web%20Dev/improving/Clipper-Vidio-YT/apps/api/backend/video_engine.py) dikembangkan untuk multi-person tracking:
+* **Dual Face Clustering**:
+  * Mengidentifikasi dua cluster wajah terbesar berdasarkan sumbu X: Cluster Kiri (`x < 0.5`) dan Cluster Kanan (`x > 0.5`).
+  * Menghitung kotak pembatas dinamis (*bounding box*) untuk pembicara A (Host) dan pembicara B (Guest).
+* **Upper-Third Golden Framing Rule untuk Tiap Panel**:
+  * Panel Atas (Top Half 1080x960): Mata pembicara atas diposisikan persis di 33% dari puncak panel atas.
+  * Panel Bawah (Bottom Half 1080x960): Mata pembicara bawah diposisikan persis di 33% dari puncak panel bawah.
+  * Menjamin kedua pembicara terlihat proporsional, natural, dan tidak terpotong leher atau keningnya.
+
+### 13.3 Desain Filtergraph FFmpeg: Stacked Split Screen & Divider Bar
+* **Logika Filter Komposisi**:
+  1. Crop stream kiri: `[0:v]crop=w=in_h*9/16:h=in_h:x=host_x:y=0,scale=1080:960[top_speaker]`
+  2. Crop stream kanan: `[0:v]crop=w=in_h*9/16:h=in_h:x=guest_x:y=0,scale=1080:960[bot_speaker]`
+  3. Menumpuk vertikal: `[top_speaker][bot_speaker]vstack=inputs=2[stacked_v]`
+  4. Garis pembatas sinematik (*divider bar*): Garis aksen gelap atau glowing tipis setebal 4px di koordinat Y=960 untuk pemisah visual yang bersih dan elegan.
+* **Opsi Subtitle Safe Placement**:
+  Subtitle ditempatkan di sepertiga bawah panel bawah (Y=1620) dengan batas aman agar tidak menutupi wajah pembicara bawah.
+
+### 13.4 Spesifikasi Active Speaker Dynamic Switching (Auto-Focus Mode)
+* Menganalisis jeda transkrip kata (*word-level timing*) dan energi audio untuk menentukan siapa yang sedang aktif berbicara pada detik tertentu.
+* Ketika hanya Host yang berbicara selama >3 detik, kamera fokus penuh pada Host. Ketika Guest menjawab, kamera beralih atau membagi tampilan secara cerdas.
+
+### 13.5 Matriks Komponen & Skema Terkait
+* `RenderSettingsModel`: Menambahkan `podcast_layout_mode: str = "auto"` (pilihan: `"auto"`, `"stacked_split"`, `"single_center"`).
+* `ClipStudioSection.tsx`: Menambahkan opsi layout "Podcast Split (Host & Guest)" pada panel rasio / framing.
+
+---
+
+## 14. Arsitektur AI Social Copywriting Pack: Hook Titles, Captions & Viral Hashtags (v3.4.0 Blueprint)
+
+### 14.1 Latar Belakang & Analisis Alur Kerja Kreator
+Setelah klip video selesai dirender, tantangan terbesar berikutnya bagi kreator adalah menulis teks judul yang memikat (*clickbait hook*), deskripsi yang meningkatkan interaksi penonton (*engagement caption*), dan daftar tagar viral (*viral hashtags*) yang tepat untuk algoritma TikTok, Instagram Reels, dan YouTube Shorts.
+Mengetik manual untuk 5-10 klip setiap hari membutuhkan waktu 20-30 menit.
+
+Modul **AI Social Copywriting Pack** secara otomatis menghasilkan paket teks siap unggah (*ready-to-post copy deck*) untuk setiap klip yang diproduksi.
+
+### 14.2 Spesifikasi Prompt Terstruktur AI (Gemini Flash & OpenRouter)
+Ketika analisis klip berlangsung atau saat pengguna membuka Studio, router AI memproses transkrip klip dan menghasilkan payload JSON terstruktur:
+* **3 Variasi Judul Hook Clickbait**:
+  1. *Curiosity Hook* (Memicu rasa penasaran, misal: *"Jangan Pernah Lakukan Ini Jika Ingin Sukses..."*)
+  2. *Shock / Contrarian Hook* (Pernyataan mengejutkan atau berlawanan, misal: *"Semua Orang Salah Mengira Trik Ini!"*)
+  3. *Action / Solution Hook* (Solusi instan langsung, misal: *"Cara Hasilkan 10 Juta Pertama dari YouTube"*)
+* **Multi-Platform Captions**:
+  * Caption pendek (1-2 kalimat padat + Call-to-Action "Komen di bawah!") yang disesuaikan untuk TikTok dan Reels.
+* **10 - 15 Viral Hashtags**:
+  * Kombinasi tagar niche (berkaitan dengan topik video), tagar medium, dan tagar trending umum (`#fyp`, `#shorts`, `#viral`, dll).
+
+### 14.3 Endpoint API & Penyimpanan Metadata
+* `POST /api/clips/{clip_id}/generate-copy`: Menghasilkan copy deck baru berdasarkan prompt kustom atau prompt bawaan.
+* Penyimpanan otomatis di dalam dictionary klip: Disimpan sebagai field `copy_deck` pada objek klip.
+
+### 14.4 Desain Antarmuka Pengguna Studio & Download Modal
+* **Kartu "Social Copy Deck" di Studio**:
+  * Menampilkan tab: *TikTok / Reels*, *YouTube Shorts*, dan *Semua Tagar*.
+  * Tombol **"Copy to Clipboard"** satu-klik dengan notifikasi toast visual (*"Teks Berhasil Disalin!"*).
+* **Ekspor Otomatis ke Paket ZIP**:
+  * Saat pengguna mengunduh klip tunggal atau batch ZIP, sistem secara otomatis menyertakan:
+    * `metadata_{clip_title}.txt`: Berisi judul, caption, dan daftar tagar.
+    * `copy_deck.json`: Berformat JSON terstruktur untuk otomasi tools scheduling (Buffer, Later, Hootsuite).
+
+
