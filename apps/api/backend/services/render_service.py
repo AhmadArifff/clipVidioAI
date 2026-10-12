@@ -1,4 +1,5 @@
 import asyncio
+import json
 import logging
 import os
 import re
@@ -7,6 +8,11 @@ import zipfile
 from typing import Any, Dict, List, Optional
 
 from pathlib import Path
+
+from backend.services.copywriting_service import (
+    format_clip_metadata_text,
+    generate_heuristic_copy_deck,
+)
 
 from backend.config import (
     EXPORTS_DIR,
@@ -314,6 +320,9 @@ def update_batch_summary_and_zip(batch_id: str, settings: RenderSettingsModel):
             zip_filename = f"clipvidio_{batch_id}.zip"
             zip_path = EXPORTS_DIR / zip_filename
             title_counts: Dict[str, int] = {}
+            req = BATCH_REQUESTS.get(batch_id)
+            orig_clips = req.clips if req else []
+
             with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zipf:
                 for c in completed_clips:
                     fname = c["download_url"].split("?")[0].split("/")[-1]
@@ -328,6 +337,31 @@ def update_batch_summary_and_zip(batch_id: str, settings: RenderSettingsModel):
                         title_counts[formatted_name] = count + 1
                         arc_name = f"{formatted_name}.mp4" if count == 0 else f"{formatted_name} ({count}).mp4"
                         zipf.write(fpath, arcname=arc_name)
+
+                        # Auto-package metadata.txt and copy_deck.json (v3.4.0)
+                        try:
+                            c_idx = c.get("clip_index", 0)
+                            matching_orig = next((oc for oc in orig_clips if oc.get("clip_index") == c_idx), None)
+                            if not matching_orig and 0 <= c_idx < len(orig_clips):
+                                matching_orig = orig_clips[c_idx]
+                            orig_c = matching_orig if isinstance(matching_orig, dict) else c
+
+                            deck = orig_c.get("copy_deck")
+                            if not deck or not isinstance(deck, dict):
+                                deck = generate_heuristic_copy_deck(
+                                    transcript=orig_c.get("transcript", "") or orig_c.get("spoken_text", ""),
+                                    title=raw_title,
+                                    language=getattr(settings, "subtitle_language", "id") or "id"
+                                )
+
+                            meta_txt = format_clip_metadata_text(orig_c, copy_deck=deck)
+                            arc_meta_name = f"metadata_{formatted_name}.txt" if count == 0 else f"metadata_{formatted_name} ({count}).txt"
+                            arc_json_name = f"copy_deck_{formatted_name}.json" if count == 0 else f"copy_deck_{formatted_name} ({count}).json"
+                            zipf.writestr(arc_meta_name, meta_txt.encode("utf-8"))
+                            zipf.writestr(arc_json_name, json.dumps(deck, indent=2, ensure_ascii=False).encode("utf-8"))
+                        except Exception as meta_err:
+                            logger.warning(f"Failed to append metadata files for {formatted_name}: {meta_err}")
+
             batch["zip_url"] = f"/api/download-batch-zip/{batch_id}"
         else:
             batch["zip_url"] = None

@@ -24,6 +24,7 @@ import type {
   BackgroundType,
   TranscriptLine,
   KeywordAccentMode,
+  SocialCopyDeck,
 } from '../types';
 import { BackgroundCustomizer } from './BackgroundCustomizer';
 
@@ -512,6 +513,12 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
   // v3.1 Subtitle Keyword Emoji Accent state
   const [keywordAccentMode, setKeywordAccentMode] = useState<KeywordAccentMode>(() => getSavedStudioPreferences().keywordAccentMode ?? DEFAULT_STUDIO_PREFS.keywordAccentMode);
 
+  // v3.4 AI Social Copywriting Pack state
+  const [copyDeck, setCopyDeck] = useState<SocialCopyDeck | null>(null);
+  const [isGeneratingCopy, setIsGeneratingCopy] = useState<boolean>(false);
+  const [activeCopyTab, setActiveCopyTab] = useState<'hooks' | 'captions' | 'hashtags'>('hooks');
+  const [copiedToastKey, setCopiedToastKey] = useState<string | null>(null);
+
   // Background Music (BGM) state
   const [bgmPreset, setBgmPreset] = useState<string>(() => getSavedStudioPreferences().bgmPreset ?? DEFAULT_STUDIO_PREFS.bgmPreset ?? 'none');
   const [bgmEnabled, setBgmEnabled] = useState<boolean>(() => (getSavedStudioPreferences().bgmPreset ?? DEFAULT_STUDIO_PREFS.bgmPreset) !== 'none');
@@ -756,6 +763,90 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
   const clipStart = currentPreviewClip ? currentPreviewClip.start_time : 0;
   const clipEnd = currentPreviewClip ? currentPreviewClip.end_time : 60;
   const clipDuration = Math.max(1, clipEnd - clipStart);
+
+  // v3.4 Auto-sync and populate Copy Deck for active preview clip
+  useEffect(() => {
+    if (!currentPreviewClip) {
+      setCopyDeck(null);
+      return;
+    }
+    if (currentPreviewClip.copy_deck) {
+      setCopyDeck(currentPreviewClip.copy_deck);
+      return;
+    }
+    const title = currentPreviewClip.title || 'Clip Highlight';
+    const cleanTopic = title.replace(/[^\w\s]/g, '').trim() || 'Topik Menarik';
+    const isId = (subtitleLanguage || 'id') === 'id';
+
+    const baselineDeck: SocialCopyDeck = {
+      hook_titles: {
+        curiosity: currentPreviewClip.title_suggestion || (isId ? `Rahasia di Balik ${cleanTopic}: Yang Jarang Diketahui!` : `The Hidden Secret Behind ${cleanTopic}: Don't Miss This!`),
+        contrarian: isId ? `Banyak yang Salah Paham Soal ${cleanTopic}!` : `Everything You Knew About ${cleanTopic} Is Wrong!`,
+        action: isId ? `Cara Tepat Pahami ${cleanTopic} dalam 3 Langkah Cepat` : `How to Master ${cleanTopic} in 3 Simple Steps`,
+      },
+      captions: {
+        tiktok_reels: currentPreviewClip.caption_suggestion || (isId ? `Ternyata begini faktanya! Simak sampai habis dan komen di bawah pendapat kamu! 👇` : `Here is what nobody tells you about this! Watch until the end and share your thoughts! 👇`),
+        youtube_shorts: isId ? `Pembahasan mendalam dan insight penting seputar ${cleanTopic}. Tonton terus untuk tips lengkapnya! #shorts #viral #edukasi` : `Key takeaways and actionable insights about ${cleanTopic}. Subscribe for more breakdowns! #shorts #viral #learn`,
+      },
+      hashtags: (currentPreviewClip.hashtag_suggestion ? currentPreviewClip.hashtag_suggestion.split(/\s+/).filter(t => t.startsWith('#')) : []).length > 0
+        ? currentPreviewClip.hashtag_suggestion!.split(/\s+/).filter(t => t.startsWith('#'))
+        : (isId ? ['#fyp', '#shorts', '#viral', '#trending', '#reels', '#edukasi', '#tips', '#konten', '#informasi', '#foryou', '#belajar', '#tiktokindonesia'] : ['#fyp', '#shorts', '#viral', '#trending', '#reels', '#education', '#tips', '#insights', '#foryou', '#mindset', '#creator', '#dailygrowth']),
+      hashtags_formatted: currentPreviewClip.hashtag_suggestion || (isId ? '#fyp #shorts #viral #trending #reels #edukasi #tips #konten #informasi #foryou' : '#fyp #shorts #viral #trending #reels #education #tips #insights #foryou #creator'),
+    };
+    setCopyDeck(baselineDeck);
+    currentPreviewClip.copy_deck = baselineDeck;
+  }, [currentPreviewClip?.start_time, currentPreviewClip?.end_time, currentPreviewClip?.title, subtitleLanguage]);
+
+  const handleCopyText = (text: string, key: string) => {
+    if (!text) return;
+    navigator.clipboard.writeText(text);
+    setCopiedToastKey(key);
+    setTimeout(() => {
+      setCopiedToastKey(prev => prev === key ? null : prev);
+    }, 2000);
+  };
+
+  const handleApplyTitle = (newTitle: string) => {
+    if (!newTitle || !currentPreviewClip) return;
+    const clipKey = `${currentPreviewClip.start_time}-${currentPreviewClip.end_time}`;
+    setCustomClipTitles(prev => ({
+      ...prev,
+      [clipKey]: newTitle,
+    }));
+    setCopiedToastKey(`applied-${newTitle}`);
+    setTimeout(() => {
+      setCopiedToastKey(prev => prev === `applied-${newTitle}` ? null : prev);
+    }, 2000);
+  };
+
+  const handleGenerateCopyDeck = async () => {
+    if (!currentPreviewClip) return;
+    setIsGeneratingCopy(true);
+    try {
+      const activeClipTitle = customClipTitles[`${currentPreviewClip.start_time}-${currentPreviewClip.end_time}`] || currentPreviewClip.title || '';
+      const res = await fetch('/api/clips/generate-copy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          transcript: currentPreviewClip.transcript || '',
+          title: activeClipTitle,
+          topic: activeClipTitle,
+          language: subtitleLanguage || 'id',
+        }),
+      });
+      if (res.ok) {
+        const data: SocialCopyDeck = await res.json();
+        setCopyDeck(data);
+        if (currentPreviewClip) {
+          currentPreviewClip.copy_deck = data;
+        }
+      }
+    } catch (err) {
+      console.error('Failed to generate AI copy deck:', err);
+    } finally {
+      setIsGeneratingCopy(false);
+    }
+  };
 
   // Fetch face/object detection coordinates
   useEffect(() => {
@@ -2888,6 +2979,255 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                   </div>
                 </div>
               </>
+            )}
+          </div>
+
+          {/* 4.5 AI Social Copywriting Pack (v3.4) */}
+          <div className="studio-card-group" style={{ borderColor: 'rgba(56, 189, 248, 0.25)' }}>
+            <div className="group-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                <span className="group-title">{t.studio.copyDeckTitle}</span>
+                <span style={{ fontSize: '0.7rem', padding: '0.1rem 0.45rem', borderRadius: '4px', background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', border: '1px solid rgba(56, 189, 248, 0.3)', fontWeight: 600 }}>v3.4 PRO</span>
+              </div>
+              <button
+                type="button"
+                className="pill-btn"
+                onClick={handleGenerateCopyDeck}
+                disabled={isGeneratingCopy || !currentPreviewClip}
+                style={{
+                  fontSize: '0.74rem',
+                  padding: '0.2rem 0.65rem',
+                  background: isGeneratingCopy ? 'rgba(56, 189, 248, 0.2)' : 'linear-gradient(135deg, rgba(56, 189, 248, 0.25), rgba(168, 85, 247, 0.25))',
+                  border: '1px solid rgba(56, 189, 248, 0.4)',
+                  color: '#ffffff',
+                  cursor: isGeneratingCopy ? 'wait' : 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                }}
+              >
+                {isGeneratingCopy ? (
+                  <>
+                    <span className="live-dot" style={{ background: '#38bdf8', width: '6px', height: '6px' }}></span>
+                    {t.studio.copyDeckGenerating}
+                  </>
+                ) : copyDeck ? t.studio.copyDeckRegenerateBtn : t.studio.copyDeckGenerateBtn}
+              </button>
+            </div>
+
+            <p style={{ fontSize: '0.74rem', color: 'var(--text-muted, #94a3b8)', margin: '0 0 0.75rem 0' }}>
+              {t.studio.copyDeckDesc}
+            </p>
+
+            {/* Navigation Tabs */}
+            <div className="toggle-pill-group" style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.85rem' }}>
+              <button
+                type="button"
+                className={`pill-btn ${activeCopyTab === 'hooks' ? 'active' : ''}`}
+                onClick={() => setActiveCopyTab('hooks')}
+                style={{ fontSize: '0.76rem', padding: '0.25rem 0.65rem', flex: 1 }}
+              >
+                {t.studio.copyDeckTabHooks}
+              </button>
+              <button
+                type="button"
+                className={`pill-btn ${activeCopyTab === 'captions' ? 'active' : ''}`}
+                onClick={() => setActiveCopyTab('captions')}
+                style={{ fontSize: '0.76rem', padding: '0.25rem 0.65rem', flex: 1 }}
+              >
+                {t.studio.copyDeckTabCaptions}
+              </button>
+              <button
+                type="button"
+                className={`pill-btn ${activeCopyTab === 'hashtags' ? 'active' : ''}`}
+                onClick={() => setActiveCopyTab('hashtags')}
+                style={{ fontSize: '0.76rem', padding: '0.25rem 0.65rem', flex: 1 }}
+              >
+                {t.studio.copyDeckTabHashtags}
+              </button>
+            </div>
+
+            {/* Content for TAB: HOOKS */}
+            {activeCopyTab === 'hooks' && copyDeck && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+                {/* 1. Curiosity Hook */}
+                <div style={{ background: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '6px', padding: '0.6rem 0.75rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                    <span style={{ fontSize: '0.72rem', fontWeight: 650, color: '#38bdf8' }}>
+                      {t.studio.copyDeckHookCuriosity}
+                    </span>
+                    <div style={{ display: 'flex', gap: '0.35rem' }}>
+                      <button
+                        type="button"
+                        onClick={() => handleCopyText(copyDeck.hook_titles.curiosity, 'curiosity')}
+                        className="pill-btn"
+                        style={{ fontSize: '0.68rem', padding: '0.15rem 0.45rem' }}
+                      >
+                        {copiedToastKey === 'curiosity' ? '✓ Disalin!' : '📋 Salin'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleApplyTitle(copyDeck.hook_titles.curiosity)}
+                        className="pill-btn"
+                        style={{ fontSize: '0.68rem', padding: '0.15rem 0.45rem', borderColor: 'rgba(56, 189, 248, 0.4)' }}
+                        title="Terapkan sebagai judul hook klip ini"
+                      >
+                        {copiedToastKey === `applied-${copyDeck.hook_titles.curiosity}` ? '✓ Diterapkan!' : '🎯 Pasang Judul'}
+                      </button>
+                    </div>
+                  </div>
+                  <p style={{ fontSize: '0.8rem', color: '#f8fafc', margin: 0, fontWeight: 500 }}>
+                    "{copyDeck.hook_titles.curiosity}"
+                  </p>
+                </div>
+
+                {/* 2. Contrarian Hook */}
+                <div style={{ background: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '6px', padding: '0.6rem 0.75rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                    <span style={{ fontSize: '0.72rem', fontWeight: 650, color: '#f59e0b' }}>
+                      {t.studio.copyDeckHookContrarian}
+                    </span>
+                    <div style={{ display: 'flex', gap: '0.35rem' }}>
+                      <button
+                        type="button"
+                        onClick={() => handleCopyText(copyDeck.hook_titles.contrarian, 'contrarian')}
+                        className="pill-btn"
+                        style={{ fontSize: '0.68rem', padding: '0.15rem 0.45rem' }}
+                      >
+                        {copiedToastKey === 'contrarian' ? '✓ Disalin!' : '📋 Salin'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleApplyTitle(copyDeck.hook_titles.contrarian)}
+                        className="pill-btn"
+                        style={{ fontSize: '0.68rem', padding: '0.15rem 0.45rem', borderColor: 'rgba(245, 158, 11, 0.4)' }}
+                        title="Terapkan sebagai judul hook klip ini"
+                      >
+                        {copiedToastKey === `applied-${copyDeck.hook_titles.contrarian}` ? '✓ Diterapkan!' : '🎯 Pasang Judul'}
+                      </button>
+                    </div>
+                  </div>
+                  <p style={{ fontSize: '0.8rem', color: '#f8fafc', margin: 0, fontWeight: 500 }}>
+                    "{copyDeck.hook_titles.contrarian}"
+                  </p>
+                </div>
+
+                {/* 3. Action Hook */}
+                <div style={{ background: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '6px', padding: '0.6rem 0.75rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                    <span style={{ fontSize: '0.72rem', fontWeight: 650, color: '#10b981' }}>
+                      {t.studio.copyDeckHookAction}
+                    </span>
+                    <div style={{ display: 'flex', gap: '0.35rem' }}>
+                      <button
+                        type="button"
+                        onClick={() => handleCopyText(copyDeck.hook_titles.action, 'action')}
+                        className="pill-btn"
+                        style={{ fontSize: '0.68rem', padding: '0.15rem 0.45rem' }}
+                      >
+                        {copiedToastKey === 'action' ? '✓ Disalin!' : '📋 Salin'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleApplyTitle(copyDeck.hook_titles.action)}
+                        className="pill-btn"
+                        style={{ fontSize: '0.68rem', padding: '0.15rem 0.45rem', borderColor: 'rgba(16, 185, 129, 0.4)' }}
+                        title="Terapkan sebagai judul hook klip ini"
+                      >
+                        {copiedToastKey === `applied-${copyDeck.hook_titles.action}` ? '✓ Diterapkan!' : '🎯 Pasang Judul'}
+                      </button>
+                    </div>
+                  </div>
+                  <p style={{ fontSize: '0.8rem', color: '#f8fafc', margin: 0, fontWeight: 500 }}>
+                    "{copyDeck.hook_titles.action}"
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Content for TAB: CAPTIONS */}
+            {activeCopyTab === 'captions' && copyDeck && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+                {/* TikTok & Reels Caption */}
+                <div style={{ background: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '6px', padding: '0.6rem 0.75rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                    <span style={{ fontSize: '0.72rem', fontWeight: 650, color: '#a855f7' }}>
+                      {t.studio.copyDeckCaptionTiktok}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleCopyText(copyDeck.captions.tiktok_reels, 'tiktok_caption')}
+                      className="pill-btn"
+                      style={{ fontSize: '0.68rem', padding: '0.15rem 0.45rem' }}
+                    >
+                      {copiedToastKey === 'tiktok_caption' ? '✓ Disalin!' : '📋 Salin Caption'}
+                    </button>
+                  </div>
+                  <p style={{ fontSize: '0.78rem', color: '#e2e8f0', margin: 0, whiteSpace: 'pre-line', lineHeight: 1.45 }}>
+                    {copyDeck.captions.tiktok_reels}
+                  </p>
+                </div>
+
+                {/* YouTube Shorts Description */}
+                <div style={{ background: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '6px', padding: '0.6rem 0.75rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                    <span style={{ fontSize: '0.72rem', fontWeight: 650, color: '#38bdf8' }}>
+                      {t.studio.copyDeckCaptionShorts}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleCopyText(copyDeck.captions.youtube_shorts, 'shorts_caption')}
+                      className="pill-btn"
+                      style={{ fontSize: '0.68rem', padding: '0.15rem 0.45rem' }}
+                    >
+                      {copiedToastKey === 'shorts_caption' ? '✓ Disalin!' : '📋 Salin Deskripsi'}
+                    </button>
+                  </div>
+                  <p style={{ fontSize: '0.78rem', color: '#e2e8f0', margin: 0, whiteSpace: 'pre-line', lineHeight: 1.45 }}>
+                    {copyDeck.captions.youtube_shorts}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Content for TAB: HASHTAGS */}
+            {activeCopyTab === 'hashtags' && copyDeck && (
+              <div style={{ background: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '6px', padding: '0.75rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.55rem' }}>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                    {copyDeck.hashtags.length} Algorithmic Tags
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleCopyText(copyDeck.hashtags_formatted, 'all_hashtags')}
+                    className="pill-btn active"
+                    style={{ fontSize: '0.72rem', padding: '0.2rem 0.6rem' }}
+                  >
+                    {copiedToastKey === 'all_hashtags' ? '✓ Semua Tag Disalin!' : `📋 ${t.studio.copyDeckCopyAll}`}
+                  </button>
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
+                  {copyDeck.hashtags.map((tag, i) => (
+                    <span
+                      key={i}
+                      onClick={() => handleCopyText(tag, `tag-${i}`)}
+                      style={{
+                        fontSize: '0.72rem',
+                        padding: '0.15rem 0.45rem',
+                        borderRadius: '4px',
+                        background: copiedToastKey === `tag-${i}` ? 'rgba(16, 185, 129, 0.25)' : 'rgba(56, 189, 248, 0.1)',
+                        border: `1px solid ${copiedToastKey === `tag-${i}` ? 'rgba(16, 185, 129, 0.5)' : 'rgba(56, 189, 248, 0.25)'}`,
+                        color: copiedToastKey === `tag-${i}` ? '#34d399' : '#7dd3fc',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease',
+                      }}
+                      title="Klik untuk menyalin tag ini"
+                    >
+                      {copiedToastKey === `tag-${i}` ? '✓ Disalin' : tag}
+                    </span>
+                  ))}
+                </div>
+              </div>
             )}
           </div>
 

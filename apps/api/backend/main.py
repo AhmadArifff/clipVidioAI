@@ -14,6 +14,7 @@ from backend.routers import (
     audio_router,
     backgrounds_router,
     cookies_router,
+    copywriting_router,
     downloads_router,
     media_router,
     render_router,
@@ -132,6 +133,7 @@ app.include_router(analyze_router)
 app.include_router(render_router)
 app.include_router(audio_router)
 app.include_router(backgrounds_router)
+app.include_router(copywriting_router)
 app.include_router(media_router)
 app.include_router(cookies_router)
 app.include_router(downloads_router)

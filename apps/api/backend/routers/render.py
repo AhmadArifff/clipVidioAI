@@ -28,6 +28,10 @@ from backend.services.render_service import (
     process_batch_rendering,
     process_batch_retry,
 )
+from backend.services.copywriting_service import (
+    format_clip_metadata_text,
+    generate_heuristic_copy_deck,
+)
 
 router = APIRouter(tags=["Render"])
 
@@ -212,6 +216,9 @@ def download_batch_zip(batch_id: str):
         if job and job.get("clips"):
             try:
                 title_counts: Dict[str, int] = {}
+                req = BATCH_REQUESTS.get(batch_id)
+                orig_clips = req.clips if req else []
+
                 with zipfile.ZipFile(file_path, "w", zipfile.ZIP_DEFLATED) as zipf:
                     for c in job["clips"]:
                         c_out = c.get("output_path")
@@ -225,6 +232,30 @@ def download_batch_zip(batch_id: str):
                             title_counts[clean_title] = count + 1
                             arc_name = f"{clean_title}.mp4" if count == 0 else f"{clean_title} ({count}).mp4"
                             zipf.write(c_out, arcname=arc_name)
+
+                            # Auto-package metadata.txt and copy_deck.json (v3.4.0)
+                            try:
+                                c_idx = c.get("clip_index", 0)
+                                matching_orig = next((oc for oc in orig_clips if oc.get("clip_index") == c_idx), None)
+                                if not matching_orig and 0 <= c_idx < len(orig_clips):
+                                    matching_orig = orig_clips[c_idx]
+                                orig_c = matching_orig if isinstance(matching_orig, dict) else c
+
+                                deck = orig_c.get("copy_deck")
+                                if not deck or not isinstance(deck, dict):
+                                    deck = generate_heuristic_copy_deck(
+                                        transcript=orig_c.get("transcript", "") or orig_c.get("spoken_text", ""),
+                                        title=raw_title,
+                                        language="id"
+                                    )
+
+                                meta_txt = format_clip_metadata_text(orig_c, copy_deck=deck)
+                                arc_meta_name = f"metadata_{clean_title}.txt" if count == 0 else f"metadata_{clean_title} ({count}).txt"
+                                arc_json_name = f"copy_deck_{clean_title}.json" if count == 0 else f"copy_deck_{clean_title} ({count}).json"
+                                zipf.writestr(arc_meta_name, meta_txt.encode("utf-8"))
+                                zipf.writestr(arc_json_name, json.dumps(deck, indent=2, ensure_ascii=False).encode("utf-8"))
+                            except Exception as meta_err:
+                                logger.warning(f"Failed to append metadata files for {clean_title}: {meta_err}")
             except Exception as e:
                 logger.error(f"Error packaging batch zip on the fly: {e}")
     if not file_path.exists():

@@ -11,6 +11,20 @@ export interface TranscriptLine {
   engagement?: number;
 }
 
+export interface SocialCopyDeck {
+  hook_titles: {
+    curiosity: string;
+    contrarian: string;
+    action: string;
+  };
+  captions: {
+    tiktok_reels: string;
+    youtube_shorts: string;
+  };
+  hashtags: string[];
+  hashtags_formatted: string;
+}
+
 export interface ViralClip {
   title: string;
   start_time: number;
@@ -22,6 +36,8 @@ export interface ViralClip {
   title_suggestion?: string;
   caption_suggestion?: string;
   hashtag_suggestion?: string;
+  // v3.4.0 AI Social Copywriting Pack
+  copy_deck?: SocialCopyDeck;
 }
 
 export interface AnalyzeResponse {

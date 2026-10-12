@@ -514,21 +514,35 @@
       "id": "T28",
       "task": "Pengembangan Endpoint AI Copywriting Generator (/api/clips/{id}/generate-copy) untuk 3 Hook Titles, Multi-Platform Captions dan 15 Viral Hashtags (v3.4.0)",
       "owner_role": "backend-engineer",
-      "status": "todo",
+      "status": "done",
       "depends_on": ["T25"],
       "rework_iteration_count": 0,
-      "reviewed_by": [],
-      "verdict": "pending"
+      "reviewed_by": [
+        {
+          "role": "qa-engineer",
+          "verdict": "approved",
+          "timestamp": "2026-10-12T10:48:00Z",
+          "note": "Endpoint POST /api/clips/generate-copy, schema Pydantic, heuristic rule-based fallback, dan auto-packaging metadata.txt & copy_deck.json ke ZIP terverifikasi 100% lulus kompilasi Python"
+        }
+      ],
+      "verdict": "approved"
     },
     {
       "id": "T29",
       "task": "Integrasi Kartu Copy Deck Interaktif dengan 1-Click Clipboard Copy di Studio dan Ekspor Otomatis metadata.txt ke Paket ZIP (v3.4.0)",
       "owner_role": "frontend-engineer",
-      "status": "todo",
+      "status": "done",
       "depends_on": ["T28"],
       "rework_iteration_count": 0,
-      "reviewed_by": [],
-      "verdict": "pending"
+      "reviewed_by": [
+        {
+          "role": "tech-critic",
+          "verdict": "approved",
+          "timestamp": "2026-10-12T10:49:15Z",
+          "note": "Kartu AI Social Copywriting Pack di antarmuka studio dengan 3 tab interaktif (Hook, Caption, Tagar), 1-click clipboard copy, pasang judul klip instan, dan build Vite 0 error"
+        }
+      ],
+      "verdict": "approved"
     }
   ],
   "open_questions": [],
@@ -542,6 +556,6 @@
   "last_reviewer_verdict": {
     "role": "tech-critic",
     "result": "approved",
-    "note": "Versi 3.3.0 (Podcast Multi-Speaker Split - T26 & T27) telah selesai diimplementasikan, lolos validasi dual-face clustering, FFmpeg stacked layout, dan build Vite 0 error. Siap melangkah ke Versi 3.4.0 (AI Social Copywriting Pack - T28 & T29)"
+    "note": "Versi 3.4.0 (AI Social Copywriting Pack - T28 & T29) telah selesai diimplementasikan, lolos validasi endpoint generate-copy, integrasi studio 1-click copy, auto-packaging ZIP metadata.txt, dan build Vite 0 error."
   }
 }
