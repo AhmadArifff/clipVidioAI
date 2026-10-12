@@ -11,6 +11,7 @@ import backend.config
 from backend.config import logger
 from backend.routers import (
     analyze_router,
+    audio_router,
     backgrounds_router,
     cookies_router,
     downloads_router,
@@ -129,6 +130,7 @@ async def add_security_headers(request: Request, call_next):
 # Include Modular Routers
 app.include_router(analyze_router)
 app.include_router(render_router)
+app.include_router(audio_router)
 app.include_router(backgrounds_router)
 app.include_router(media_router)
 app.include_router(cookies_router)

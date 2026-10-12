@@ -6,6 +6,8 @@ import subprocess
 import zipfile
 from typing import Any, Dict, List, Optional
 
+from pathlib import Path
+
 from backend.config import (
     EXPORTS_DIR,
     TEMP_DIR,
@@ -22,6 +24,28 @@ from backend.schemas.render import RenderBatchRequest, RenderSettingsModel
 
 RENDER_BATCHES: Dict[str, Dict[str, Any]] = {}
 BATCH_REQUESTS: Dict[str, RenderBatchRequest] = {}
+
+
+def resolve_bgm_path(bgm_preset: Optional[str] = None, bgm_file_path: Optional[str] = None) -> Optional[str]:
+    """Resolves effective BGM audio path from preset name or custom uploaded audio path."""
+    backend_dir = Path(__file__).resolve().parent.parent
+    if bgm_file_path:
+        p = Path(bgm_file_path)
+        if p.exists() and p.is_file():
+            return str(p)
+        for cand in [backend_dir / "audio" / "uploads" / p.name, backend_dir / "audio" / "presets" / p.name]:
+            if cand.exists() and cand.is_file():
+                return str(cand)
+
+    preset_clean = (bgm_preset or "").strip().lower()
+    if preset_clean and preset_clean != "none":
+        presets_dir = backend_dir / "audio" / "presets"
+        for ext in [".mp3", ".wav", ".m4a", ".aac", ".ogg", ".flac"]:
+            cand = presets_dir / f"{preset_clean}{ext}"
+            if cand.exists() and cand.is_file():
+                return str(cand)
+    return None
+
 
 
 async def render_single_batch_clip(
@@ -192,6 +216,9 @@ async def render_single_batch_clip(
         out_filename = f"clip_{idx+1}_{batch_id}.mp4"
         out_path = str(EXPORTS_DIR / out_filename)
 
+        resolved_bgm = resolve_bgm_path(getattr(settings, "bgm_preset", None), settings.bgm_file_path)
+        effective_bgm_enabled = bool(resolved_bgm) if (getattr(settings, "bgm_preset", "none") != "none" or settings.bgm_file_path) else bool(settings.bgm_enabled)
+
         await asyncio.to_thread(
             render_clip_to_mp4,
             video_path=raw_path,
@@ -215,8 +242,8 @@ async def render_single_batch_clip(
             watermark_opacity=float((settings.watermark_opacity if settings.watermark_opacity is not None else 80.0) / 100.0),
             watermark_x_percent=float(settings.watermark_x if settings.watermark_x is not None else 90.0),
             watermark_y_percent=float(settings.watermark_y if settings.watermark_y is not None else 8.0),
-            bgm_enabled=bool(settings.bgm_enabled),
-            bgm_path=settings.bgm_file_path,
+            bgm_enabled=effective_bgm_enabled,
+            bgm_path=resolved_bgm,
             bgm_volume=float((settings.bgm_volume if settings.bgm_volume is not None else 25.0) / 100.0),
             bgm_start_offset=float(settings.bgm_start_offset or 0.0),
             hook_sfx_enabled=bool(settings.hook_sfx_enabled),
@@ -509,7 +536,8 @@ async def render_merged_batch_clips(
         clean_safe_title = re.sub(r'[\\/*?:"<>|]', "", clip_status.get("base_title") or "highlight_compilation")
         clean_safe_title = clean_safe_title.replace(" ", "_")[:40] or "compilation"
         out_filename = f"compilation_{clean_safe_title}_{batch_id}.mp4"
-        out_path = str(EXPORTS_DIR / out_filename)
+        resolved_bgm = resolve_bgm_path(getattr(settings, "bgm_preset", None), settings.bgm_file_path)
+        effective_bgm_enabled = bool(resolved_bgm) if (getattr(settings, "bgm_preset", "none") != "none" or settings.bgm_file_path) else bool(settings.bgm_enabled)
 
         await asyncio.to_thread(
             render_clip_to_mp4,
@@ -534,8 +562,8 @@ async def render_merged_batch_clips(
             watermark_opacity=float((settings.watermark_opacity if settings.watermark_opacity is not None else 80.0) / 100.0),
             watermark_x_percent=float(settings.watermark_x if settings.watermark_x is not None else 90.0),
             watermark_y_percent=float(settings.watermark_y if settings.watermark_y is not None else 8.0),
-            bgm_enabled=bool(settings.bgm_enabled),
-            bgm_path=settings.bgm_file_path,
+            bgm_enabled=effective_bgm_enabled,
+            bgm_path=resolved_bgm,
             bgm_volume=float((settings.bgm_volume if settings.bgm_volume is not None else 25.0) / 100.0),
             bgm_start_offset=float(settings.bgm_start_offset or 0.0),
             hook_sfx_enabled=bool(settings.hook_sfx_enabled),

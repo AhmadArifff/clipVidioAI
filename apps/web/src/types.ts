@@ -118,6 +118,18 @@ export interface CustomBackgroundFileItem {
   file_size_bytes: number;
 }
 
+export interface AudioPresetItem {
+  id: string;
+  name: string;
+  category: string;
+  description: string;
+  file?: string;
+  duration?: number;
+  url?: string;
+  size_bytes?: number;
+  created_at?: number;
+}
+
 export interface RenderSettings {
   renderEngine?: 'server' | 'client';
   aspectRatio: AspectRatioOption;
@@ -156,6 +168,7 @@ export interface RenderSettings {
   selectedClips: ViralClip[];
   // Background Music
   bgmEnabled?: boolean;
+  bgmPreset?: string;
   bgmFilePath?: string;
   bgmFileName?: string;
   bgmVolume?: number; // 0 to 100%

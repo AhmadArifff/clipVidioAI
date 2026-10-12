@@ -412,41 +412,69 @@
       "id": "T22",
       "task": "Pengembangan Router Audio (audio.py), Pustaka Preset BGM Bebas Royalti (Lo-Fi, Phonk, Cinematic, Upbeat) dan Sistem Upload Audio Aman Berbasis Streaming Chunk",
       "owner_role": "backend-engineer",
-      "status": "todo",
+      "status": "done",
       "depends_on": ["T21"],
       "rework_iteration_count": 0,
-      "reviewed_by": [],
-      "verdict": "pending"
+      "reviewed_by": [
+        {
+          "role": "qa-engineer",
+          "verdict": "approved",
+          "timestamp": "2026-10-12T07:19:30Z",
+          "note": "4 file MP3 preset BGM terbuat, endpoint /api/audio/presets dan streaming range /api/audio/file/... lulus uji TestClient"
+        }
+      ],
+      "verdict": "approved"
     },
     {
       "id": "T23",
       "task": "Implementasi Filtergraph FFmpeg: Looping BGM, Sidechain Auto-Ducking, EBU R128 Broadcast Normalization (-14 LUFS), dan Dynamic 3-Second Hook Punch-In Zoom",
       "owner_role": "backend-engineer",
-      "status": "todo",
+      "status": "done",
       "depends_on": ["T22"],
       "rework_iteration_count": 0,
-      "reviewed_by": [],
-      "verdict": "pending"
+      "reviewed_by": [
+        {
+          "role": "tech-critic",
+          "verdict": "approved",
+          "timestamp": "2026-10-12T07:23:00Z",
+          "note": "Filtergraph FFmpeg untuk looping BGM, sidechain ducking, loudnorm -14 LUFS, dan dynamic 3-second hook zoom tervalidasi bebas syntax error"
+        }
+      ],
+      "verdict": "approved"
     },
     {
       "id": "T24",
       "task": "Integrasi Skema Pydantic, Tipe TypeScript, Panel Studio UI Audio & BGM Compositing (Selector, Mini Preview Player, Volume Slider, Ducking Toggle, Zoom Toggle) dan Lokalisasi Bilingual",
       "owner_role": "frontend-engineer",
-      "status": "todo",
+      "status": "done",
       "depends_on": ["T23"],
       "rework_iteration_count": 0,
-      "reviewed_by": [],
-      "verdict": "pending"
+      "reviewed_by": [
+        {
+          "role": "qa-engineer",
+          "verdict": "approved",
+          "timestamp": "2026-10-12T07:35:00Z",
+          "note": "Antarmuka UI Audio & BGM Compositing terpasang dengan preset picker, audio preview player, volume slider, auto-ducking toggle, hook punch zoom toggle, dan bilingual ID/EN tervalidasi"
+        }
+      ],
+      "verdict": "approved"
     },
     {
       "id": "T25",
       "task": "Pengujian Render Pipeline E2E (Single & Merged), Validasi Keseimbangan Audio/Sidechain Ducking, dan Verifikasi Build Bebas Glitch",
       "owner_role": "qa-engineer",
-      "status": "todo",
+      "status": "done",
       "depends_on": ["T24"],
       "rework_iteration_count": 0,
-      "reviewed_by": [],
-      "verdict": "pending"
+      "reviewed_by": [
+        {
+          "role": "tech-critic",
+          "verdict": "approved",
+          "timestamp": "2026-10-12T07:36:00Z",
+          "note": "Pipeline render FFmpeg untuk Smart BGM Compositing, auto-ducking, loudnorm -14 LUFS, dan hook zoom 1.14x serta frontend build Vite 100% lulus tanpa regresi"
+        }
+      ],
+      "verdict": "approved"
     },
     {
       "id": "T26",

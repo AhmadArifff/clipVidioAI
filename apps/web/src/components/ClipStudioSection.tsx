@@ -283,6 +283,15 @@ const ClipRenderErrorBox: React.FC<{ errorMessage: string; t: any; onRetry?: () 
 
 export const STUDIO_PREFS_KEY = 'clipvidio_studio_preferences';
 
+export const BUILTIN_BGM_PRESETS = [
+  { id: 'none', label: 'None (Tanpa BGM)', icon: '🔇', file: '', desc: 'Hanya vokal asli video' },
+  { id: 'lofi_chill', label: 'Lo-Fi Chill Hop', icon: '☕', file: 'lofi_chill.mp3', desc: 'Beat santai untuk podcast & narasi' },
+  { id: 'phonk_hype', label: 'Phonk Drift', icon: '🏎️', file: 'phonk_hype.mp3', desc: 'Ketukan cepat untuk motivasi & gaming' },
+  { id: 'cinematic_mystery', label: 'Cinematic Tension', icon: '🎬', file: 'cinematic_mystery.mp3', desc: 'Misteri & dramatis' },
+  { id: 'upbeat_vlog', label: 'Upbeat Sunny Vlog', icon: '☀️', file: 'upbeat_vlog.mp3', desc: 'Ceria & motivasi bisnis' },
+  { id: 'custom', label: 'Unggah Sendiri', icon: '📁', file: '', desc: 'File audio kustom (.mp3, .wav)' },
+];
+
 export interface StudioPreferences {
   aspectRatio?: AspectRatioOption;
   backgroundStyle?: BackgroundStyle;
@@ -307,6 +316,7 @@ export interface StudioPreferences {
   subtitleYPercent?: number;
   subtitleCenterYPercent?: number;
   isCustomTitleY?: boolean;
+  bgmPreset?: string;
   bgmVolume?: number;
   hookSfxVolume?: number;
   renderMode?: 'separate' | 'merged';
@@ -361,6 +371,7 @@ export const DEFAULT_STUDIO_PREFS: Required<StudioPreferences> = {
   subtitleYPercent: 21,
   subtitleCenterYPercent: 50,
   isCustomTitleY: false,
+  bgmPreset: 'none',
   bgmVolume: 25,
   hookSfxVolume: 100,
   renderMode: 'separate',
@@ -487,7 +498,8 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
   const [keywordAccentMode, setKeywordAccentMode] = useState<KeywordAccentMode>(() => getSavedStudioPreferences().keywordAccentMode ?? DEFAULT_STUDIO_PREFS.keywordAccentMode);
 
   // Background Music (BGM) state
-  const [bgmEnabled, setBgmEnabled] = useState<boolean>(false);
+  const [bgmPreset, setBgmPreset] = useState<string>(() => getSavedStudioPreferences().bgmPreset ?? DEFAULT_STUDIO_PREFS.bgmPreset ?? 'none');
+  const [bgmEnabled, setBgmEnabled] = useState<boolean>(() => (getSavedStudioPreferences().bgmPreset ?? DEFAULT_STUDIO_PREFS.bgmPreset) !== 'none');
   const [bgmFileName, setBgmFileName] = useState<string>('');
   const [bgmFilePath, setBgmFilePath] = useState<string>('');
   const [bgmAudioUrl, setBgmAudioUrl] = useState<string>('');
@@ -1189,6 +1201,40 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
   };
 
   // Background Music handlers
+  const handleSelectBgmPreset = (presetId: string) => {
+    setBgmPreset(presetId);
+    if (bgmAudioRef.current) {
+      bgmAudioRef.current.pause();
+    }
+    setIsBgmPlaying(false);
+
+    if (presetId === 'none') {
+      setBgmEnabled(false);
+      setBgmFileName('');
+      setBgmFilePath('');
+      setBgmAudioUrl('');
+      setBgmDuration(0);
+      setBgmStartOffset(0);
+    } else if (presetId === 'custom') {
+      if (bgmFilePath && !['lofi_chill', 'phonk_hype', 'cinematic_mystery', 'upbeat_vlog'].includes(bgmFilePath)) {
+        setBgmEnabled(true);
+      } else {
+        setBgmEnabled(false);
+        setBgmFileName('');
+        setBgmFilePath('');
+        setBgmAudioUrl('');
+      }
+    } else {
+      const matched = BUILTIN_BGM_PRESETS.find(p => p.id === presetId);
+      if (matched && matched.file) {
+        setBgmEnabled(true);
+        setBgmFileName(matched.label);
+        setBgmFilePath(matched.id);
+        setBgmAudioUrl(`/api/audio/file/${matched.file}`);
+      }
+    }
+  };
+
   const uploadBgmFile = async (file: File) => {
     if (!file) return;
     setIsUploadingBgm(true);
@@ -1204,6 +1250,7 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
         throw new Error(err.detail || 'Failed to upload background music');
       }
       const data = await res.json();
+      setBgmPreset('custom');
       setBgmFileName(data.filename || file.name);
       setBgmFilePath(data.file_path);
       setBgmAudioUrl(data.url);
@@ -1243,6 +1290,7 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
       bgmAudioRef.current.pause();
     }
     setIsBgmPlaying(false);
+    setBgmPreset('none');
     setBgmEnabled(false);
     setBgmFileName('');
     setBgmFilePath('');
@@ -1742,6 +1790,7 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
       subtitleYPercent,
       subtitleCenterYPercent,
       isCustomTitleY,
+      bgmPreset,
       bgmVolume,
       hookSfxVolume,
       renderMode,
@@ -1793,6 +1842,7 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
     subtitleYPercent,
     subtitleCenterYPercent,
     isCustomTitleY,
+    bgmPreset,
     bgmVolume,
     hookSfxVolume,
     renderMode,
@@ -1843,6 +1893,7 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
     setSubtitleOffsetMs(DEFAULT_STUDIO_PREFS.subtitleOffsetMs);
     setSubtitleLanguage(DEFAULT_STUDIO_PREFS.subtitleLanguage);
     setIsCustomTitleY(DEFAULT_STUDIO_PREFS.isCustomTitleY);
+    setBgmPreset(DEFAULT_STUDIO_PREFS.bgmPreset);
     setBgmVolume(DEFAULT_STUDIO_PREFS.bgmVolume);
     setHookSfxVolume(DEFAULT_STUDIO_PREFS.hookSfxVolume);
     setRenderMode(DEFAULT_STUDIO_PREFS.renderMode);
@@ -1915,7 +1966,8 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
       subtitleLanguage,
       selectedClips: enrichedSelectedClips,
       // Background Music
-      bgmEnabled: !!bgmFilePath,
+      bgmPreset: bgmPreset || 'none',
+      bgmEnabled: bgmEnabled && (bgmPreset !== 'none' || !!bgmFilePath),
       bgmFilePath,
       bgmFileName,
       bgmVolume,
@@ -3340,99 +3392,181 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
             )}
           </div>
 
-          {/* 6. Background Music (BGM) */}
+          {/* 6. Smart Audio BGM Compositing & Hook Punch Zoom (v3.2) */}
           <div className="studio-card-group">
             <div className="group-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                <span className="group-title">{t.studio.bgmTitle}</span>
-                {bgmFilePath && (
-                  <label style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }}>
-                    <input
-                      type="checkbox"
-                      checked={bgmEnabled}
-                      onChange={e => setBgmEnabled(e.target.checked)}
-                      style={{ accentColor: 'var(--primary)', width: '16px', height: '16px', cursor: 'pointer' }}
-                    />
-                  </label>
-                )}
+                <span className="group-title">🎵 {t.studio.audioBgmTitle || 'Smart BGM & Audio Compositing'}</span>
+                <span style={{ fontSize: '0.64rem', fontWeight: 700, padding: '0.1rem 0.45rem', borderRadius: '4px', background: 'rgba(99, 102, 241, 0.2)', color: '#818cf8', border: '1px solid rgba(99, 102, 241, 0.35)' }}>
+                  v3.2 PRO
+                </span>
               </div>
-              <span className="group-badge" style={{ color: bgmEnabled && bgmFilePath ? '#10b981' : 'var(--text-muted)' }}>
-                {bgmEnabled && bgmFilePath ? t.studio.bgmActiveBadge : t.studio.bgmOptionalBadge}
+              <span className="group-badge" style={{ color: (bgmEnabled && bgmPreset !== 'none') ? '#10b981' : 'var(--text-muted)' }}>
+                {(bgmEnabled && bgmPreset !== 'none') ? t.studio.bgmActiveBadge : t.studio.bgmOptionalBadge}
               </span>
             </div>
 
-            <div className="bgm-control-card">
-              {!bgmFilePath ? (
-                <label
-                  className={`bgm-dropzone ${isBgmDragging ? 'drag-over' : ''}`}
-                  onDragOver={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setIsBgmDragging(true);
-                  }}
-                  onDragLeave={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setIsBgmDragging(false);
-                  }}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setIsBgmDragging(false);
-                    const file = e.dataTransfer.files?.[0];
-                    if (file) uploadBgmFile(file);
-                  }}
-                >
-                  <input
-                    type="file"
-                    accept=".mp3,.wav,.m4a,.aac,.ogg,.flac,audio/*"
-                    onChange={handleBgmUpload}
-                    style={{ display: 'none' }}
-                    disabled={isUploadingBgm}
-                  />
-                  <div className="dropzone-icon">{isUploadingBgm ? '⏳' : isBgmDragging ? '📥' : '🎶'}</div>
-                  <div className="dropzone-text">
-                    <span className="dropzone-main-text">
-                      {isUploadingBgm ? 'Uploading Audio...' : isBgmDragging ? t.studio.bgmDropActive : t.studio.bgmUploadMain}
-                    </span>
-                    <span className="dropzone-sub-text">{t.studio.bgmUploadSub}</span>
-                  </div>
-                </label>
-              ) : (
-                <div className="bgm-active-file-row">
-                  <div className="bgm-info">
-                    <span className="bgm-icon">🎧</span>
-                    <div className="bgm-details">
-                      <span className="bgm-filename" title={bgmFileName}>{bgmFileName}</span>
-                      <span className="bgm-status-tag">{t.studio.bgmReadyTag}</span>
+            <p style={{ fontSize: '0.74rem', color: 'var(--text-muted)', margin: '0.4rem 0 0.8rem 0', lineHeight: 1.4 }}>
+              {t.studio.audioBgmDesc || 'Pilih musik latar bebas royalti dengan auto-ducking cerdas dan broadcast mastering (-14 LUFS).'}
+            </p>
+
+            {/* Royalty-Free BGM Presets Grid */}
+            <div style={{ marginBottom: '0.9rem' }}>
+              <div style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-main)', marginBottom: '0.45rem' }}>
+                {t.studio.bgmPresetLabel || 'Pilihan Musik Latar Bebas Royalti:'}
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '0.45rem' }}>
+                {BUILTIN_BGM_PRESETS.map(preset => {
+                  const isSelected = bgmPreset === preset.id;
+                  return (
+                    <button
+                      key={preset.id}
+                      type="button"
+                      onClick={() => handleSelectBgmPreset(preset.id)}
+                      className={`pill-btn ${isSelected ? 'active' : ''}`}
+                      style={{
+                        padding: '0.5rem 0.6rem',
+                        fontSize: '0.75rem',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'flex-start',
+                        gap: '0.2rem',
+                        textAlign: 'left',
+                        borderRadius: '8px',
+                        border: isSelected ? '1px solid var(--primary)' : '1px solid var(--border-color)',
+                        background: isSelected ? 'rgba(99, 102, 241, 0.16)' : 'rgba(255, 255, 255, 0.03)',
+                        cursor: 'pointer',
+                        transition: 'all 0.18s ease'
+                      }}
+                      title={preset.desc}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', width: '100%' }}>
+                        <span style={{ fontSize: '1rem' }}>{preset.icon}</span>
+                        <span style={{ fontWeight: isSelected ? 700 : 500, color: isSelected ? 'var(--primary)' : 'var(--text-main)', flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {preset.id === 'none' ? (t.studio.bgmNone || preset.label) :
+                           preset.id === 'lofi_chill' ? (t.studio.bgmLofi || preset.label) :
+                           preset.id === 'phonk_hype' ? (t.studio.bgmPhonk || preset.label) :
+                           preset.id === 'cinematic_mystery' ? (t.studio.bgmCinematic || preset.label) :
+                           preset.id === 'upbeat_vlog' ? (t.studio.bgmUpbeat || preset.label) :
+                           preset.id === 'custom' ? (t.studio.bgmCustom || preset.label) : preset.label}
+                        </span>
+                      </div>
+                      <span style={{ fontSize: '0.66rem', color: 'var(--text-muted)', lineHeight: 1.2 }}>
+                        {preset.desc}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Custom file dropzone when 'custom' is selected */}
+            {bgmPreset === 'custom' && (
+              <div style={{ marginBottom: '0.9rem' }}>
+                {!bgmFilePath ? (
+                  <label
+                    className={`bgm-dropzone ${isBgmDragging ? 'drag-over' : ''}`}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setIsBgmDragging(true);
+                    }}
+                    onDragLeave={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setIsBgmDragging(false);
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setIsBgmDragging(false);
+                      const file = e.dataTransfer.files?.[0];
+                      if (file) uploadBgmFile(file);
+                    }}
+                  >
+                    <input
+                      type="file"
+                      accept=".mp3,.wav,.m4a,.aac,.ogg,.flac,audio/*"
+                      onChange={handleBgmUpload}
+                      style={{ display: 'none' }}
+                      disabled={isUploadingBgm}
+                    />
+                    <div className="dropzone-icon">{isUploadingBgm ? '⏳' : isBgmDragging ? '📥' : '🎶'}</div>
+                    <div className="dropzone-text">
+                      <span className="dropzone-main-text">
+                        {isUploadingBgm ? 'Uploading Audio...' : isBgmDragging ? t.studio.bgmDropActive : t.studio.bgmUploadMain}
+                      </span>
+                      <span className="dropzone-sub-text">{t.studio.bgmUploadSub}</span>
                     </div>
-                  </div>
-                  <div className="bgm-actions">
-                    {bgmAudioUrl && (
+                  </label>
+                ) : (
+                  <div className="bgm-active-file-row">
+                    <div className="bgm-info">
+                      <span className="bgm-icon">🎧</span>
+                      <div className="bgm-details">
+                        <span className="bgm-filename" title={bgmFileName}>{bgmFileName}</span>
+                        <span className="bgm-status-tag">{t.studio.bgmReadyTag}</span>
+                      </div>
+                    </div>
+                    <div className="bgm-actions">
                       <button
                         type="button"
-                        className="bgm-preview-btn"
-                        onClick={toggleBgmPlayback}
-                        title={isBgmPlaying ? t.studio.bgmPause : t.studio.bgmPlay}
+                        className="bgm-remove-btn"
+                        onClick={handleRemoveBgm}
+                        title={t.studio.bgmRemoveTooltip}
                       >
-                        {isBgmPlaying ? '⏸' : '▶'}
+                        ✕
                       </button>
-                    )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Active BGM Controls (Volume, Preview Player, Auto-Ducking) */}
+            {bgmPreset !== 'none' && (
+              <div className="bgm-control-card" style={{ background: 'rgba(255, 255, 255, 0.02)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '0.85rem' }}>
+                {/* Audio preview player strip */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '0.75rem', borderBottom: '1px solid rgba(255, 255, 255, 0.06)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <span style={{ fontSize: '1.1rem' }}>🎧</span>
+                    <div>
+                      <div style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-main)' }}>
+                        {bgmFileName || (BUILTIN_BGM_PRESETS.find(p => p.id === bgmPreset)?.label ?? 'BGM Active')}
+                      </div>
+                      <div style={{ fontSize: '0.67rem', color: '#10b981' }}>
+                        {t.studio.bgmActiveBadge} • Broadcast Loudnorm (-14 LUFS)
+                      </div>
+                    </div>
+                  </div>
+                  {bgmAudioUrl && (
                     <button
                       type="button"
-                      className="bgm-remove-btn"
-                      onClick={handleRemoveBgm}
-                      title={t.studio.bgmRemoveTooltip}
+                      className="pill-btn"
+                      onClick={toggleBgmPlayback}
+                      style={{
+                        padding: '0.35rem 0.75rem',
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.35rem',
+                        background: isBgmPlaying ? '#ef4444' : 'var(--primary)',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: '6px',
+                        cursor: 'pointer'
+                      }}
+                      title={isBgmPlaying ? (t.studio.stopAudioBtn || 'Stop Audio') : (t.studio.previewAudioBtn || 'Dengar Sampel')}
                     >
-                      ✕
+                      <span>{isBgmPlaying ? '⏹' : '▶'}</span>
+                      <span>{isBgmPlaying ? (t.studio.stopAudioBtn || 'Berhenti') : (t.studio.previewAudioBtn || 'Dengar')}</span>
                     </button>
-                  </div>
+                  )}
                 </div>
-              )}
 
-              {/* Volume Slider & Quick Presets */}
-              {bgmFilePath && (
-                <div className="slider-control-item" style={{ marginTop: '0.9rem' }}>
+                {/* Volume Slider & Quick Presets */}
+                <div className="slider-control-item" style={{ marginTop: '0.85rem' }}>
                   <div className="slider-label-row">
                     <span className="slider-label">{t.studio.bgmVolumeLabel}</span>
                     <div className="slider-input-badge-wrap">
@@ -3463,49 +3597,83 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                     <button type="button" onClick={() => setBgmVolume(50)}>50%</button>
                     <button type="button" onClick={() => setBgmVolume(80)}>80%</button>
                   </div>
-                  {/* BGM Start Offset Selector */}
-                  <div className="slider-control-item" style={{ marginTop: '0.85rem' }}>
-                    <div className="slider-label-row">
-                      <span className="slider-label">{t.studio.bgmStartOffsetLabel}</span>
-                      <span className="slider-val-badge">
-                        {formatDuration(bgmStartOffset)} {bgmDuration > 0 ? `/ ${formatDuration(bgmDuration)}` : ''}
-                      </span>
-                    </div>
-                    <input
-                      type="range"
-                      className="studio-slider"
-                      min="0"
-                      max={bgmDuration > 0 ? Math.floor(bgmDuration) : 180}
-                      step="0.5"
-                      value={bgmStartOffset}
-                      onChange={e => handleBgmStartOffsetChange(Number(e.target.value))}
-                    />
-                    <div className="slider-quick-buttons" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginTop: '0.35rem' }}>
-                      <button type="button" onClick={() => handleBgmStartOffsetChange(0)}>{t.studio.bgmStartFromBeginning}</button>
-                      {bgmDuration > 0 ? (
-                        <>
-                          {bgmDuration > 15 && <button type="button" onClick={() => handleBgmStartOffsetChange(15)}>0:15</button>}
-                          {bgmDuration > 30 && <button type="button" onClick={() => handleBgmStartOffsetChange(30)}>0:30</button>}
-                          {bgmDuration > 45 && <button type="button" onClick={() => handleBgmStartOffsetChange(45)}>0:45</button>}
-                          {bgmDuration > 60 && <button type="button" onClick={() => handleBgmStartOffsetChange(60)}>1:00</button>}
-                          {bgmDuration > 90 && <button type="button" onClick={() => handleBgmStartOffsetChange(90)}>1:30</button>}
-                        </>
-                      ) : (
-                        <>
-                          <button type="button" onClick={() => handleBgmStartOffsetChange(15)}>0:15</button>
-                          <button type="button" onClick={() => handleBgmStartOffsetChange(30)}>0:30</button>
-                          <button type="button" onClick={() => handleBgmStartOffsetChange(60)}>1:00</button>
-                        </>
-                      )}
-                    </div>
-                    <p className="bgm-hint-text" style={{ marginTop: '0.35rem' }}>
-                      {t.studio.bgmStartOffsetHint}
-                    </p>
-                  </div>
-
-                  <p className="bgm-hint-text">{t.studio.bgmHint}</p>
                 </div>
-              )}
+
+                {/* BGM Start Offset Selector (for custom or long presets) */}
+                <div className="slider-control-item" style={{ marginTop: '0.85rem' }}>
+                  <div className="slider-label-row">
+                    <span className="slider-label">{t.studio.bgmStartOffsetLabel}</span>
+                    <span className="slider-val-badge">
+                      {formatDuration(bgmStartOffset)} {bgmDuration > 0 ? `/ ${formatDuration(bgmDuration)}` : ''}
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    className="studio-slider"
+                    min="0"
+                    max={bgmDuration > 0 ? Math.floor(bgmDuration) : 180}
+                    step="0.5"
+                    value={bgmStartOffset}
+                    onChange={e => handleBgmStartOffsetChange(Number(e.target.value))}
+                  />
+                  <div className="slider-quick-buttons" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginTop: '0.35rem' }}>
+                    <button type="button" onClick={() => handleBgmStartOffsetChange(0)}>{t.studio.bgmStartFromBeginning}</button>
+                    <button type="button" onClick={() => handleBgmStartOffsetChange(15)}>0:15</button>
+                    <button type="button" onClick={() => handleBgmStartOffsetChange(30)}>0:30</button>
+                    <button type="button" onClick={() => handleBgmStartOffsetChange(60)}>1:00</button>
+                  </div>
+                </div>
+
+                {/* Smart Dynamic Auto-Ducking Toggle */}
+                <div style={{ marginTop: '0.9rem', paddingTop: '0.75rem', borderTop: '1px solid rgba(255, 255, 255, 0.06)' }}>
+                  <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.65rem', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={smartDuckingEnabled}
+                      onChange={e => setSmartDuckingEnabled(e.target.checked)}
+                      style={{ accentColor: 'var(--primary)', width: '18px', height: '18px', marginTop: '2px', cursor: 'pointer' }}
+                    />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                        <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-main)' }}>
+                          {t.studio.autoDuckingLabel || '🎚️ Smart Dynamic Auto-Ducking (-14 LUFS)'}
+                        </span>
+                        <span style={{ fontSize: '0.62rem', fontWeight: 700, padding: '0.1rem 0.4rem', borderRadius: '4px', background: 'rgba(16, 185, 129, 0.18)', color: '#10b981' }}>
+                          PRO AUDIO
+                        </span>
+                      </div>
+                      <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: '0.2rem 0 0 0', lineHeight: 1.35 }}>
+                        {t.studio.autoDuckingDesc || 'Volume BGM otomatis meredup saat narator berbicara dan kembali naik saat hening.'}
+                      </p>
+                    </div>
+                  </label>
+                </div>
+              </div>
+            )}
+
+            {/* 3-Second Hook Punch-In Zoom Toggle */}
+            <div style={{ marginTop: '0.85rem', padding: '0.75rem', borderRadius: '8px', background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
+              <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.65rem', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={hookZoomEnabled}
+                  onChange={e => setHookZoomEnabled(e.target.checked)}
+                  style={{ accentColor: 'var(--primary)', width: '18px', height: '18px', marginTop: '2px', cursor: 'pointer' }}
+                />
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                    <span style={{ fontSize: '0.82rem', fontWeight: 600, color: '#f59e0b' }}>
+                      {t.studio.hookPunchZoomLabel || '⚡ 3-Second Hook Punch-In Zoom (1.14x)'}
+                    </span>
+                    <span style={{ fontSize: '0.62rem', fontWeight: 700, padding: '0.1rem 0.4rem', borderRadius: '4px', background: 'rgba(245, 158, 11, 0.2)', color: '#fbbf24' }}>
+                      RETENTION BOOSTER
+                    </span>
+                  </div>
+                  <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: '0.2rem 0 0 0', lineHeight: 1.35 }}>
+                    {t.studio.hookPunchZoomDesc || 'Pembesaran dinamis 1.14x di 3 detik awal untuk memecah kebosanan penonton (pattern interrupt).'}
+                  </p>
+                </div>
+              </label>
             </div>
           </div>
 

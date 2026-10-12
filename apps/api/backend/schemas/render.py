@@ -38,6 +38,7 @@ class RenderSettingsModel(BaseModel):
     subtitle_center_y_percent: Optional[float] = 50.0
     # Background Music
     bgm_enabled: Optional[bool] = False
+    bgm_preset: Optional[str] = "none"           # "none" | "lofi_chill" | "phonk_hype" | "cinematic_mystery" | "upbeat_vlog" | "custom"
     bgm_file_path: Optional[str] = None
     bgm_volume: Optional[float] = 25.0
     bgm_start_offset: Optional[float] = 0.0

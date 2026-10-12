@@ -501,6 +501,7 @@ export default function App() {
             subtitle_center_y_percent: settings.subtitleCenterYPercent !== undefined ? settings.subtitleCenterYPercent : 50.0,
             // Background Music
             bgm_enabled: settings.bgmEnabled || false,
+            bgm_preset: settings.bgmPreset || 'none',
             bgm_file_path: settings.bgmFilePath || null,
             bgm_volume: settings.bgmVolume !== undefined ? settings.bgmVolume : 25.0,
             bgm_start_offset: settings.bgmStartOffset || 0.0,

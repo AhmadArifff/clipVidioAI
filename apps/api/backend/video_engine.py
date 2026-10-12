@@ -3376,6 +3376,32 @@ def render_clip_to_mp4(
         )
         out_video_map = "[v_polished]"
 
+    dur = max(1.0, float(clip_duration))
+
+    # Dynamic 3-Second Hook Punch-In Zoom (Pattern Interrupt for Maximum Retention)
+    if hook_zoom_enabled and dur >= 4.0:
+        if aspect_ratio == "16:9_landscape":
+            target_w, target_h = 1920, 1080
+        elif aspect_ratio == "1:1":
+            target_w, target_h = 1080, 1080
+        elif aspect_ratio == "4:3":
+            target_w, target_h = 1440, 1080
+        else:
+            target_w, target_h = 1080, 1920
+
+        zoom_w = int(round(target_w * 1.14 / 2.0)) * 2
+        zoom_h = int(round(target_h * 1.14 / 2.0)) * 2
+        fcx = face_box.get("cx", 0.5) if isinstance(face_box, dict) else 0.5
+        fcy = face_box.get("cy", 0.35) if isinstance(face_box, dict) else 0.35
+        crop_x = max(0, min(zoom_w - target_w, int(round(zoom_w * fcx - target_w / 2.0))))
+        crop_y = max(0, min(zoom_h - target_h, int(round(zoom_h * fcy - target_h / 2.0))))
+        filter_chains.append(
+            f"{out_video_map}split[v_base_zoom][v_top_pre];"
+            f"[v_top_pre]scale={zoom_w}:{zoom_h},crop={target_w}:{target_h}:{crop_x}:{crop_y},setsar=1,format=yuva420p,fade=t=out:st=2.5:d=0.5:alpha=1[v_zoom_layer];"
+            f"[v_base_zoom][v_zoom_layer]overlay=0:0:enable='lte(t,3.0)'[v_hook_zoomed]"
+        )
+        out_video_map = "[v_hook_zoomed]"
+
     # 2. Audio Processing (Original Voice with Boost, BGM with smart ducking & start offset, Hook SFX at frame 0, and Loudness Mastering)
     audio_inputs_to_mix = []
     has_orig_audio = check_has_audio(video_path)
