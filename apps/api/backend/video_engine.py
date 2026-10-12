@@ -2550,6 +2550,20 @@ def detect_speaker_face_box(
                     }
                 return default_res
 
+            if streamer_preset == "podcast_split":
+                left_faces = [f for f in img_faces if f["cx"] < 0.50]
+                right_faces = [f for f in img_faces if f["cx"] >= 0.50]
+                s1 = max(left_faces, key=lambda f: f["w"] * f["h"]) if left_faces else {"cx": 0.25, "cy": 0.35, "w": 0.22, "h": 0.25}
+                s2 = max(right_faces, key=lambda f: f["w"] * f["h"]) if right_faces else {"cx": 0.75, "cy": 0.35, "w": 0.22, "h": 0.25}
+                return {
+                    "found": True,
+                    "dual_speakers": True,
+                    "streamer_preset": "podcast_split",
+                    "cx": 0.50, "cy": 0.35, "w": 0.25, "h": 0.25,
+                    "speaker1": {"cx": float(round(s1["cx"], 3)), "cy": float(round(s1["cy"], 3)), "w": float(round(s1["w"], 3)), "h": float(round(s1["h"], 3))},
+                    "speaker2": {"cx": float(round(s2["cx"], 3)), "cy": float(round(s2["cy"], 3)), "w": float(round(s2["w"], 3)), "h": float(round(s2["h"], 3))}
+                }
+
             if is_streamer:
                 corner_faces = [f for f in img_faces if ((f["cx"] - 0.5)**2 + (f["cy"] - 0.5)**2) > 0.06]
                 chosen = max(corner_faces or img_faces, key=lambda f: f["w"] * f["h"])
@@ -2652,6 +2666,58 @@ def detect_speaker_face_box(
                 }
             return default_res
 
+        if streamer_preset == "podcast_split":
+            left_candidates = [c for c in valid_clusters if c["cx"] < 0.50]
+            right_candidates = [c for c in valid_clusters if c["cx"] >= 0.50]
+
+            def cluster_mass(c):
+                avg_w = sum(p["w"] for p in c["pts"]) / len(c["pts"])
+                return len(c["pts"]) * (avg_w ** 0.5)
+
+            if left_candidates:
+                chosen_spk1 = max(left_candidates, key=cluster_mass)
+                spk1_cx = float(chosen_spk1["cx"])
+                spk1_cy = float(chosen_spk1["cy"])
+                spk1_w = float(sum(p["w"] for p in chosen_spk1["pts"]) / len(chosen_spk1["pts"]))
+                spk1_h = float(sum(p["h"] for p in chosen_spk1["pts"]) / len(chosen_spk1["pts"]))
+            else:
+                spk1_cx, spk1_cy, spk1_w, spk1_h = 0.25, 0.35, 0.22, 0.25
+
+            if right_candidates:
+                chosen_spk2 = max(right_candidates, key=cluster_mass)
+                spk2_cx = float(chosen_spk2["cx"])
+                spk2_cy = float(chosen_spk2["cy"])
+                spk2_w = float(sum(p["w"] for p in chosen_spk2["pts"]) / len(chosen_spk2["pts"]))
+                spk2_h = float(sum(p["h"] for p in chosen_spk2["pts"]) / len(chosen_spk2["pts"]))
+            else:
+                spk2_cx, spk2_cy, spk2_w, spk2_h = 0.75, 0.35, 0.22, 0.25
+
+            logger.info(
+                f"Dual podcast split speaker tracking: Host=({spk1_cx:.3f}, {spk1_cy:.3f}), "
+                f"Guest=({spk2_cx:.3f}, {spk2_cy:.3f})"
+            )
+            return {
+                "found": True,
+                "dual_speakers": True,
+                "streamer_preset": "podcast_split",
+                "cx": 0.50,
+                "cy": 0.35,
+                "w": 0.25,
+                "h": 0.25,
+                "speaker1": {
+                    "cx": float(round(spk1_cx, 3)),
+                    "cy": float(round(spk1_cy, 3)),
+                    "w": float(round(spk1_w, 3)),
+                    "h": float(round(spk1_h, 3)),
+                },
+                "speaker2": {
+                    "cx": float(round(spk2_cx, 3)),
+                    "cy": float(round(spk2_cy, 3)),
+                    "w": float(round(spk2_w, 3)),
+                    "h": float(round(spk2_h, 3)),
+                }
+            }
+
         if is_streamer:
             corner_clusters = [c for c in valid_clusters if ((c["cx"] - 0.5)**2 + (c["cy"] - 0.5)**2) > 0.06]
             chosen = max(corner_clusters or valid_clusters, key=lambda c: len(c["pts"]))
@@ -2679,8 +2745,29 @@ def detect_speaker_face_box(
             left_speakers = [c for c in foreground_clusters if c["cx"] < 0.40 and len(c["pts"]) >= 3]
             right_speakers = [c for c in foreground_clusters if c["cx"] > 0.60 and len(c["pts"]) >= 3]
             if left_speakers and right_speakers:
-                mid_cx = (max(left_speakers, key=lambda c: len(c["pts"]))["cx"] + max(right_speakers, key=lambda c: len(c["pts"]))["cx"]) / 2.0
-                return {"found": True, "cx": float(round(mid_cx, 3)), "cy": 0.35, "w": 0.25, "h": 0.25, "dual_speakers": True}
+                spk1_c = max(left_speakers, key=lambda c: len(c["pts"]))
+                spk2_c = max(right_speakers, key=lambda c: len(c["pts"]))
+                mid_cx = (spk1_c["cx"] + spk2_c["cx"]) / 2.0
+                return {
+                    "found": True,
+                    "cx": float(round(mid_cx, 3)),
+                    "cy": 0.35,
+                    "w": 0.25,
+                    "h": 0.25,
+                    "dual_speakers": True,
+                    "speaker1": {
+                        "cx": float(round(spk1_c["cx"], 3)),
+                        "cy": float(round(spk1_c["cy"], 3)),
+                        "w": 0.22,
+                        "h": 0.25,
+                    },
+                    "speaker2": {
+                        "cx": float(round(spk2_c["cx"], 3)),
+                        "cy": float(round(spk2_c["cy"], 3)),
+                        "w": 0.22,
+                        "h": 0.25,
+                    }
+                }
 
             # Rank foreground candidates by: consistency * size * confidence * center prior
             def score_cluster(c):
@@ -2884,14 +2971,55 @@ def build_ffmpeg_filtergraph(
         current_v = "[layout_base]"
 
     elif streamer_preset == "podcast_split":
-        # Dual Podcast Split: Top half is Speaker 1 (left side of 16:9), Bottom half is Speaker 2 (right side of 16:9)
-        # Each cropped and scaled to 1080x960, stacked vertically to fill a 1080x1920 vertical video
-        filters.append(
-            f"[0:v]split=2[spk1_raw][spk2_raw];"
-            f"[spk1_raw]crop='min(iw, ih*9/8)':'ih':'max(0, iw*0.25-(min(iw, ih*9/8))/2)':'0',scale=1080:960[spk1_box];"
-            f"[spk2_raw]crop='min(iw, ih*9/8)':'ih':'max(0, min(iw-(min(iw, ih*9/8)), iw*0.75-(min(iw, ih*9/8))/2))':'0',scale=1080:960[spk2_box];"
-            f"[spk1_box][spk2_box]vstack=inputs=2[layout_base]"
-        )
+        # Dual Podcast Split (v3.3.0):
+        # Stacked vertical framing: Top half is Speaker 1 (Host), Bottom half is Speaker 2 (Guest)
+        # Sourced from horizontal 16:9 frame, cropped to 9:8 and scaled to 1080x960 each
+        spk1 = face_box.get("speaker1", {}) if isinstance(face_box, dict) else {}
+        spk2 = face_box.get("speaker2", {}) if isinstance(face_box, dict) else {}
+        spk1_cx = float(spk1.get("cx", 0.25))
+        if spk1_cx > 1.0:
+            spk1_cx /= 100.0
+        spk2_cx = float(spk2.get("cx", 0.75))
+        if spk2_cx > 1.0:
+            spk2_cx /= 100.0
+
+        spk1_crop_x = f"max(0, min(iw-min(iw, ih*9/8), iw*{spk1_cx:.3f}-(min(iw, ih*9/8))/2))"
+        spk2_crop_x = f"max(0, min(iw-min(iw, ih*9/8), iw*{spk2_cx:.3f}-(min(iw, ih*9/8))/2))"
+
+        podcast_mode = str(face_box.get("podcast_layout_mode", "stacked_split") if isinstance(face_box, dict) else "stacked_split")
+        divider_style = str(face_box.get("podcast_divider_style", "clean_white") if isinstance(face_box, dict) else "clean_white")
+
+        if podcast_mode == "left_focus":
+            # 9:16 Full frame centered on Speaker 1 (Host)
+            spk1_safe_cx = max(0.15, min(0.85, spk1_cx))
+            filters.append(
+                f"[0:v]crop=ih*9/16:ih:max(0, min(iw-ih*9/16, iw*{spk1_safe_cx:.3f}-(ih*9/16)/2)):0,scale=1080:1920,setsar=1[layout_base]"
+            )
+        elif podcast_mode == "right_focus":
+            # 9:16 Full frame centered on Speaker 2 (Guest)
+            spk2_safe_cx = max(0.15, min(0.85, spk2_cx))
+            filters.append(
+                f"[0:v]crop=ih*9/16:ih:max(0, min(iw-ih*9/16, iw*{spk2_safe_cx:.3f}-(ih*9/16)/2)):0,scale=1080:1920,setsar=1[layout_base]"
+            )
+        else:
+            # Stacked vertical split (1080x960 top, 1080x960 bottom)
+            divider_filter = ""
+            if divider_style == "glow_cyan":
+                divider_filter = ",drawbox=x=0:y=957:w=1080:h=6:color=0x06B6D4@0.9:t=fill"
+            elif divider_style == "glow_gold":
+                divider_filter = ",drawbox=x=0:y=957:w=1080:h=6:color=0xF59E0B@0.9:t=fill"
+            elif divider_style == "clean_white":
+                divider_filter = ",drawbox=x=0:y=958:w=1080:h=4:color=white@0.65:t=fill"
+            elif divider_style == "dark_line":
+                divider_filter = ",drawbox=x=0:y=957:w=1080:h=6:color=0x0F172A@1.0:t=fill"
+
+            filters.append(
+                f"[0:v]split=2[spk1_raw][spk2_raw];"
+                f"[spk1_raw]crop='min(iw, ih*9/8)':'ih':'{spk1_crop_x}':'0',scale=1080:960,setsar=1[spk1_box];"
+                f"[spk2_raw]crop='min(iw, ih*9/8)':'ih':'{spk2_crop_x}':'0',scale=1080:960,setsar=1[spk2_box];"
+                f"[spk1_box][spk2_box]vstack=inputs=2{divider_filter}[layout_base]"
+            )
+
         current_v = "[layout_base]"
 
     elif streamer_preset == "pip_corner":
@@ -3214,7 +3342,12 @@ def render_clip_to_mp4(
     video_polish_enabled: bool = True,
     audio_mastering_enabled: bool = True,
     smart_ducking_enabled: bool = True,
-    hook_zoom_enabled: bool = True
+    hook_zoom_enabled: bool = True,
+    # v3.3 Podcast Multi-Speaker Split Engine
+    podcast_layout_mode: Optional[str] = "stacked_split",
+    podcast_divider_style: Optional[str] = "clean_white",
+    podcast_host_cx: Optional[float] = None,
+    podcast_guest_cx: Optional[float] = None
 ) -> str:
     """
     Renders the final short-form video with layout, aspect ratio, custom backgrounds,
@@ -3241,12 +3374,24 @@ def render_clip_to_mp4(
     default_cx = 0.85 if is_streamer else 0.50
     default_cy = 0.78 if is_streamer else 0.35
     face_box = {"found": False, "cx": default_cx, "cy": default_cy, "w": 0.22, "h": 0.25}
-    if enable_face_tracking or is_streamer:
+    if enable_face_tracking or is_streamer or streamer_preset == "podcast_split":
         face_box = detect_speaker_face_box(
             video_path,
             facecam_position=facecam_position,
             streamer_preset=streamer_preset
         )
+
+    if streamer_preset == "podcast_split":
+        if podcast_layout_mode:
+            face_box["podcast_layout_mode"] = podcast_layout_mode
+        if podcast_divider_style:
+            face_box["podcast_divider_style"] = podcast_divider_style
+        if podcast_host_cx is not None:
+            val = float(podcast_host_cx)
+            face_box.setdefault("speaker1", {})["cx"] = val / 100.0 if val > 1.0 else val
+        if podcast_guest_cx is not None:
+            val = float(podcast_guest_cx)
+            face_box.setdefault("speaker2", {})["cx"] = val / 100.0 if val > 1.0 else val
 
     extra_input_args = []
     input_idx_counter = 1

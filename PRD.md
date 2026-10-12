@@ -541,8 +541,14 @@ Modul deteksi wajah OpenCV YuNet dan Haar Cascade di [video_engine.py](file:///c
 * Ketika hanya Host yang berbicara selama >3 detik, kamera fokus penuh pada Host. Ketika Guest menjawab, kamera beralih atau membagi tampilan secara cerdas.
 
 ### 13.5 Matriks Komponen & Skema Terkait
-* `RenderSettingsModel`: Menambahkan `podcast_layout_mode: str = "auto"` (pilihan: `"auto"`, `"stacked_split"`, `"single_center"`).
-* `ClipStudioSection.tsx`: Menambahkan opsi layout "Podcast Split (Host & Guest)" pada panel rasio / framing.
+* `RenderSettingsModel`: Menambahkan `podcast_layout_mode` (`"stacked_split"` | `"left_focus"` | `"right_focus"`), `podcast_divider_style` (`"clean_white"` | `"glow_cyan"` | `"glow_gold"` | `"dark_line"` | `"none"`), `podcast_host_cx`, dan `podcast_guest_cx`.
+* `video_engine.py`: Dual face clustering (`detect_speaker_face_box`), dynamic 9:8 aspect ratio crop per panel, SAR normalization (`setsar=1`), customizable divider bar (`drawbox` filter pada Y=957), serta dukungan full frame Host/Guest focus.
+* `ClipStudioSection.tsx`: Panel konfigurasi Podcast Multi-Speaker Split terpadu dengan opsi layout mode, styling divider bar, fine-tuning slider framing pembicara, dan live preview wireframe responsif.
+
+### 13.6 Status Implementasi (v3.3.0)
+* **Status**: **SELESAI & TERVERIFIKASI (DONE)**
+* **Tugas Terkait**: T26 (Backend dual face clustering & stacked FFmpeg filtergraph) & T27 (Frontend studio layout & interactive wireframe controls).
+* **Hasil Verifikasi**: Kompilasi Python backend 100% lulus, build produksi Vite `apps/web` 100% lulus tanpa error tipe TypeScript.
 
 ---
 

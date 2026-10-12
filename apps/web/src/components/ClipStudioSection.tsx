@@ -10,6 +10,8 @@ import type {
   CaptionFont,
   TitlePosition,
   StreamerPreset,
+  PodcastLayoutMode,
+  PodcastDividerStyle,
   FacecamPosition,
   FontSizeOption,
   TextCaseOption,
@@ -338,6 +340,10 @@ export interface StudioPreferences {
   smartDuckingEnabled?: boolean;
   hookZoomEnabled?: boolean;
   keywordAccentMode?: KeywordAccentMode;
+  podcastLayoutMode?: PodcastLayoutMode;
+  podcastDividerStyle?: PodcastDividerStyle;
+  podcastHostCx?: number;
+  podcastGuestCx?: number;
 }
 
 export const DEFAULT_STUDIO_PREFS: Required<StudioPreferences> = {
@@ -353,6 +359,10 @@ export const DEFAULT_STUDIO_PREFS: Required<StudioPreferences> = {
   enableFaceTracking: true,
   streamerPreset: 'none',
   facecamPosition: 'auto',
+  podcastLayoutMode: 'stacked_split',
+  podcastDividerStyle: 'clean_white',
+  podcastHostCx: 25,
+  podcastGuestCx: 75,
   titlePosition: 'auto',
   captionStyle: 'viral_pop',
   captionFont: 'Outfit',
@@ -432,6 +442,11 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
   const [enableFaceTracking, setEnableFaceTracking] = useState<boolean>(() => getSavedStudioPreferences().enableFaceTracking ?? DEFAULT_STUDIO_PREFS.enableFaceTracking);
   const [streamerPreset, setStreamerPreset] = useState<StreamerPreset>(() => getSavedStudioPreferences().streamerPreset ?? DEFAULT_STUDIO_PREFS.streamerPreset);
   const [facecamPosition, setFacecamPosition] = useState<FacecamPosition>(() => getSavedStudioPreferences().facecamPosition ?? DEFAULT_STUDIO_PREFS.facecamPosition);
+  // v3.3 Podcast Multi-Speaker Split states
+  const [podcastLayoutMode, setPodcastLayoutMode] = useState<PodcastLayoutMode>(() => getSavedStudioPreferences().podcastLayoutMode ?? DEFAULT_STUDIO_PREFS.podcastLayoutMode);
+  const [podcastDividerStyle, setPodcastDividerStyle] = useState<PodcastDividerStyle>(() => getSavedStudioPreferences().podcastDividerStyle ?? DEFAULT_STUDIO_PREFS.podcastDividerStyle);
+  const [podcastHostCx, setPodcastHostCx] = useState<number>(() => getSavedStudioPreferences().podcastHostCx ?? DEFAULT_STUDIO_PREFS.podcastHostCx);
+  const [podcastGuestCx, setPodcastGuestCx] = useState<number>(() => getSavedStudioPreferences().podcastGuestCx ?? DEFAULT_STUDIO_PREFS.podcastGuestCx);
   const [titlePrefix, setTitlePrefix] = useState<string>(() => getSavedStudioPreferences().titlePrefix ?? DEFAULT_STUDIO_PREFS.titlePrefix);
   const [titleSuffix, setTitleSuffix] = useState<string>(() => getSavedStudioPreferences().titleSuffix ?? DEFAULT_STUDIO_PREFS.titleSuffix);
   const [customClipTitles, setCustomClipTitles] = useState<Record<string, string>>({});
@@ -697,7 +712,17 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
   const [playerReady, setPlayerReady] = useState<boolean>(false);
 
   // Face & object detection tracking state
-  const [faceBox, setFaceBox] = useState<{ cx: number; cy: number; w: number; h: number; found: boolean; type?: string }>({
+  const [faceBox, setFaceBox] = useState<{
+    cx: number;
+    cy: number;
+    w: number;
+    h: number;
+    found: boolean;
+    type?: string;
+    dual_speakers?: boolean;
+    speaker1?: { cx: number; cy: number; w: number; h: number };
+    speaker2?: { cx: number; cy: number; w: number; h: number };
+  }>({
     cx: 0.5,
     cy: 0.35,
     w: 0.25,
@@ -1805,6 +1830,10 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
       smartDuckingEnabled,
       hookZoomEnabled,
       keywordAccentMode,
+      podcastLayoutMode,
+      podcastDividerStyle,
+      podcastHostCx,
+      podcastGuestCx,
     };
     try {
       localStorage.setItem(STUDIO_PREFS_KEY, JSON.stringify(prefs));
@@ -1857,6 +1886,10 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
     smartDuckingEnabled,
     hookZoomEnabled,
     keywordAccentMode,
+    podcastLayoutMode,
+    podcastDividerStyle,
+    podcastHostCx,
+    podcastGuestCx,
   ]);
 
   const handleResetToDefaults = () => {
@@ -1872,6 +1905,10 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
     setEnableFaceTracking(DEFAULT_STUDIO_PREFS.enableFaceTracking);
     setStreamerPreset(DEFAULT_STUDIO_PREFS.streamerPreset);
     setFacecamPosition(DEFAULT_STUDIO_PREFS.facecamPosition);
+    setPodcastLayoutMode(DEFAULT_STUDIO_PREFS.podcastLayoutMode);
+    setPodcastDividerStyle(DEFAULT_STUDIO_PREFS.podcastDividerStyle);
+    setPodcastHostCx(DEFAULT_STUDIO_PREFS.podcastHostCx);
+    setPodcastGuestCx(DEFAULT_STUDIO_PREFS.podcastGuestCx);
     setTitlePosition(DEFAULT_STUDIO_PREFS.titlePosition);
     setCaptionStyle(DEFAULT_STUDIO_PREFS.captionStyle);
     setLastActiveCaptionStyle(DEFAULT_STUDIO_PREFS.captionStyle);
@@ -2002,6 +2039,11 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
       hookZoomEnabled,
       // v3.1 Subtitle Keyword Emoji Accent & Viral Styling
       keywordAccentMode,
+      // v3.3 Podcast Multi-Speaker Split Engine
+      podcastLayoutMode,
+      podcastDividerStyle,
+      podcastHostCx,
+      podcastGuestCx,
     });
   };
 
@@ -2320,6 +2362,121 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                 <p style={{ fontSize: '0.72rem', color: 'var(--text-muted, #94a3b8)', marginTop: '0.35rem', margin: '0.35rem 0 0 0' }}>
                   {t.studio.facecamHint || 'Tip: Select your webcam corner if auto-detection misses dark rooms or VTuber avatars.'}
                 </p>
+              </div>
+            )}
+
+            {streamerPreset === 'podcast_split' && (
+              <div className="streamer-facecam-position-wrap" style={{ marginTop: '0.85rem', padding: '0.85rem', background: 'rgba(15, 23, 42, 0.65)', border: '1px solid rgba(56, 189, 248, 0.25)', borderRadius: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.45rem' }}>
+                  <span style={{ fontSize: '0.84rem', fontWeight: 650, color: '#38bdf8' }}>
+                    {t.studio.podcastSettingsTitle}
+                  </span>
+                  <span style={{ fontSize: '0.72rem', color: faceBox?.dual_speakers ? '#10b981' : '#38bdf8', background: faceBox?.dual_speakers ? 'rgba(16, 185, 129, 0.12)' : 'rgba(56, 189, 248, 0.12)', border: `1px solid ${faceBox?.dual_speakers ? 'rgba(16, 185, 129, 0.3)' : 'rgba(56, 189, 248, 0.3)'}`, padding: '0.15rem 0.5rem', borderRadius: '4px' }}>
+                    {faceBox?.dual_speakers ? t.studio.podcastFramingDetected : t.studio.podcastFramingManual}
+                  </span>
+                </div>
+                <p style={{ fontSize: '0.74rem', color: 'var(--text-muted, #94a3b8)', margin: '0 0 0.75rem 0' }}>
+                  {t.studio.podcastSettingsDesc}
+                </p>
+
+                {/* 1. Layout Mode */}
+                <div style={{ marginBottom: '0.75rem' }}>
+                  <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>
+                    {t.studio.podcastModeLabel}
+                  </label>
+                  <div className="toggle-pill-group" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
+                    {[
+                      { id: 'stacked_split', label: t.studio.podcastModeStacked },
+                      { id: 'left_focus', label: t.studio.podcastModeLeftFocus },
+                      { id: 'right_focus', label: t.studio.podcastModeRightFocus },
+                    ].map(opt => (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        className={`pill-btn ${podcastLayoutMode === opt.id ? 'active' : ''}`}
+                        onClick={() => setPodcastLayoutMode(opt.id as PodcastLayoutMode)}
+                        style={{ fontSize: '0.74rem', padding: '0.28rem 0.65rem' }}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 2. Divider Style (Only for stacked_split) */}
+                {podcastLayoutMode === 'stacked_split' && (
+                  <div style={{ marginBottom: '0.75rem' }}>
+                    <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>
+                      {t.studio.podcastDividerLabel}
+                    </label>
+                    <div className="toggle-pill-group" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
+                      {[
+                        { id: 'clean_white', label: t.studio.podcastDividerWhite },
+                        { id: 'glow_cyan', label: t.studio.podcastDividerCyan },
+                        { id: 'glow_gold', label: t.studio.podcastDividerGold },
+                        { id: 'dark_line', label: t.studio.podcastDividerDark },
+                        { id: 'none', label: t.studio.podcastDividerNone },
+                      ].map(opt => (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          className={`pill-btn ${podcastDividerStyle === opt.id ? 'active' : ''}`}
+                          onClick={() => setPodcastDividerStyle(opt.id as PodcastDividerStyle)}
+                          style={{ fontSize: '0.74rem', padding: '0.28rem 0.65rem' }}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* 3. Speaker Framing Sliders */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginTop: '0.5rem' }}>
+                  {/* Host X Slider */}
+                  <div style={{ background: 'rgba(0,0,0,0.25)', padding: '0.5rem 0.65rem', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
+                      <span style={{ fontSize: '0.72rem', fontWeight: 600, color: '#38bdf8' }}>
+                        {t.studio.podcastHostPosition}
+                      </span>
+                      <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                        {Math.round(podcastHostCx > 1 ? podcastHostCx : podcastHostCx * 100)}%
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min="5"
+                      max="50"
+                      step="1"
+                      value={Math.round(podcastHostCx > 1 ? podcastHostCx : podcastHostCx * 100)}
+                      onChange={e => setPodcastHostCx(Number(e.target.value))}
+                      className="studio-slider"
+                      style={{ width: '100%' }}
+                    />
+                  </div>
+
+                  {/* Guest X Slider */}
+                  <div style={{ background: 'rgba(0,0,0,0.25)', padding: '0.5rem 0.65rem', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
+                      <span style={{ fontSize: '0.72rem', fontWeight: 600, color: '#a855f7' }}>
+                        {t.studio.podcastGuestPosition}
+                      </span>
+                      <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                        {Math.round(podcastGuestCx > 1 ? podcastGuestCx : podcastGuestCx * 100)}%
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min="50"
+                      max="95"
+                      step="1"
+                      value={Math.round(podcastGuestCx > 1 ? podcastGuestCx : podcastGuestCx * 100)}
+                      onChange={e => setPodcastGuestCx(Number(e.target.value))}
+                      className="studio-slider"
+                      style={{ width: '100%' }}
+                    />
+                  </div>
+                </div>
               </div>
             )}
           </div>
@@ -4875,7 +5032,7 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                   )}
 
                   {/* Top Podcast Speaker 1 Box if podcast_split */}
-                  {streamerPreset === 'podcast_split' && (
+                  {streamerPreset === 'podcast_split' && podcastLayoutMode === 'stacked_split' && (
                     <>
                       <div className="wireframe-split-cam-box aspect-916" style={{ height: '48%', position: 'relative' }}>
                         <div className="wireframe-facecam-skeleton">
@@ -4884,20 +5041,29 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                             <span style={{ fontSize: '1.8rem' }}>🎙️</span>
                           </div>
                           <div className="skeleton-label-wrap">
-                            <span className="skeleton-main-label">HOST / SPEAKER 1</span>
-                            <span className="skeleton-sub-label">LEFT 50% SOURCE FRAME</span>
+                            <span className="skeleton-main-label">HOST (SPEAKER 1)</span>
+                            <span className="skeleton-sub-label">LEFT 50% SOURCE ({Math.round(podcastHostCx > 1 ? podcastHostCx : podcastHostCx * 100)}%)</span>
                           </div>
                         </div>
                         <div className="wireframe-cam-badge" style={{ background: 'rgba(56, 189, 248, 0.2)', borderColor: 'rgba(56, 189, 248, 0.4)', color: '#7dd3fc' }}>
-                          <span className="live-dot" style={{ background: '#38bdf8' }}></span> SPEAKER 1 (HOST)
+                          <span className="live-dot" style={{ background: '#38bdf8' }}></span> HOST
                         </div>
                       </div>
-                      <div className="wireframe-split-divider"></div>
+                      <div
+                        className="wireframe-split-divider"
+                        style={
+                          podcastDividerStyle === 'clean_white' ? { background: 'linear-gradient(90deg, transparent, #ffffff, transparent)', boxShadow: '0 0 8px rgba(255, 255, 255, 0.6)' }
+                          : podcastDividerStyle === 'glow_cyan' ? { background: 'linear-gradient(90deg, transparent, #00ffff, #38bdf8, transparent)', boxShadow: '0 0 10px rgba(0, 255, 255, 0.7)' }
+                          : podcastDividerStyle === 'glow_gold' ? { background: 'linear-gradient(90deg, transparent, #f59e0b, #fbbf24, transparent)', boxShadow: '0 0 10px rgba(245, 158, 11, 0.7)' }
+                          : podcastDividerStyle === 'dark_line' ? { background: 'rgba(30, 41, 59, 0.95)', boxShadow: 'none', border: '1px solid rgba(255, 255, 255, 0.15)' }
+                          : { opacity: 0, height: 0, margin: 0 }
+                        }
+                      ></div>
                     </>
                   )}
 
                   {/* Content scaled by aspect ratio with real playable video */}
-                  <div className={`wireframe-content-box aspect-${aspectRatio.replace(':', '').replace('_', '')} ${streamerPreset === 'split_top_cam' || streamerPreset === 'podcast_split' ? 'split-mode' : ''}`}>
+                  <div className={`wireframe-content-box aspect-${aspectRatio.replace(':', '').replace('_', '')} ${streamerPreset === 'split_top_cam' || (streamerPreset === 'podcast_split' && podcastLayoutMode === 'stacked_split') ? 'split-mode' : ''}`}>
                     <div className="wireframe-content-inner">
                       {/* HTML5 or YouTube Player slot - ALWAYS STABLY MOUNTED */}
                       {videoUrl && (videoUrl.endsWith('.mp4') || videoUrl.endsWith('.webm') || videoUrl.endsWith('.mov') || videoUrl.endsWith('.mkv') || videoUrl.includes('/api/video') || videoUrl.startsWith('blob:') || videoId?.startsWith('upload_') || videoId?.startsWith('gdrive_')) ? (
@@ -4981,6 +5147,11 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                       {streamerPreset === 'split_top_cam' && (
                         <div className="wireframe-gameplay-badge">
                           🎮 GAMEPLAY ({aspectRatio})
+                        </div>
+                      )}
+                      {streamerPreset === 'podcast_split' && (
+                        <div className="wireframe-gameplay-badge" style={{ background: 'rgba(168, 85, 247, 0.85)', color: '#ffffff' }}>
+                          🎙️ {podcastLayoutMode === 'left_focus' ? 'HOST FOCUS (SPEAKER 1)' : podcastLayoutMode === 'right_focus' ? 'GUEST FOCUS (SPEAKER 2)' : `GUEST (${Math.round(podcastGuestCx > 1 ? podcastGuestCx : podcastGuestCx * 100)}%)`}
                         </div>
                       )}
                     </div>

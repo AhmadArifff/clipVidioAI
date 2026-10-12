@@ -63,6 +63,8 @@ export type TitlePosition = 'auto' | 'safe_zone' | 'middle' | 'none';
 export type TitleDurationOption = 'entire' | '5s' | '10s';
 export type SubtitlePositionMode = 'bottom' | 'center';
 export type StreamerPreset = 'none' | 'split_top_cam' | 'pip_corner' | 'podcast_split';
+export type PodcastLayoutMode = 'stacked_split' | 'left_focus' | 'right_focus';
+export type PodcastDividerStyle = 'clean_white' | 'glow_cyan' | 'glow_gold' | 'dark_line' | 'none';
 export type FacecamPosition = 'auto' | 'bottom_right' | 'top_right' | 'bottom_left' | 'top_left' | 'center' | 'left' | 'right';
 export type FontSizeOption = 'small' | 'medium' | 'big' | 'custom';
 export type TextCaseOption = 'uppercase' | 'capitalize' | 'lowercase';
@@ -205,6 +207,11 @@ export interface RenderSettings {
   hookZoomEnabled?: boolean;
   // v3.1 Subtitle Keyword Emoji Accent & Viral Styling Engine
   keywordAccentMode?: KeywordAccentMode;
+  // v3.3 Podcast Multi-Speaker Split Engine
+  podcastLayoutMode?: PodcastLayoutMode;
+  podcastDividerStyle?: PodcastDividerStyle;
+  podcastHostCx?: number;
+  podcastGuestCx?: number;
 }
 
 export interface RenderClipStatus {

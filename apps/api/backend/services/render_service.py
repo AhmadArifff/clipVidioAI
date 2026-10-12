@@ -262,7 +262,11 @@ async def render_single_batch_clip(
             video_polish_enabled=bool(getattr(settings, "video_polish_enabled", True)),
             audio_mastering_enabled=bool(getattr(settings, "audio_mastering_enabled", True)),
             smart_ducking_enabled=bool(getattr(settings, "smart_ducking_enabled", True)),
-            hook_zoom_enabled=bool(getattr(settings, "hook_zoom_enabled", True))
+            hook_zoom_enabled=bool(getattr(settings, "hook_zoom_enabled", True)),
+            podcast_layout_mode=getattr(settings, "podcast_layout_mode", "stacked_split"),
+            podcast_divider_style=getattr(settings, "podcast_divider_style", "clean_white"),
+            podcast_host_cx=getattr(settings, "podcast_host_cx", None),
+            podcast_guest_cx=getattr(settings, "podcast_guest_cx", None)
         )
 
         if not os.path.exists(out_path) or not is_valid_mp4(out_path):
@@ -582,7 +586,11 @@ async def render_merged_batch_clips(
             video_polish_enabled=bool(getattr(settings, "video_polish_enabled", True)),
             audio_mastering_enabled=bool(getattr(settings, "audio_mastering_enabled", True)),
             smart_ducking_enabled=bool(getattr(settings, "smart_ducking_enabled", True)),
-            hook_zoom_enabled=bool(getattr(settings, "hook_zoom_enabled", True))
+            hook_zoom_enabled=bool(getattr(settings, "hook_zoom_enabled", True)),
+            podcast_layout_mode=getattr(settings, "podcast_layout_mode", "stacked_split"),
+            podcast_divider_style=getattr(settings, "podcast_divider_style", "clean_white"),
+            podcast_host_cx=getattr(settings, "podcast_host_cx", None),
+            podcast_guest_cx=getattr(settings, "podcast_guest_cx", None)
         )
 
         if not os.path.exists(out_path) or not is_valid_mp4(out_path):

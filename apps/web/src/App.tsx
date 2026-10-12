@@ -535,6 +535,11 @@ export default function App() {
             hook_zoom_enabled: settings.hookZoomEnabled !== undefined ? settings.hookZoomEnabled : true,
             // v3.1 Subtitle Keyword Emoji Accent & Viral Styling
             keyword_accent_mode: settings.keywordAccentMode || 'accent_and_emoji',
+            // v3.3 Podcast Multi-Speaker Split Engine
+            podcast_layout_mode: settings.podcastLayoutMode || 'stacked_split',
+            podcast_divider_style: settings.podcastDividerStyle || 'clean_white',
+            podcast_host_cx: settings.podcastHostCx !== undefined ? settings.podcastHostCx : null,
+            podcast_guest_cx: settings.podcastGuestCx !== undefined ? settings.podcastGuestCx : null,
           },
           transcript: result.transcript,
         }),
