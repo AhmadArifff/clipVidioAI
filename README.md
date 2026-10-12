@@ -1,6 +1,6 @@
 # 🎬 ClipVidio AI
 
-> **AI Powered Auto Clipper — Turn long YouTube, Google Drive, and uploaded videos into viral TikToks, Shorts, and Reels with animated subtitles, face centering, and music in minutes.**
+> **AI Powered Auto Clipper: Turn long YouTube, Google Drive, and uploaded videos into viral TikToks, Shorts, and Reels with animated subtitles, face centering, and music in minutes.**
 
 ---
 
@@ -135,6 +135,38 @@ Untuk menjamin keandalan ekstraksi klip video tanpa pernah terhenti akibat batas
   ```
   atau melalui environment variable `GEMINI_API_KEYS`.
 * Saat suatu API Key mencapai batas limit (HTTP 429 / Resource Exhausted), router otomatis berpindah ke key cadangan berikutnya secara instan dan mengirimkan notifikasi Server-Sent Events (SSE) transparan ke antarmuka pengguna tanpa membatalkan proses analisis!
+
+---
+
+## 🌟 Fitur Unggulan Arsitektur Terbaru (v3.0 s.d. v3.4)
+
+ClipVidio AI dilengkapi rangkaian kapabilitas setara studio profesional:
+
+1. **AI Social Copywriting Pack (v3.4):**
+   * **3 Variasi Hook Clickbait:** Curiosity, Contrarian/Shock, dan Action.
+   * **Multi-Platform Captions:** Deskripsi teroptimasi untuk TikTok, Reels, dan Shorts.
+   * **15 Tagar Algoritmik:** Tagar niche, medium, dan trending untuk memaksimalkan FYP.
+   * **1-Click Clipboard Copy & Auto ZIP Export:** Menyertakan file `metadata_{judul}.txt` dan `copy_deck_{judul}.json` secara otomatis dalam paket ZIP hasil render.
+
+2. **Podcast Multi-Speaker Split (v3.3):**
+   * **Dual Face Clustering:** Mendeteksi dan melacak wajah Host dan Tamu secara simultan.
+   * **Stacked Vertical Split-Screen (9:8 per panel):** Menghasilkan komposisi 1080x1920 yang proporsional dengan pembatas sinematik (*divider bar*).
+   * **Layout Flexibel:** Pilihan Stacked Split, Host Focus, atau Guest Focus dengan framing interaktif.
+
+3. **Smart BGM Compositing & EBU R128 Loudnorm (v3.2):**
+   * **Katalog Musik Bebas Royalti:** Lo-Fi Chill, Phonk Hype, Cinematic Mystery, dan Upbeat Vlog, ditambah dukungan custom upload audio.
+   * **Dynamic Sidechain Auto-Ducking:** Volume musik otomatis meredup saat narator berbicara dan naik lembut saat jeda.
+   * **Standar Broadcast -14 LUFS:** Mastering kenyaringan suara sesuai algoritma audio TikTok dan Reels.
+   * **Dynamic 3-Second Hook Zoom:** Pembesaran halus 1.15x pada 3 detik awal (*visual pattern interrupt*).
+
+4. **Viral Keyword Accent & Auto-Emoji Engine (v3.1):**
+   * **Lexical Classifier Bilingual:** Mendeteksi 5 kategori emosi (Cuan/Finansial, Hype/Ledakan, Peringatan/Bahaya, Ide/Solusi, dan Kejutan).
+   * **Gaya MrBeast & Alex Hormozi:** Warna aksen menyala (Neon Lime, Ember Flame, Crimson Alert) dan penyematan badge emoji otomatis (💰, 🔥, ⚠️, 💡, 😱).
+   * **Live Synchronized Preview:** Animasi karaoke sinkron secara real-time di layar Studio sebelum render.
+
+5. **Ultra-Quality Master Engine & Hardware Acceleration (v3.0 & v2.3):**
+   * **Cinematic Unsharp Mask & BT.709:** Tepi piksel tajam tanpa noise dengan matriks kontras warna kaya.
+   * **Akselerasi GPU:** AMD AMF, NVIDIA NVENC, Intel QSV, dan Apple Silicon VideoToolbox dengan deteksi otomatis.
 
 ---
 

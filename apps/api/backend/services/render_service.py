@@ -340,11 +340,25 @@ def update_batch_summary_and_zip(batch_id: str, settings: RenderSettingsModel):
 
                         # Auto-package metadata.txt and copy_deck.json (v3.4.0)
                         try:
-                            c_idx = c.get("clip_index", 0)
-                            matching_orig = next((oc for oc in orig_clips if oc.get("clip_index") == c_idx), None)
-                            if not matching_orig and 0 <= c_idx < len(orig_clips):
-                                matching_orig = orig_clips[c_idx]
-                            orig_c = matching_orig if isinstance(matching_orig, dict) else c
+                            if batch.get("is_merged") and orig_clips:
+                                all_spoken = " ".join([str(oc.get("spoken_text") or oc.get("transcript") or "") for oc in orig_clips if isinstance(oc, dict)]).strip()
+                                orig_c = {
+                                    "title": raw_title,
+                                    "custom_title": raw_title,
+                                    "spoken_text": all_spoken,
+                                    "transcript": all_spoken,
+                                    "start_time": orig_clips[0].get("start_time", 0.0) if isinstance(orig_clips[0], dict) else 0.0,
+                                    "end_time": orig_clips[-1].get("end_time", 0.0) if isinstance(orig_clips[-1], dict) else 0.0,
+                                    "hook_score": max([float(oc.get("hook_score", 0.0) or 0.0) for oc in orig_clips if isinstance(oc, dict)] or [90.0]),
+                                    "flow_score": max([float(oc.get("flow_score", 0.0) or 0.0) for oc in orig_clips if isinstance(oc, dict)] or [90.0]),
+                                    "engagement_score": max([float(oc.get("engagement_score", 0.0) or 0.0) for oc in orig_clips if isinstance(oc, dict)] or [90.0]),
+                                }
+                            else:
+                                c_idx = c.get("clip_index", 0)
+                                matching_orig = next((oc for oc in orig_clips if oc.get("clip_index") == c_idx), None)
+                                if not matching_orig and 0 <= c_idx < len(orig_clips):
+                                    matching_orig = orig_clips[c_idx]
+                                orig_c = matching_orig if isinstance(matching_orig, dict) else c
 
                             deck = orig_c.get("copy_deck")
                             if not deck or not isinstance(deck, dict):
@@ -574,6 +588,7 @@ async def render_merged_batch_clips(
         clean_safe_title = re.sub(r'[\\/*?:"<>|]', "", clip_status.get("base_title") or "highlight_compilation")
         clean_safe_title = clean_safe_title.replace(" ", "_")[:40] or "compilation"
         out_filename = f"compilation_{clean_safe_title}_{batch_id}.mp4"
+        out_path = str(EXPORTS_DIR / out_filename)
         resolved_bgm = resolve_bgm_path(getattr(settings, "bgm_preset", None), settings.bgm_file_path)
         effective_bgm_enabled = bool(resolved_bgm) if (getattr(settings, "bgm_preset", "none") != "none" or settings.bgm_file_path) else bool(settings.bgm_enabled)
 
