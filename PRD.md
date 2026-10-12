@@ -589,5 +589,80 @@ Ketika analisis klip berlangsung atau saat pengguna membuka Studio, router AI me
 * **Tugas Terkait**: T28 (Backend endpoint `/api/clips/generate-copy`, schema Pydantic, heuristic rule-based fallback, dan auto-packaging `metadata_{title}.txt` + `copy_deck_{title}.json` ke ZIP) & T29 (Kartu Studio Copy Deck dengan 3 tab interaktif, copy button 1-klik dengan animated toast, pasang judul klip instan, dan regenerasi AI).
 * **Hasil Verifikasi**: Kompilasi Python backend 100% lulus, build produksi Vite `apps/web` 100% lulus tanpa error tipe TypeScript.
 
+---
+
+## 15. Arsitektur AI Smart Clip Settings & Viral Retention Engine (v3.5.0 Blueprint)
+
+### 15.1 Latar Belakang & Analisis Optimalisasi Retensi Video Pendek
+Ketika kreator memotong video panjang menjadi klip pendek, menentukan kombinasi 15+ parameter Studio (gaya subtitle, jenis font, mode aksen kata kunci, jenis BGM, level volume ducking, pembagian layar podcast, dan hook zoom) merupakan proses yang memakan waktu dan rentan menghasilkan kombinasi yang bertabrakan.
+
+Algoritma media sosial (TikTok, Instagram Reels, YouTube Shorts) mengutamakan dua metrik retensi:
+1. **3-Second Hook Retention Rate:** Penonton memutuskan scroll pergi atau bertahan pada 3 detik awal.
+2. **Audio-Vocal Clarity:** Dialog pembicara harus dominan dan tidak boleh terdistorsi atau tenggelam oleh musik latar.
+
+Modul **AI Smart Clip Settings & Viral Retention Engine** menganalisis topik, transkrip, jumlah pembicara, dan intensitas emosional klip untuk menghasilkan **paket pengaturan Studio optimal** yang dirancang khusus guna memaksimalkan views, subscriber conversion, dan retensi penonton.
+
+### 15.2 5 Arketipe Profil Viral Utama (Viral Profiles Matrix)
+
+| Arketipe | Sasaran Konten & Genre | Gaya Subtitle & Font | Musik BGM & Volume | Efek Retensi Khusus |
+|---|---|---|---|---|
+| **⚡ MrBeast Hyper-Hype** | Aksi cepat, tantangan, gaming, fakta mencengangkan | `beast_punch` (Neon Green), The Bold Font, UPPERCASE | `phonk_hype`, Vol 22%, Auto-Ducking Aktif | Hook Zoom 1.15x Aktif, Emoji Accent Lengkap (🔥, ⚡, 🚀) |
+| **💼 Alex Hormozi Cuan** | Bisnis, edukasi finansial, mindset, motivasi sukses | `viral_pop` (Lemon Yellow), Outfit, UPPERCASE | `lofi_chill`, Vol 18%, Auto-Ducking Aktif | Keyword Accent Cuan (💰, 📈), Hook Zoom Aktif |
+| **🎙️ Joe Rogan Podcast** | Wawancara 2 orang, podcast mendalam, debat | `clean_minimal` / `viral_pop`, Montserrat | `lofi_chill`, Vol 15% (dialog jernih) | `podcast_split` (Stacked 9:8), Glow Cyan Divider, Subtitle Safe Area |
+| **🎬 Vox / Netflix Docu** | Teori, misteri, sejarah, sains, dokumenter | `golden_aura` (Royal Gold), Outfit / Cinzel | `cinematic_mystery`, Vol 26%, Ducking Aktif | Keyword Accent Only (Minimalis Elegan), Hook Zoom Lembut |
+| **📱 Dynamic Daily Vlog** | Review santai, lifestyle, tips harian, traveling | `electric_cyan` / `cyber_violet`, Inter / Outfit | `upbeat_vlog`, Vol 20%, Auto-Ducking Aktif | Hook Zoom Aktif, Emoji Accent Dinamis (💡, 🎯) |
+
+### 15.3 Spesifikasi Dual-Engine: AI Prompt & Heuristic Rule-Based Fallback
+1. **Tier 1 (AI Structured Prompt via Gemini / OpenRouter):**
+   * Mengirimkan ringkasan transkrip, judul, dan durasi ke LLM dengan schema JSON terstruktur.
+   * LLM mengidentifikasi tone pembicara, tingkat energi, dan menyusun teks *Reasoning* 1 kalimat yang menjelaskan mengapa kombinasi settingan tersebut dipilih.
+2. **Tier 2 (Zero-Latency Local Heuristic Rule-Based Engine):**
+   * Jika API AI offline, limit kuota (429), atau tidak dikonfigurasi, sistem lokal secara instan mengevaluasi kamus leksikal (finansial, tantangan/game, sains/misteri, podcast/dialog) dalam waktu <5ms tanpa ketergantungan jaringan.
+   * Menjamin tombol "Terapkan Rekomendasi AI" selalu 100% responsif tanpa error.
+
+### 15.4 Spesifikasi Endpoint API & Skema Data
+* **Endpoint API:**
+  * `POST /api/clips/recommend-settings`: Menganalisis data klip dan mengembalikan settingan optimal + alasan strategi retensi.
+  * `GET /api/clips/viral-archetypes`: Mengembalikan daftar 5 profil viral baku beserta deskripsinya untuk pilihan manual instan.
+* **Payload Respons:**
+  ```json
+  {
+    "archetype_id": "hormozi_finance",
+    "archetype_name": "Alex Hormozi Cuan & Bisnis",
+    "reasoning": "Klip ini sarat akan strategi finansial dan pola sukses. AI merekomendasikan gaya Viral Pop (Kuning) dengan BGM Lo-Fi lembut (18%) dan aksen emoji cuan agar angka bisnis langsung menonjol.",
+    "viral_scores": {
+      "hook_power": 94,
+      "audio_balance": 98,
+      "visual_retention": 91
+    },
+    "settings": {
+      "caption_style": "viral_pop",
+      "caption_font": "Outfit",
+      "font_size": "medium",
+      "text_case": "uppercase",
+      "keyword_accent_mode": "accent_and_emoji",
+      "bgm_preset": "lofi_chill",
+      "bgm_volume": 18,
+      "auto_ducking": true,
+      "hook_zoom_enabled": true,
+      "streamer_preset": "none",
+      "podcast_layout_mode": "stacked_split",
+      "podcast_divider_style": "glow_gold"
+    }
+  }
+  ```
+
+### 15.5 Spesifikasi Antarmuka Studio (ClipStudioSection.tsx)
+1. **Kartu Pintar "✨ AI Smart Clip Optimizer"**:
+   * Diletakkan di bagian atas panel pengaturan Studio agar langsung terlihat oleh kreator.
+   * Badge berkilau (*sparkle badge*) dengan ringkasan arketipe terpilih dan 1 kalimat strategi retensi.
+   * Skor Potensi Viral mikro: *Hook Power (94%)*, *Audio Clarity (98%)*, *Visual Retention (91%)*.
+   * Tombol Aksi Utama: **"✨ Terapkan Rekomendasi AI"** (1-klik instan mengubah seluruh kontrol studio).
+   * 4 Tombol Arketipe Cepat (*Quick Preset Pills*): Memberikan fleksibilitas bagi pengguna untuk berganti gaya viral kapan saja.
+2. **Sinkronisasi Otomatis**:
+   * Begitu tombol ditekan, preview video player dan wireframe langsung bereaksi memperlihatkan gaya font baru, warna aksen karaoke, musik latar, dan layout podcast secara real-time.
+
+---
+
 
 

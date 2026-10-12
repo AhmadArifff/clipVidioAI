@@ -38,6 +38,67 @@ export interface ViralClip {
   hashtag_suggestion?: string;
   // v3.4.0 AI Social Copywriting Pack
   copy_deck?: SocialCopyDeck;
+  // v3.5.0 AI Smart Clip Settings Recommendation
+  recommendation?: ClipSettingsRecommendation;
+  custom_title?: string;
+  spoken_text?: string;
+  clip_index?: number;
+}
+
+export type ViralArchetypeKey = 'beast_hype' | 'hormozi_finance' | 'rogan_podcast' | 'vox_documentary' | 'daily_vlog';
+
+export interface ViralArchetypeProfile {
+  id: ViralArchetypeKey;
+  name: string;
+  icon: string;
+  badge: string;
+  description: string;
+  settings: {
+    caption_style: CaptionStyle;
+    caption_font: string;
+    font_size: FontSizeOption;
+    text_case: TextCaseOption;
+    keyword_accent_mode: KeywordAccentMode;
+    bgm_preset: string;
+    bgm_volume: number;
+    auto_ducking: boolean;
+    hook_zoom_enabled: boolean;
+    streamer_preset: StreamerPreset;
+    podcast_layout_mode: PodcastLayoutMode;
+    podcast_divider_style: PodcastDividerStyle;
+    title_position: TitlePosition;
+    title_duration: TitleDurationOption;
+  };
+}
+
+export interface ClipSettingsRecommendation {
+  archetype_id: ViralArchetypeKey;
+  archetype_name: string;
+  archetype_icon: string;
+  reasoning: string;
+  growth_tip: string;
+  viral_scores: {
+    hook_power: number;
+    audio_balance: number;
+    visual_retention: number;
+    overall_score: number;
+  };
+  settings: {
+    caption_style: CaptionStyle;
+    caption_font: string;
+    font_size: FontSizeOption;
+    text_case: TextCaseOption;
+    keyword_accent_mode: KeywordAccentMode;
+    bgm_preset: string;
+    bgm_volume: number;
+    auto_ducking: boolean;
+    hook_zoom_enabled: boolean;
+    streamer_preset: StreamerPreset;
+    podcast_layout_mode: PodcastLayoutMode;
+    podcast_divider_style: PodcastDividerStyle;
+    title_position: TitlePosition;
+    title_duration: TitleDurationOption;
+  };
 }
 
 export interface AnalyzeResponse {

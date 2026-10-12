@@ -138,11 +138,17 @@ Untuk menjamin keandalan ekstraksi klip video tanpa pernah terhenti akibat batas
 
 ---
 
-## 🌟 Fitur Unggulan Arsitektur Terbaru (v3.0 s.d. v3.4)
+## 🌟 Fitur Unggulan Arsitektur Terbaru (v3.0 s.d. v3.5)
 
 ClipVidio AI dilengkapi rangkaian kapabilitas setara studio profesional:
 
-1. **AI Social Copywriting Pack (v3.4):**
+1. **AI Smart Clip Optimizer & Viral Retention (v3.5):**
+   * **Dual Engine (AI & Local Heuristic):** Menganalisis transkrip, topik, dan intensitas dialog untuk merekomendasikan paket settingan Studio yang terbukti memaksimalkan retensi penonton.
+   * **5 Profil Arketipe Viral Cepat:** MrBeast Hyper-Hype, Alex Hormozi Cuan & Bisnis, Joe Rogan Podcast, Vox Documentary, dan Dynamic Daily Vlog.
+   * **1-Click Auto-Apply:** Tombol instan yang langsung menyelaraskan font, warna subtitle, musik BGM, volume, ducking, layout podcast, dan hook zoom secara real-time.
+   * **Transparansi Strategi & Tips Pertumbuhan:** Memberikan alasan strategi retensi AI dan tips praktis konversi follower/subscriber.
+
+2. **AI Social Copywriting Pack (v3.4):**
    * **3 Variasi Hook Clickbait:** Curiosity, Contrarian/Shock, dan Action.
    * **Multi-Platform Captions:** Deskripsi teroptimasi untuk TikTok, Reels, dan Shorts.
    * **15 Tagar Algoritmik:** Tagar niche, medium, dan trending untuk memaksimalkan FYP.

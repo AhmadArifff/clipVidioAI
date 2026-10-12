@@ -17,6 +17,13 @@ from backend.schemas.downloads import (
     RawClipDownloadRequest,
     CookiesSaveRequest,
 )
+from backend.schemas.recommendation import (
+    ClipSettingsRecommendationRequest,
+    RecommendedSettingsPayload,
+    ViralScores,
+    ViralArchetype,
+    ClipSettingsRecommendationResponse,
+)
 
 __all__ = [
     "ViralClip",
@@ -32,4 +39,9 @@ __all__ = [
     "RawVideoDownloadRequest",
     "RawClipDownloadRequest",
     "CookiesSaveRequest",
+    "ClipSettingsRecommendationRequest",
+    "RecommendedSettingsPayload",
+    "ViralScores",
+    "ViralArchetype",
+    "ClipSettingsRecommendationResponse",
 ]

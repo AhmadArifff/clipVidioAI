@@ -17,6 +17,7 @@ from backend.routers import (
     copywriting_router,
     downloads_router,
     media_router,
+    recommendation_router,
     render_router,
     system_router,
 )
@@ -137,6 +138,7 @@ app.include_router(copywriting_router)
 app.include_router(media_router)
 app.include_router(cookies_router)
 app.include_router(downloads_router)
+app.include_router(recommendation_router)
 app.include_router(system_router)
 
 # Mount built frontend in production container if dist/ exists
