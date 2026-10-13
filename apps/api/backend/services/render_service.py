@@ -278,7 +278,9 @@ async def render_single_batch_clip(
             comedy_effect_preset=getattr(settings, "comedy_effect_preset", "none") or "none",
             comedy_effect_start_time=getattr(settings, "comedy_effect_start_time", None),
             comedy_effect_duration=float(getattr(settings, "comedy_effect_duration", 1.2) or 1.2),
-            comedy_sfx_enabled=bool(getattr(settings, "comedy_sfx_enabled", True))
+            comedy_sfx_enabled=bool(getattr(settings, "comedy_sfx_enabled", True)),
+            speed_ramp_ratio=float(getattr(settings, "speed_ramp_ratio", 1.0) or 1.0),
+            vocal_isolation_mode=getattr(settings, "vocal_isolation_mode", "off") or "off"
         )
 
         if not os.path.exists(out_path) or not is_valid_mp4(out_path):
@@ -651,7 +653,9 @@ async def render_merged_batch_clips(
             comedy_effect_preset=getattr(settings, "comedy_effect_preset", "none") or "none",
             comedy_effect_start_time=getattr(settings, "comedy_effect_start_time", None),
             comedy_effect_duration=float(getattr(settings, "comedy_effect_duration", 1.2) or 1.2),
-            comedy_sfx_enabled=bool(getattr(settings, "comedy_sfx_enabled", True))
+            comedy_sfx_enabled=bool(getattr(settings, "comedy_sfx_enabled", True)),
+            speed_ramp_ratio=float(getattr(settings, "speed_ramp_ratio", 1.0) or 1.0),
+            vocal_isolation_mode=getattr(settings, "vocal_isolation_mode", "off") or "off"
         )
 
         if not os.path.exists(out_path) or not is_valid_mp4(out_path):

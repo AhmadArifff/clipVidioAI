@@ -30,6 +30,7 @@ import type {
   ClipSettingsRecommendation,
   CameraTrackingMode,
   ComedyEffectPreset,
+  VocalIsolationMode,
 } from '../types';
 import { BackgroundCustomizer } from './BackgroundCustomizer';
 
@@ -538,6 +539,8 @@ export interface StudioPreferences {
   comedyEffectStartTime?: number;
   comedyEffectDuration?: number;
   comedySfxEnabled?: boolean;
+  speedRampRatio?: number;
+  vocalIsolationMode?: VocalIsolationMode;
 }
 
 export const DEFAULT_STUDIO_PREFS: Required<StudioPreferences> = {
@@ -596,6 +599,8 @@ export const DEFAULT_STUDIO_PREFS: Required<StudioPreferences> = {
   comedyEffectStartTime: 0,
   comedyEffectDuration: 1.2,
   comedySfxEnabled: true,
+  speedRampRatio: 1.03,
+  vocalIsolationMode: 'center_vocal_extract',
 };
 
 function getSavedStudioPreferences(): Partial<StudioPreferences> {
@@ -718,6 +723,9 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
   const [comedyEffectStartTime, setComedyEffectStartTime] = useState<number>(() => getSavedStudioPreferences().comedyEffectStartTime ?? DEFAULT_STUDIO_PREFS.comedyEffectStartTime);
   const [comedyEffectDuration, setComedyEffectDuration] = useState<number>(() => getSavedStudioPreferences().comedyEffectDuration ?? DEFAULT_STUDIO_PREFS.comedyEffectDuration);
   const [comedySfxEnabled, setComedySfxEnabled] = useState<boolean>(() => getSavedStudioPreferences().comedySfxEnabled ?? DEFAULT_STUDIO_PREFS.comedySfxEnabled);
+  // v3.7 Anti-Content ID Shield & Viral Algorithm Booster states
+  const [speedRampRatio, setSpeedRampRatio] = useState<number>(() => getSavedStudioPreferences().speedRampRatio ?? DEFAULT_STUDIO_PREFS.speedRampRatio);
+  const [vocalIsolationMode, setVocalIsolationMode] = useState<VocalIsolationMode>(() => getSavedStudioPreferences().vocalIsolationMode ?? DEFAULT_STUDIO_PREFS.vocalIsolationMode);
 
   // v3.4 AI Social Copywriting Pack state
   const [copyDeck, setCopyDeck] = useState<SocialCopyDeck | null>(null);
@@ -953,6 +961,17 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
   const ambientVideoRef = useRef<HTMLVideoElement | null>(null);
   const trackingTimerRef = useRef<number | null>(null);
   const lastYtSampleRef = useRef<{ rawTime: number; perfTime: number }>({ rawTime: 0, perfTime: 0 });
+
+  // Sync preview player playback rate with micro speed ramping
+  useEffect(() => {
+    if (directVideoRef.current) {
+      try {
+        directVideoRef.current.playbackRate = speedRampRatio || 1.0;
+      } catch (e) {
+        // Ignore in unmounted or restricted environments
+      }
+    }
+  }, [speedRampRatio]);
 
   // Keep selectedClips in sync if markedClips updates from outside (including 0 clips)
   useEffect(() => {
@@ -2347,6 +2366,8 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
       comedyEffectStartTime,
       comedyEffectDuration,
       comedySfxEnabled,
+      speedRampRatio,
+      vocalIsolationMode,
     };
     try {
       localStorage.setItem(STUDIO_PREFS_KEY, JSON.stringify(prefs));
@@ -2409,6 +2430,8 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
     comedyEffectStartTime,
     comedyEffectDuration,
     comedySfxEnabled,
+    speedRampRatio,
+    vocalIsolationMode,
   ]);
 
   const handleResetToDefaults = () => {
@@ -2468,6 +2491,8 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
     setComedyEffectStartTime(DEFAULT_STUDIO_PREFS.comedyEffectStartTime);
     setComedyEffectDuration(DEFAULT_STUDIO_PREFS.comedyEffectDuration);
     setComedySfxEnabled(DEFAULT_STUDIO_PREFS.comedySfxEnabled);
+    setSpeedRampRatio(DEFAULT_STUDIO_PREFS.speedRampRatio);
+    setVocalIsolationMode(DEFAULT_STUDIO_PREFS.vocalIsolationMode);
     handleResetTitlePosition();
     handleResetSubtitlePosition();
     try {
@@ -2576,6 +2601,9 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
       comedyEffectStartTime,
       comedyEffectDuration,
       comedySfxEnabled,
+      // v3.7 Anti-Content ID Shield & Viral Algorithm Booster
+      speedRampRatio,
+      vocalIsolationMode,
     });
   };
 
@@ -5610,6 +5638,248 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                 </div>
               </div>
             )}
+          </div>
+
+          {/* 8.5 Anti-Content ID Shield & Micro Pacing */}
+          <div
+            className="studio-card-group"
+            style={{
+              background: (speedRampRatio !== 1.0 || vocalIsolationMode !== 'off')
+                ? 'linear-gradient(145deg, rgba(30, 27, 75, 0.45), rgba(15, 23, 42, 0.65))'
+                : 'rgba(255, 255, 255, 0.02)',
+              border: (speedRampRatio !== 1.0 || vocalIsolationMode !== 'off')
+                ? '1px solid rgba(129, 140, 248, 0.35)'
+                : '1px solid rgba(255, 255, 255, 0.07)',
+              borderRadius: '12px',
+              padding: '1rem',
+              marginBottom: '1rem',
+              transition: 'all 0.25s ease'
+            }}
+          >
+            <div className="group-header" style={{ marginBottom: '0.65rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem' }}>
+                <span style={{ fontSize: '1.15rem' }}>🛡️</span>
+                <span className="group-title" style={{ fontSize: '0.88rem', fontWeight: 700, color: '#f1f5f9' }}>
+                  Anti-Content ID Shield & Micro-Pacing
+                </span>
+                <span
+                  style={{
+                    fontSize: '0.62rem',
+                    fontWeight: 800,
+                    padding: '0.15rem 0.45rem',
+                    borderRadius: '4px',
+                    background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.25), rgba(168, 85, 247, 0.25))',
+                    color: '#c084fc',
+                    border: '1px solid rgba(168, 85, 247, 0.4)',
+                    letterSpacing: '0.5px'
+                  }}
+                >
+                  ALGORITMA BOOSTER
+                </span>
+              </div>
+              <span
+                className="group-badge"
+                style={{
+                  fontWeight: 600,
+                  fontSize: '0.72rem',
+                  padding: '0.2rem 0.6rem',
+                  borderRadius: '6px',
+                  background: (speedRampRatio !== 1.0 || vocalIsolationMode !== 'off')
+                    ? 'rgba(16, 185, 129, 0.18)'
+                    : 'rgba(255, 255, 255, 0.06)',
+                  color: (speedRampRatio !== 1.0 || vocalIsolationMode !== 'off')
+                    ? '#34d399'
+                    : '#94a3b8',
+                  border: `1px solid ${(speedRampRatio !== 1.0 || vocalIsolationMode !== 'off') ? 'rgba(16, 185, 129, 0.35)' : 'rgba(255, 255, 255, 0.1)'}`
+                }}
+              >
+                {(speedRampRatio !== 1.0 || vocalIsolationMode !== 'off')
+                  ? `✓ Shield Aktif (${speedRampRatio !== 1.0 ? `${speedRampRatio.toFixed(2)}x` : ''}${speedRampRatio !== 1.0 && vocalIsolationMode !== 'off' ? ' + ' : ''}${vocalIsolationMode !== 'off' ? 'Vokal Bersih' : ''})`
+                  : '❌ Shield Nonaktif'}
+              </span>
+            </div>
+
+            <p style={{ fontSize: '0.74rem', color: 'var(--text-muted)', margin: '0 0 0.95rem 0', lineHeight: 1.45 }}>
+              Melindungi video klip dari deteksi otomatis YouTube Content ID (Audio & Visual Fingerprinting) dan memaksimalkan retensi algoritma Shorts (APV &gt; 100%) lewat micro-pacing dan isolasi vokal DSP.
+            </p>
+
+            {/* Subsection A: Micro Speed Ramping */}
+            <div style={{ marginBottom: '1rem', paddingBottom: '0.9rem', borderBottom: '1px solid rgba(255, 255, 255, 0.08)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.4rem', flexWrap: 'wrap', gap: '0.3rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#e2e8f0' }}>
+                    ⚡ Micro Speed Ramping (Pacing & Audio Shift)
+                  </span>
+                  <span style={{ fontSize: '0.65rem', color: '#818cf8', fontWeight: 600 }}>
+                    [1-Pass FFmpeg Sync]
+                  </span>
+                </div>
+                <span style={{ fontSize: '0.72rem', color: speedRampRatio !== 1.0 ? '#818cf8' : 'var(--text-muted)', fontWeight: 600 }}>
+                  {speedRampRatio !== 1.0 ? `${speedRampRatio.toFixed(2)}x Kecepatan (+${Math.round((speedRampRatio - 1.0) * 100)}%)` : 'Kecepatan Normal (1.00x)'}
+                </span>
+              </div>
+              <p style={{ fontSize: '0.71rem', color: 'var(--text-muted)', margin: '0 0 0.6rem 0', lineHeight: 1.4 }}>
+                Percepat tempo video &amp; audio sedikit (1.02x s.d 1.05x) untuk mengubah sidik jari frekuensi audio dan ritme visual tanpa distorsi vokal. Subtitle ASS otomatis tersinkronisasi 100% per kata.
+              </p>
+
+              <div className="pill-group" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '0.45rem', marginBottom: '0.65rem' }}>
+                {[
+                  { ratio: 1.00, label: '1.00x Normal', sub: 'Tempo asli tanpa perubahan' },
+                  { ratio: 1.02, label: '⚡ 1.02x Micro', sub: 'Pergeseran sangat halus (+2%)' },
+                  { ratio: 1.03, label: '🔥 1.03x Standar', sub: 'Standar viral Shorts (Disarankan)' },
+                  { ratio: 1.04, label: '🚀 1.04x Energy', sub: 'Pacing padat & fokus (+4%)' },
+                  { ratio: 1.05, label: '⚡ 1.05x Turbo', sub: 'Dinamika tinggi (+5%)' },
+                ].map(opt => (
+                  <button
+                    key={opt.ratio}
+                    type="button"
+                    className={`pill-btn ${Math.abs(speedRampRatio - opt.ratio) < 0.005 ? 'active' : ''}`}
+                    style={{
+                      fontSize: '0.74rem',
+                      padding: '0.45rem 0.6rem',
+                      borderRadius: '8px',
+                      textAlign: 'left',
+                      background: Math.abs(speedRampRatio - opt.ratio) < 0.005
+                        ? 'rgba(99, 102, 241, 0.22)'
+                        : 'rgba(255, 255, 255, 0.03)',
+                      borderColor: Math.abs(speedRampRatio - opt.ratio) < 0.005
+                        ? '#818cf8'
+                        : 'rgba(255, 255, 255, 0.08)',
+                      color: Math.abs(speedRampRatio - opt.ratio) < 0.005
+                        ? '#e0e7ff'
+                        : 'var(--text-secondary)',
+                      fontWeight: Math.abs(speedRampRatio - opt.ratio) < 0.005 ? 600 : 400,
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease'
+                    }}
+                    onClick={() => setSpeedRampRatio(opt.ratio)}
+                  >
+                    <div style={{ fontWeight: 600 }}>{opt.label}</div>
+                    <div style={{ fontSize: '0.64rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>{opt.sub}</div>
+                  </button>
+                ))}
+              </div>
+
+              {speedRampRatio !== 1.0 && (
+                <div style={{
+                  padding: '0.55rem 0.75rem',
+                  borderRadius: '6px',
+                  background: 'rgba(99, 102, 241, 0.08)',
+                  border: '1px solid rgba(99, 102, 241, 0.2)',
+                  fontSize: '0.71rem',
+                  color: '#c7d2fe',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem'
+                }}>
+                  <span>✓</span>
+                  <span>
+                    Durasi klip dipangkas sebesar <strong>{Math.round((1 - (1 / speedRampRatio)) * 100)}%</strong>. Timing video (<code>setpts</code>), audio dialog (<code>atempo</code>), dan takarir ASS otomatis diselaraskan secara presisi.
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Subsection B: DSP Vocal Isolation & Stereo BGM Stripper */}
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.4rem', flexWrap: 'wrap', gap: '0.3rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#e2e8f0' }}>
+                    🎙️ DSP Vocal Isolation &amp; Stereo BGM Filter
+                  </span>
+                  <span style={{ fontSize: '0.65rem', color: '#38bdf8', fontWeight: 600 }}>
+                    [Native DSP Engine]
+                  </span>
+                </div>
+                <span style={{ fontSize: '0.72rem', color: vocalIsolationMode !== 'off' ? '#38bdf8' : 'var(--text-muted)', fontWeight: 600 }}>
+                  {vocalIsolationMode === 'center_vocal_extract' ? 'Center Vocal Extract (Aktif)' : vocalIsolationMode === 'voice_clarity_bandpass' ? 'Voice Clarity Bandpass (Aktif)' : 'Audio Mentah (Nonaktif)'}
+                </span>
+              </div>
+              <p style={{ fontSize: '0.71rem', color: 'var(--text-muted)', margin: '0 0 0.6rem 0', lineHeight: 1.4 }}>
+                Redam musik latar asli berhak cipta dari video rekaman dan ekstrak vokal pembicara menggunakan filter matriks stereo &amp; denoiser FFT tanpa beban VRAM.
+              </p>
+
+              <div className="pill-group" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                {[
+                  {
+                    id: 'center_vocal_extract',
+                    label: '🎙️ Center Vocal Extract',
+                    badge: 'Disarankan',
+                    desc: 'Redam BGM stereo samping, ambil mono vokal dialog tengah + FFT Denoise'
+                  },
+                  {
+                    id: 'voice_clarity_bandpass',
+                    label: '🗣️ Voice Clarity Bandpass',
+                    badge: 'Frekuensi Vokal',
+                    desc: 'Filter frekuensi bicara manusia 150Hz s.d 3800Hz, tekan instrumen tinggi/rendah'
+                  },
+                  {
+                    id: 'off',
+                    label: '❌ Nonaktif (Raw Audio)',
+                    badge: 'Audio Asli',
+                    desc: 'Gunakan stream audio stereo bawaan tanpa pemfilteran frekuensi'
+                  },
+                ].map(opt => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    className={`pill-btn ${vocalIsolationMode === opt.id ? 'active' : ''}`}
+                    style={{
+                      fontSize: '0.75rem',
+                      padding: '0.55rem 0.75rem',
+                      borderRadius: '8px',
+                      textAlign: 'left',
+                      background: vocalIsolationMode === opt.id
+                        ? 'rgba(56, 189, 248, 0.2)'
+                        : 'rgba(255, 255, 255, 0.03)',
+                      borderColor: vocalIsolationMode === opt.id
+                        ? '#38bdf8'
+                        : 'rgba(255, 255, 255, 0.08)',
+                      color: vocalIsolationMode === opt.id
+                        ? '#e0f2fe'
+                        : 'var(--text-secondary)',
+                      fontWeight: vocalIsolationMode === opt.id ? 600 : 400,
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease'
+                    }}
+                    onClick={() => setVocalIsolationMode(opt.id as VocalIsolationMode)}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.3rem' }}>
+                      <span style={{ fontWeight: 600 }}>{opt.label}</span>
+                      <span style={{
+                        fontSize: '0.6rem',
+                        fontWeight: 700,
+                        padding: '0.1rem 0.35rem',
+                        borderRadius: '4px',
+                        background: vocalIsolationMode === opt.id ? 'rgba(56, 189, 248, 0.3)' : 'rgba(255, 255, 255, 0.06)',
+                        color: vocalIsolationMode === opt.id ? '#38bdf8' : 'var(--text-muted)'
+                      }}>
+                        {opt.badge}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: '0.66rem', color: 'var(--text-muted)', marginTop: '0.2rem', lineHeight: 1.35 }}>
+                      {opt.desc}
+                    </div>
+                  </button>
+                ))}
+              </div>
+
+              {/* Recommendation Note */}
+              <div style={{
+                padding: '0.65rem 0.85rem',
+                borderRadius: '8px',
+                background: 'linear-gradient(135deg, rgba(56, 189, 248, 0.08), rgba(99, 102, 241, 0.06))',
+                border: '1px solid rgba(56, 189, 248, 0.22)',
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '0.55rem'
+              }}>
+                <span style={{ fontSize: '1rem', flexShrink: 0, marginTop: '0.05rem' }}>💡</span>
+                <p style={{ fontSize: '0.72rem', color: '#e0f2fe', margin: 0, lineHeight: 1.45 }}>
+                  <strong>Rekomendasi Algoritma Shorts</strong>: Gabungkan mode <strong>Center Vocal Extract</strong> dengan musik bebas royalti di tab <strong>Background Music</strong> (Lofi / Phonk / Cinematic). Sistem akan otomatis menerapkan <em>Smart Dynamic Auto-Ducking</em> sehingga vokal terdengar jernih dan audio klip 100% aman monetisasi.
+                </p>
+              </div>
+            </div>
           </div>
 
           {/* 9. Hardware Acceleration & Video Encoder */}

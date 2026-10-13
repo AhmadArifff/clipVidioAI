@@ -1431,6 +1431,59 @@ def format_ass_timestamp(seconds: float) -> str:
     return f"{h}:{m:02d}:{s:02d}.{cs:02d}"
 
 
+def parse_ass_timestamp(ts: str) -> float:
+    """Parses ASS timestamp format (H:MM:SS.cs or HH:MM:SS.cs) into seconds."""
+    parts = ts.strip().split(":")
+    if len(parts) == 3:
+        try:
+            h = float(parts[0])
+            m = float(parts[1])
+            s = float(parts[2])
+            return h * 3600.0 + m * 60.0 + s
+        except (ValueError, TypeError):
+            return 0.0
+    return 0.0
+
+
+def rescale_ass_subtitles_timing(ass_path: str, speed_ratio: float) -> str:
+    """
+    Rescales all Dialogue event start and end timestamps in an ASS subtitle file
+    by speed_ratio (e.g. 1.03 for 3% speed ramping).
+    T_new = T_old / speed_ratio.
+    """
+    if not ass_path or not os.path.exists(ass_path) or abs(speed_ratio - 1.0) < 0.001:
+        return ass_path
+
+    out_path = f"{os.path.splitext(ass_path)[0]}_sped_{speed_ratio:.2f}.ass"
+    try:
+        with open(ass_path, "r", encoding="utf-8") as f:
+            lines = f.readlines()
+
+        rescaled_lines = []
+        for line in lines:
+            if line.startswith("Dialogue:"):
+                # Dialogue: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+                parts = line.split(",", 9)
+                if len(parts) >= 10:
+                    try:
+                        start_sec = parse_ass_timestamp(parts[1]) / speed_ratio
+                        end_sec = parse_ass_timestamp(parts[2]) / speed_ratio
+                        parts[1] = format_ass_timestamp(start_sec)
+                        parts[2] = format_ass_timestamp(end_sec)
+                        line = ",".join(parts)
+                    except Exception:
+                        pass
+            rescaled_lines.append(line)
+
+        with open(out_path, "w", encoding="utf-8") as f:
+            f.writelines(rescaled_lines)
+
+        return out_path
+    except Exception as e:
+        logger.warning(f"Failed to rescale ASS subtitle timing: {e}")
+        return ass_path
+
+
 def apply_text_case(text: str, mode: str) -> str:
     """Applies uppercase, capitalize (Title Case), or lowercase to text."""
     clean = text.strip()
@@ -3637,7 +3690,10 @@ def render_clip_to_mp4(
     comedy_effect_preset: str = "none",
     comedy_effect_start_time: Optional[float] = None,
     comedy_effect_duration: float = 1.2,
-    comedy_sfx_enabled: bool = True
+    comedy_sfx_enabled: bool = True,
+    # v3.7 Anti-Content ID Shield & Viral Algorithm Booster
+    speed_ramp_ratio: float = 1.0,
+    vocal_isolation_mode: str = "off"
 ) -> str:
     """
     Renders the final short-form video with layout, aspect ratio, custom backgrounds,
@@ -3900,20 +3956,44 @@ def render_clip_to_mp4(
         )
         out_video_map = "[v_hook_zoomed]"
 
-    # 2. Audio Processing (Original Voice with Boost, BGM with smart ducking & start offset, Hook SFX at frame 0, and Loudness Mastering)
+    # Anti-Content ID Micro Speed Ramping Video PTS Adjustment
+    effective_speed = max(0.90, min(1.15, float(speed_ramp_ratio or 1.0)))
+    is_speed_ramped = abs(effective_speed - 1.0) >= 0.005
+    if is_speed_ramped:
+        filter_chains.append(f"{out_video_map}setpts=PTS/{effective_speed:.4f}[v_ramped]")
+        out_video_map = "[v_ramped]"
+
+    dur = max(1.0, float(clip_duration))
+    effective_dur = (dur / effective_speed) if is_speed_ramped else dur
+
+    # 2. Audio Processing (Original Voice with Boost, Anti-Content ID Vocal Isolation, Micro Speed Ramping, BGM with smart ducking, Hook SFX, Loudness Mastering)
     audio_inputs_to_mix = []
     has_orig_audio = check_has_audio(video_path)
     orig_voice_tag = None
     if has_orig_audio:
         orig_vol = max(0.0, min(2.0, float(original_audio_volume)))
+        voice_filters = []
+
+        # Anti-Content ID Vocal Isolation (Native DSP)
+        if vocal_isolation_mode == "center_vocal_extract":
+            # Cancels stereo side channels where BGM lives and isolates center mono dialogue + FFT denoise
+            voice_filters.append("pan=stereo|c0=0.5*c0+0.5*c1|c1=0.5*c0+0.5*c1,highpass=f=120,lowpass=f=7500,afftdn=nf=-25")
+        elif vocal_isolation_mode == "voice_clarity_bandpass":
+            # Isolate human speech frequency range (150Hz to 3800Hz)
+            voice_filters.append("highpass=f=150,lowpass=f=3800")
+
         if abs(orig_vol - 1.0) > 0.01:
-            filter_chains.append(f"[0:a:0]volume={orig_vol:.3f}[v_orig_boosted]")
+            voice_filters.append(f"volume={orig_vol:.3f}")
+
+        if is_speed_ramped:
+            voice_filters.append(f"atempo={effective_speed:.4f}")
+
+        if voice_filters:
+            filter_chains.append(f"[0:a:0]{','.join(voice_filters)}[v_orig_boosted]")
             orig_voice_tag = "[v_orig_boosted]"
         else:
             orig_voice_tag = "[0:a:0]"
         audio_inputs_to_mix.append(orig_voice_tag)
-
-    dur = max(1.0, float(clip_duration))
 
     # BGM input with start offset & looping
     if bgm_enabled and bgm_path and os.path.exists(bgm_path):
@@ -3925,7 +4005,7 @@ def render_clip_to_mp4(
         extra_input_args.extend(["-stream_loop", "-1", "-i", str(bgm_path)])
 
         vol = max(0.0, min(1.0, float(bgm_volume)))
-        fade_st = max(0.0, dur - 1.5)
+        fade_st = max(0.0, effective_dur - 1.5)
         filter_chains.append(
             f"[{bgm_idx}:a]asetpts=PTS-STARTPTS,volume={vol:.3f},afade=t=out:st={fade_st:.2f}:d=1.5[bgm_proc]"
         )
@@ -3948,13 +4028,14 @@ def render_clip_to_mp4(
 
         sfx_vol = max(0.0, min(2.0, float(hook_sfx_volume)))
         filter_chains.append(
-            f"[{sfx_idx}:a]asetpts=PTS-STARTPTS,atrim=end={dur:.2f},volume={sfx_vol:.3f}[sfx_proc]"
+            f"[{sfx_idx}:a]asetpts=PTS-STARTPTS,atrim=end={effective_dur:.2f},volume={sfx_vol:.3f}[sfx_proc]"
         )
         audio_inputs_to_mix.append("[sfx_proc]")
 
     # Comedy Sound Effect (PWK Boom/Punch) timed with visual comedic hit
     if comedy_effect_preset in ["pwk_snap_zoom", "pwk_red_blush", "pwk_funny_fisheye"] and comedy_sfx_enabled and pwk_start is not None:
-        pwk_start_ms = max(0, int(pwk_start * 1000))
+        pwk_start_effective = pwk_start / effective_speed if is_speed_ramped else pwk_start
+        pwk_start_ms = max(0, int(pwk_start_effective * 1000))
         filter_chains.append(
             f"aevalsrc=sin(2*PI*85*exp(-3.5*t)*t)*exp(-2.2*t):d=1.2:s=44100[pwk_sfx_raw];"
             f"[pwk_sfx_raw]adelay=delays={pwk_start_ms}|{pwk_start_ms}[pwk_sfx_proc]"

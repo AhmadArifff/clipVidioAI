@@ -83,6 +83,9 @@ class RenderSettingsModel(BaseModel):
     hook_zoom_enabled: Optional[bool] = True       # Dynamic 1.1x hook punch-in zoom (0-2.5s)
     # v3.1 Subtitle Keyword Emoji Accent & Viral Styling
     keyword_accent_mode: Optional[str] = "accent_and_emoji" # "off" | "accent_only" | "accent_and_emoji"
+    # v3.7 Anti-Content ID Shield & Viral Algorithm Booster
+    speed_ramp_ratio: Optional[float] = 1.03           # Micro-speed ramping (1.00 = off, 1.02 to 1.06)
+    vocal_isolation_mode: Optional[str] = "center_vocal_extract" # "off" | "center_vocal_extract" | "voice_clarity_bandpass"
 
 class RenderBatchRequest(BaseModel):
     video_url: str

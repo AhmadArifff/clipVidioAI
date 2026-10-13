@@ -746,6 +746,48 @@ Untuk menghadirkan kualitas produksi video pendek viral setingkat kreator profes
 * **Tahap 3 (Backend Comedy Engine PWK - T36) [VERIFIED PASS]**: Rantai filtergraph FFmpeg 1-pass (`pwk_snap_zoom`, `pwk_red_blush`, `pwk_funny_fisheye`), isolasi dari subtitle ASS/watermark, dan audio mixer SFX dentuman sub-bass.
 * **Tahap 4 (Studio UI PWK & Verifikasi E2E - T37) [VERIFIED PASS]**: Kartu preset efek komedi viral PWK, slider durasi, toggle sound effect dentuman, live preview video filter, dan verifikasi build monorepo (Python py_compile & Vite build 100% lulus).
 
+---
+
+## Seksi 18: Modul Anti-Content ID Shield & Viral Shorts Algorithm Booster (v3.7.0)
+
+### 18.1 Latar Belakang & Masalah
+Algoritma YouTube Content ID menggunakan sistem pencocokan otomatis 3 lapis:
+1. **Audio Fingerprinting**: Paling sensitif, potongan musik latar 3-5 detik dapat memicu klaim atau demonetisasi otomatis.
+2. **Visual Fingerprinting**: Memindai keselarasan frame, rasio aspek, warna, dan pola gambar.
+3. **Copyright Match Tool & DMCA**: Deteksi duplikat identik oleh kreator asli.
+
+Agar video klip dikategorikan sebagai karya transformatif yang bernilai tambah (*Fair Use*) dan lolos dari deteksi duplikat otomatis, sistem membutuhkan pemrosesan cerdas:
+* **Audio**: Pembersihan vokal dan peredaman BGM stereo asli, digantikan dengan BGM bebas royalti berlisensi.
+* **Pacing**: Dynamic micro speed ramping (1.02x s.d 1.05x) untuk mengubah frekuensi gelombang audio dan frame rate referensi tanpa terdengar aneh di telinga penonton.
+* **Visual Transform**: Kombinasi crop vertikal 9:16 (memotong >56% area frame asli) dan takarir kinetic per kata yang merombak struktur piksel setiap detik.
+* **Algoritma Shorts Booster**: Peningkatan metrik Viewed vs Swiped Away (VVSA) dan Average Percentage Viewed (APV) melalui pemangkasan jeda diam di detik 0.
+
+### 18.2 Spesifikasi Kontrak Data & Parameter
+* `speed_ramp_ratio` (float, default 1.03, range 1.00 s.d 1.06): Faktor percepatan mikro video dan audio via `setpts` dan `atempo`.
+* `vocal_isolation_mode` (str, default 'center_vocal_extract', opsi: 'off', 'center_vocal_extract', 'voice_clarity_bandpass'): Mode peredaman musik latar asli dan isolasi vokal dialog.
+* `rescale_subtitles_auto` (bool, default True): Menyesuaikan timestamp subtitle ASS secara otomatis dengan faktor $1 / \text{speed\_ramp\_ratio}$.
+
+### 18.3 Algoritma Rescaling Subtitle ASS
+Saat micro speed ramping diaktifkan dengan rasio $R = 1.03$:
+Setiap baris takarir `Dialogue: 0,Start,End,...` di file `.ass` memiliki waktu mulai $T_{start}$ dan waktu selesai $T_{end}$.
+Waktu baru dihitung dengan formula:
+$$T'_{start} = \frac{T_{start}}{R}, \quad T'_{end} = \frac{T_{end}}{R}$$
+Dengan demikian, takarir kinetic pop tetap 100% sinkron per kata dengan suara vokal yang dipercepat.
+
+### 18.4 Filtergraph DSP Native Audio
+* **Center Vocal Extract**:
+  Memanfaatkan sifat rekaman studio di mana vokal dialog berada di saluran tengah (mono/center) sedangkan BGM berada di saluran stereo samping. Menggunakan filter matriks audio:
+  `pan=stereo|c0=0.5*c0+0.5*c1|c1=0.5*c0+0.5*c1,highpass=f=120,lowpass=f=7500,afftdn=nf=-25`
+* **Voice Clarity Bandpass**:
+  Menyaring frekuensi vokal manusia dominan (150Hz s.d 3800Hz) dan menekan frekuensi BGM yang berpotensi memicu Content ID audio fingerprint.
+
+### 18.5 Rencana Tahapan Pengembangan (Phased Roadmap)
+* **Tahap 1 (Spesifikasi PRD & Schema Contract - T38)**: Update PRD dan skema kontrak Pydantic/TypeScript.
+* **Tahap 2 (Backend Speed Ramping & ASS Rescaler - T39)**: Implementasi speed ramping 1-pass dan auto-rescale subtitle ASS di `video_engine.py`.
+* **Tahap 3 (Backend Audio Vocal Shield - T40)**: Filtergraph peredam BGM stereo asli dan mixer BGM berlisensi di `video_engine.py`.
+* **Tahap 4 (Studio UI Shield Controls - T41)**: Panel kontrol Anti-Content ID Shield di `ClipStudioSection.tsx`.
+* **Tahap 5 (Verifikasi Monorepo - T42)**: Uji render end-to-end dan validasi build monorepo.
+
 
 
 

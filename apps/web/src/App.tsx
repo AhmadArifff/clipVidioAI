@@ -545,6 +545,16 @@ export default function App() {
             podcast_divider_style: settings.podcastDividerStyle || 'clean_white',
             podcast_host_cx: settings.podcastHostCx !== undefined ? settings.podcastHostCx : null,
             podcast_guest_cx: settings.podcastGuestCx !== undefined ? settings.podcastGuestCx : null,
+            // v3.6 Smart Camera Tracking & Comedy Expression FX
+            camera_tracking_mode: settings.cameraTrackingMode || 'off',
+            tracking_smoothness: settings.trackingSmoothness !== undefined ? settings.trackingSmoothness : 5,
+            comedy_effect_preset: settings.comedyEffectPreset || 'none',
+            comedy_effect_start_time: settings.comedyEffectStartTime !== undefined ? settings.comedyEffectStartTime : null,
+            comedy_effect_duration: settings.comedyEffectDuration !== undefined ? settings.comedyEffectDuration : 1.5,
+            comedy_sfx_enabled: settings.comedySfxEnabled !== undefined ? settings.comedySfxEnabled : true,
+            // v3.7 Anti-Content ID Shield & Viral Algorithm Booster
+            speed_ramp_ratio: settings.speedRampRatio !== undefined ? settings.speedRampRatio : 1.03,
+            vocal_isolation_mode: settings.vocalIsolationMode || 'center_vocal_extract',
           },
           transcript: result.transcript,
         }),

@@ -152,6 +152,7 @@ export type HardwareAccelOption = 'auto' | 'nvenc' | 'amf' | 'qsv' | 'cpu' | 'br
 export type KeywordAccentMode = 'off' | 'accent_only' | 'accent_and_emoji';
 export type CameraTrackingMode = 'off' | 'fit_balanced' | 'fit_close_up' | 'dynamic_pan_only' | 'static_center';
 export type ComedyEffectPreset = 'none' | 'pwk_snap_zoom' | 'pwk_red_blush' | 'pwk_funny_fisheye';
+export type VocalIsolationMode = 'off' | 'center_vocal_extract' | 'voice_clarity_bandpass';
 
 export interface FontItem {
   name: string;
@@ -302,6 +303,9 @@ export interface RenderSettings {
   comedyEffectStartTime?: number; // seconds
   comedyEffectDuration?: number; // default 1.5s
   comedySfxEnabled?: boolean;
+  // v3.7 Anti-Content ID Shield & Viral Algorithm Booster
+  speedRampRatio?: number; // 1.00 to 1.08
+  vocalIsolationMode?: VocalIsolationMode;
 }
 
 export interface RenderClipStatus {
