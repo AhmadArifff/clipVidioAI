@@ -699,8 +699,53 @@ Pada video dengan dialog percakapan cepat (seperti podcast dan talkshow), penggu
 * **Tugas Terkait**: T32 (Speech Cadence Clamping, Reverse-Chronological Cue Selection, Microsecond Extrapolation, dan Paritas Python Video Engine).
 * **Hasil Verifikasi**: Build Vite `apps/web` 100% lulus (0 error), kompilasi Python `video_engine.py` 100% lulus, dan kasus terdokumentasi di `.agents/04-case-bank/cases/case-20261013-speech-cadence-subtitle-sync.md`.
 
-
 ---
+
+## 17. Modul Smart Camera Tracking (CapCut Style) & Comedy Expression FX (PWK Style) (v3.6.0)
+
+### 17.1 Latar Belakang & Visi Produk
+Untuk menghadirkan kualitas produksi video pendek viral setingkat kreator profesional, sistem menambahkan dua kapabilitas sinematik cerdas:
+1. **Auto Camera Tracking Mengikuti Wajah (CapCut Style)**: Mengeliminasi kebutuhan pembuatan keyframe manual di timeline. Kamera vertikal 9:16 secara otomatis mengunci wajah pembicara (*face lock*), meluncur mulus mengikuti pergerakan tubuh ke kiri dan ke kanan (*smooth gimbal pan*), dan menerapkan opsi *Fit to Canvas* agar wajah selalu berada di titik fokus tengah layar secara proporsional.
+2. **Efek Komedi & Muka Lucu Dramatis (PWK / Praz Teguh Style)**: Menghadirkan ciri khas editing podcast komedi viral saat momen punchline, ekspresi bengong, atau tatapan elang ke kamera melalui kombinasi snap punch zoom, efek warna wajah merah (emosi/malu), distorsi optik muka melotot/bulat, serta sound effect dramatis.
+
+### 17.2 Spesifikasi Arsitektur Camera Tracking & Fit to Canvas
+1. **Multi-Frame Temporal Trajectory Extraction**:
+   * Memindai video menggunakan OpenCV YuNet Deep Learning pada kecepatan sampling 8-10 FPS (tiap 100-125 ms).
+   * Menghasilkan lintasan koordinat waktu: $(x_t, y_t, w_t, h_t)$.
+2. **Exponential Moving Average (EMA) Gimbal Stabilization**:
+   * Menerapkan formula pelembut pergerakan kamera untuk mencegah goyangan (*shaky cam*):
+     $$x_{\text{smooth}}(t) = \alpha \cdot x_{\text{detect}}(t) + (1 - \alpha) \cdot x_{\text{smooth}}(t-1)$$
+   * Koefisien $\alpha \approx 0.12 - 0.18$ menghasilkan pergeseran kamera halus (*cinematic virtual gimbal*).
+3. **Preset Framing Fit to Canvas**:
+   * `fit_close_up`: Zoom 1.35x hingga 1.45x (wajah memenuhi 45% vertikal, fokus ekspresi intim).
+   * `fit_balanced`: Zoom 1.20x hingga 1.25x (wajah + bahu proporsional, standar CapCut).
+   * `dynamic_pan_only`: Zoom 1.0x (framing tetap, kamera hanya bergeser horizontal mengikuti pembicara).
+4. **Eksekusi 1-Pass FFmpeg**:
+   * Diterjemahkan ke dalam parameter filter `crop` dinamis FFmpeg tanpa memerlukan berkas video perantara (*temporary file*).
+
+### 17.3 Spesifikasi Arsitektur Efek Komedi PWK
+1. **Preset Efek Visual PWK**:
+   * `pwk_snap_zoom`: Lompatan zoom instan 1.6x ke area mata/wajah selama 1.0 hingga 1.5 detik.
+   * `pwk_red_blush`: Perubahan palet warna ke warna merah membara (`colorbalance=rs=0.45:gs=-0.15:bs=-0.15`, `eq=contrast=1.25:saturation=1.40`, serta `vignette=PI/4`) untuk menggambarkan ekspresi emosi atau malu.
+   * `pwk_funny_fisheye`: Distorsi lensa cembung barrel (`lenscorrection=cx=0.5:cy=0.4:k1=-0.28:k2=-0.12`) yang membuat muka melotot dan kepala membesar secara konyol.
+2. **Trigger Timing & Audio Sync**:
+   * *Slider Manual di Studio*: Memungkinkan pengguna menetapkan detik mulai efek secara presisi di timeline editor.
+   * *Sound Effect Signature*: Sinkronisasi otomatis audio pendukung (jreng tatapan elang, vine thud, atau kartun punch) pada detik terjadinya efek visual.
+
+### 17.4 Garansi Arsitektur Anti-Bentrok (Zero-Conflict Policy)
+1. **Isolasi Layer Subtitle & Watermark**:
+   * Efek tracking dan distorsi diterapkan pada stream video mentah `[0:v]` sebelum penempelan subtitle ASS dan watermark, sehingga teks subtitle dan logo tetap stabil di koordinat kanvas luar dan tidak berguncang.
+2. **Isolasi Mode Podcast Multi-Speaker**:
+   * Pada mode `podcast_split`, tracking kamera berjalan terpisah di sub-kotak masing-masing pembicara (Host di atas, Guest di bawah) tanpa merusak garis pembatas (*divider*).
+3. **Pemisahan Waktu dari Hook Zoom**:
+   * Efek komedi PWK diisolasi agar tidak bertumpukan dengan hook zoom punch-in 3 detik di awal video ($t > 3.0\text{s}$).
+
+### 17.5 Rencana Tahapan Pengembangan (Phased Roadmap)
+* **Tahap 1 (Backend Core Tracking - T33 & T34) [VERIFIED PASS]**: Skema Pydantic (`camera_tracking_mode`, `tracking_smoothness`), modul `extract_face_trajectory`, dan generator ekspresi lintasan dinamis FFmpeg di `video_engine.py`.
+* **Tahap 2 (Studio UI Tracking - T35) [VERIFIED PASS]**: Kartu Smart Camera Tracking, pemilih mode (Fit to Canvas Balanced 1.25x, Close-up 1.45x, Dynamic Pan 1.0x), slider Gimbal Ease, dan live preview CSS transform di `ClipStudioSection.tsx`.
+* **Tahap 3 (Backend Comedy Engine PWK - T36) [VERIFIED PASS]**: Rantai filtergraph FFmpeg 1-pass (`pwk_snap_zoom`, `pwk_red_blush`, `pwk_funny_fisheye`), isolasi dari subtitle ASS/watermark, dan audio mixer SFX dentuman sub-bass.
+* **Tahap 4 (Studio UI PWK & Verifikasi E2E - T37) [VERIFIED PASS]**: Kartu preset efek komedi viral PWK, slider durasi, toggle sound effect dentuman, live preview video filter, dan verifikasi build monorepo (Python py_compile & Vite build 100% lulus).
+
 
 
 

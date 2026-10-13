@@ -13,6 +13,14 @@ class RenderSettingsModel(BaseModel):
     foreground_border_radius: Optional[int] = 0  # 0 to 48 px corner radius
     foreground_shadow: Optional[bool] = False    # Drop shadow under foreground video
     enable_face_tracking: bool = True
+    # v3.6 Smart Camera Tracking (CapCut Style) & Fit to Canvas
+    camera_tracking_mode: Optional[str] = "fit_balanced"       # "fit_balanced" | "fit_close_up" | "dynamic_pan_only" | "static_center"
+    tracking_smoothness: Optional[int] = 5                     # 1 (responsive) to 10 (ultra-smooth gimbal)
+    # v3.6 Comedy Expression FX (PWK Style)
+    comedy_effect_preset: Optional[str] = "none"               # "none" | "pwk_snap_zoom" | "pwk_red_blush" | "pwk_funny_fisheye"
+    comedy_effect_start_time: Optional[float] = None           # Second in clip when effect triggers (None = auto)
+    comedy_effect_duration: Optional[float] = 1.5              # Duration of effect in seconds (default 1.5s)
+    comedy_sfx_enabled: Optional[bool] = True                  # Automatic comedy signature SFX sync
     streamer_preset: str = "none"
     facecam_position: Optional[str] = "auto"
     podcast_layout_mode: Optional[str] = "stacked_split"       # "stacked_split" | "left_focus" | "right_focus"

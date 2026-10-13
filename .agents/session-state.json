@@ -600,6 +600,69 @@
         }
       ],
       "verdict": "approved"
+    },
+    {
+      "id": "T33",
+      "task": "Perancangan Arsitektur PRD.md Seksi 17 & Skema Data Pydantic untuk Auto Face Tracking (CapCut Style) dan Efek Komedi PWK (v3.6.0)",
+      "owner_role": "product-manager",
+      "status": "done",
+      "depends_on": ["T32"],
+      "rework_iteration_count": 0,
+      "reviewed_by": [
+        {
+          "role": "policy-schema-enforcer",
+          "verdict": "approved",
+          "timestamp": "2026-10-13T20:26:00Z",
+          "note": "Spesifikasi Seksi 17 PRD.md selaras dengan standar 4-layer dan roadmap modular v3.6.0"
+        },
+        {
+          "role": "tech-critic",
+          "verdict": "approved",
+          "timestamp": "2026-10-13T20:26:30Z",
+          "note": "Pemisahan tahapan (Tahap 1 s.d Tahap 4) serta mitigasi zero-conflict terverifikasi solid"
+        }
+      ],
+      "verdict": "approved"
+    },
+    {
+      "id": "T34",
+      "task": "Implementasi Engine Temporal Face Trajectory & Fit to Canvas Dynamic Crop Filter di video_engine.py (Tahap 1 - v3.6.0)",
+      "owner_role": "backend-engineer",
+      "status": "in_progress",
+      "depends_on": ["T33"],
+      "rework_iteration_count": 0,
+      "reviewed_by": [],
+      "verdict": "pending"
+    },
+    {
+      "id": "T35",
+      "task": "Integrasi Antarmuka Studio dan Live Preview CSS Transform untuk Smart Camera Tracking di ClipStudioSection.tsx (Tahap 2 - v3.6.0)",
+      "owner_role": "frontend-engineer",
+      "status": "pending",
+      "depends_on": ["T34"],
+      "rework_iteration_count": 0,
+      "reviewed_by": [],
+      "verdict": "pending"
+    },
+    {
+      "id": "T36",
+      "task": "Implementasi Engine Rantai Filter Komedi PWK (Snap Zoom, Wajah Merah, Fisheye) dan SFX Sync di video_engine.py (Tahap 3 - v3.6.0)",
+      "owner_role": "backend-engineer",
+      "status": "pending",
+      "depends_on": ["T35"],
+      "rework_iteration_count": 0,
+      "reviewed_by": [],
+      "verdict": "pending"
+    },
+    {
+      "id": "T37",
+      "task": "Integrasi Kontrol Efek Komedi PWK & Timeline Marker di Studio ClipStudioSection.tsx (Tahap 4 - v3.6.0)",
+      "owner_role": "frontend-engineer",
+      "status": "pending",
+      "depends_on": ["T36"],
+      "rework_iteration_count": 0,
+      "reviewed_by": [],
+      "verdict": "pending"
     }
   ],
   "open_questions": [],
@@ -613,6 +676,6 @@
   "last_reviewer_verdict": {
     "role": "tech-critic",
     "result": "approved",
-    "note": "Versi 3.5.1 (Speech Cadence Subtitle Synchronization & Latency Elimination - T32) sukses diimplementasikan dan tervalidasi via Vite build 0 error serta py_compile 100% lolos."
+    "note": "Perancangan v3.6.0 (Seksi 17 PRD.md & Task T33-T37) telah dikunci dalam tata kelola arsitektur. Memulai eksekusi Tahap 1 (T34)."
   }
 }

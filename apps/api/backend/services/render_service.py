@@ -272,7 +272,13 @@ async def render_single_batch_clip(
             podcast_layout_mode=getattr(settings, "podcast_layout_mode", "stacked_split"),
             podcast_divider_style=getattr(settings, "podcast_divider_style", "clean_white"),
             podcast_host_cx=getattr(settings, "podcast_host_cx", None),
-            podcast_guest_cx=getattr(settings, "podcast_guest_cx", None)
+            podcast_guest_cx=getattr(settings, "podcast_guest_cx", None),
+            camera_tracking_mode=getattr(settings, "camera_tracking_mode", "off") or "off",
+            tracking_smoothness=float(getattr(settings, "tracking_smoothness", 0.15) or 0.15),
+            comedy_effect_preset=getattr(settings, "comedy_effect_preset", "none") or "none",
+            comedy_effect_start_time=getattr(settings, "comedy_effect_start_time", None),
+            comedy_effect_duration=float(getattr(settings, "comedy_effect_duration", 1.2) or 1.2),
+            comedy_sfx_enabled=bool(getattr(settings, "comedy_sfx_enabled", True))
         )
 
         if not os.path.exists(out_path) or not is_valid_mp4(out_path):
@@ -639,7 +645,13 @@ async def render_merged_batch_clips(
             podcast_layout_mode=getattr(settings, "podcast_layout_mode", "stacked_split"),
             podcast_divider_style=getattr(settings, "podcast_divider_style", "clean_white"),
             podcast_host_cx=getattr(settings, "podcast_host_cx", None),
-            podcast_guest_cx=getattr(settings, "podcast_guest_cx", None)
+            podcast_guest_cx=getattr(settings, "podcast_guest_cx", None),
+            camera_tracking_mode=getattr(settings, "camera_tracking_mode", "off") or "off",
+            tracking_smoothness=float(getattr(settings, "tracking_smoothness", 0.15) or 0.15),
+            comedy_effect_preset=getattr(settings, "comedy_effect_preset", "none") or "none",
+            comedy_effect_start_time=getattr(settings, "comedy_effect_start_time", None),
+            comedy_effect_duration=float(getattr(settings, "comedy_effect_duration", 1.2) or 1.2),
+            comedy_sfx_enabled=bool(getattr(settings, "comedy_sfx_enabled", True))
         )
 
         if not os.path.exists(out_path) or not is_valid_mp4(out_path):

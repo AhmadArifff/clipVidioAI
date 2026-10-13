@@ -28,6 +28,8 @@ import type {
   ViralArchetypeKey,
   ViralArchetypeProfile,
   ClipSettingsRecommendation,
+  CameraTrackingMode,
+  ComedyEffectPreset,
 } from '../types';
 import { BackgroundCustomizer } from './BackgroundCustomizer';
 
@@ -530,6 +532,12 @@ export interface StudioPreferences {
   podcastDividerStyle?: PodcastDividerStyle;
   podcastHostCx?: number;
   podcastGuestCx?: number;
+  cameraTrackingMode?: CameraTrackingMode;
+  trackingSmoothness?: number;
+  comedyEffectPreset?: ComedyEffectPreset;
+  comedyEffectStartTime?: number;
+  comedyEffectDuration?: number;
+  comedySfxEnabled?: boolean;
 }
 
 export const DEFAULT_STUDIO_PREFS: Required<StudioPreferences> = {
@@ -582,6 +590,12 @@ export const DEFAULT_STUDIO_PREFS: Required<StudioPreferences> = {
   smartDuckingEnabled: true,
   hookZoomEnabled: true,
   keywordAccentMode: 'accent_and_emoji',
+  cameraTrackingMode: 'off',
+  trackingSmoothness: 0.15,
+  comedyEffectPreset: 'none',
+  comedyEffectStartTime: 0,
+  comedyEffectDuration: 1.2,
+  comedySfxEnabled: true,
 };
 
 function getSavedStudioPreferences(): Partial<StudioPreferences> {
@@ -697,6 +711,13 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
   const [hookZoomEnabled, setHookZoomEnabled] = useState<boolean>(() => getSavedStudioPreferences().hookZoomEnabled ?? DEFAULT_STUDIO_PREFS.hookZoomEnabled);
   // v3.1 Subtitle Keyword Emoji Accent state
   const [keywordAccentMode, setKeywordAccentMode] = useState<KeywordAccentMode>(() => getSavedStudioPreferences().keywordAccentMode ?? DEFAULT_STUDIO_PREFS.keywordAccentMode);
+  // v3.6 Smart Camera Tracking & Comedy Expression FX states
+  const [cameraTrackingMode, setCameraTrackingMode] = useState<CameraTrackingMode>(() => getSavedStudioPreferences().cameraTrackingMode ?? DEFAULT_STUDIO_PREFS.cameraTrackingMode);
+  const [trackingSmoothness, setTrackingSmoothness] = useState<number>(() => getSavedStudioPreferences().trackingSmoothness ?? DEFAULT_STUDIO_PREFS.trackingSmoothness);
+  const [comedyEffectPreset, setComedyEffectPreset] = useState<ComedyEffectPreset>(() => getSavedStudioPreferences().comedyEffectPreset ?? DEFAULT_STUDIO_PREFS.comedyEffectPreset);
+  const [comedyEffectStartTime, setComedyEffectStartTime] = useState<number>(() => getSavedStudioPreferences().comedyEffectStartTime ?? DEFAULT_STUDIO_PREFS.comedyEffectStartTime);
+  const [comedyEffectDuration, setComedyEffectDuration] = useState<number>(() => getSavedStudioPreferences().comedyEffectDuration ?? DEFAULT_STUDIO_PREFS.comedyEffectDuration);
+  const [comedySfxEnabled, setComedySfxEnabled] = useState<boolean>(() => getSavedStudioPreferences().comedySfxEnabled ?? DEFAULT_STUDIO_PREFS.comedySfxEnabled);
 
   // v3.4 AI Social Copywriting Pack state
   const [copyDeck, setCopyDeck] = useState<SocialCopyDeck | null>(null);
@@ -2320,6 +2341,12 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
       podcastDividerStyle,
       podcastHostCx,
       podcastGuestCx,
+      cameraTrackingMode,
+      trackingSmoothness,
+      comedyEffectPreset,
+      comedyEffectStartTime,
+      comedyEffectDuration,
+      comedySfxEnabled,
     };
     try {
       localStorage.setItem(STUDIO_PREFS_KEY, JSON.stringify(prefs));
@@ -2376,6 +2403,12 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
     podcastDividerStyle,
     podcastHostCx,
     podcastGuestCx,
+    cameraTrackingMode,
+    trackingSmoothness,
+    comedyEffectPreset,
+    comedyEffectStartTime,
+    comedyEffectDuration,
+    comedySfxEnabled,
   ]);
 
   const handleResetToDefaults = () => {
@@ -2429,6 +2462,12 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
     setSmartDuckingEnabled(DEFAULT_STUDIO_PREFS.smartDuckingEnabled);
     setHookZoomEnabled(DEFAULT_STUDIO_PREFS.hookZoomEnabled);
     setKeywordAccentMode(DEFAULT_STUDIO_PREFS.keywordAccentMode);
+    setCameraTrackingMode(DEFAULT_STUDIO_PREFS.cameraTrackingMode);
+    setTrackingSmoothness(DEFAULT_STUDIO_PREFS.trackingSmoothness);
+    setComedyEffectPreset(DEFAULT_STUDIO_PREFS.comedyEffectPreset);
+    setComedyEffectStartTime(DEFAULT_STUDIO_PREFS.comedyEffectStartTime);
+    setComedyEffectDuration(DEFAULT_STUDIO_PREFS.comedyEffectDuration);
+    setComedySfxEnabled(DEFAULT_STUDIO_PREFS.comedySfxEnabled);
     handleResetTitlePosition();
     handleResetSubtitlePosition();
     try {
@@ -2530,6 +2569,13 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
       podcastDividerStyle,
       podcastHostCx,
       podcastGuestCx,
+      // v3.6 Smart Camera Tracking & Comedy Expression FX
+      cameraTrackingMode,
+      trackingSmoothness,
+      comedyEffectPreset,
+      comedyEffectStartTime,
+      comedyEffectDuration,
+      comedySfxEnabled,
     });
   };
 
@@ -2961,6 +3007,96 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                   </div>
                 </div>
               )}
+
+              {/* Smart Camera Tracking (CapCut Style) & Fit to Canvas */}
+              <div style={{ marginTop: '0.95rem', paddingTop: '0.85rem', borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.45rem', flexWrap: 'wrap', gap: '0.35rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                    <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                      🎥 Camera Tracking & Fit to Canvas
+                    </span>
+                    <span style={{
+                      fontSize: '0.65rem',
+                      fontWeight: 700,
+                      padding: '0.12rem 0.45rem',
+                      borderRadius: '4px',
+                      background: 'rgba(56, 189, 248, 0.15)',
+                      color: '#38bdf8',
+                      border: '1px solid rgba(56, 189, 248, 0.3)'
+                    }}>
+                      CAPCUT STYLE
+                    </span>
+                  </div>
+                  {cameraTrackingMode !== 'off' && (
+                    <span style={{ fontSize: '0.7rem', color: '#34d399', fontWeight: 600 }}>
+                      ✓ Auto-Zoom & Tracking Aktif
+                    </span>
+                  )}
+                </div>
+                <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: '0 0 0.55rem 0', lineHeight: 1.4 }}>
+                  Otomatis zoom-in dan berpusat mengikuti pergerakan wajah (Fit to Canvas) tanpa perlu keyframe manual.
+                </p>
+
+                <div className="pill-group" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginBottom: '0.65rem' }}>
+                  {[
+                    { id: 'off', label: '❌ Nonaktif (Static)', desc: 'Crop statis standar' },
+                    { id: 'fit_balanced', label: '🎥 Fit to Canvas (1.25x)', desc: 'Zoom seimbang wajah & pundak (Disarankan)' },
+                    { id: 'fit_close_up', label: '🔍 Fit to Canvas (1.45x)', desc: 'Close-up ketat fokus ekspresi' },
+                    { id: 'dynamic_pan_only', label: '↔️ Dynamic Pan (1.0x)', desc: 'Geser horizontal tanpa zoom' },
+                  ].map(opt => (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      className={`pill-btn ${cameraTrackingMode === opt.id ? 'active' : ''}`}
+                      style={{
+                        fontSize: '0.74rem',
+                        padding: '0.35rem 0.65rem',
+                        borderRadius: '6px',
+                        background: cameraTrackingMode === opt.id ? 'rgba(56, 189, 248, 0.2)' : 'rgba(255, 255, 255, 0.04)',
+                        borderColor: cameraTrackingMode === opt.id ? '#38bdf8' : 'rgba(255, 255, 255, 0.1)',
+                        color: cameraTrackingMode === opt.id ? '#e0f2fe' : 'var(--text-secondary)',
+                        fontWeight: cameraTrackingMode === opt.id ? 600 : 400
+                      }}
+                      onClick={() => setCameraTrackingMode(opt.id as CameraTrackingMode)}
+                      title={opt.desc}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+
+                {cameraTrackingMode !== 'off' && (
+                  <div style={{
+                    padding: '0.65rem 0.8rem',
+                    borderRadius: '6px',
+                    background: 'rgba(56, 189, 248, 0.06)',
+                    border: '1px solid rgba(56, 189, 248, 0.2)'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
+                      <span style={{ fontSize: '0.74rem', color: '#e0f2fe', fontWeight: 500 }}>
+                        Pelembut Gerakan Kamera (Gimbal Ease):
+                      </span>
+                      <span style={{ fontSize: '0.72rem', color: '#38bdf8', fontWeight: 600 }}>
+                        {trackingSmoothness <= 0.10 ? 'Sangat Halus / Sinematik' : trackingSmoothness <= 0.25 ? 'Halus Seimbang (0.15)' : 'Cepat Responsif'}
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0.05"
+                      max="0.45"
+                      step="0.05"
+                      value={trackingSmoothness}
+                      onChange={e => setTrackingSmoothness(parseFloat(e.target.value))}
+                      style={{ width: '100%', accentColor: '#38bdf8', cursor: 'pointer' }}
+                    />
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.66rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
+                      <span>0.05 (Sinematik Stabil)</span>
+                      <span>0.15 (Default Gimbal)</span>
+                      <span>0.45 (Cepat)</span>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
@@ -5381,6 +5517,101 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
             </div>
           </div>
 
+          {/* Card: Comedy Expression FX (PWK Style) */}
+          <div className="studio-card-group" style={{ border: '1px solid rgba(239, 68, 68, 0.35)', background: 'linear-gradient(145deg, rgba(30, 15, 15, 0.8), rgba(15, 10, 18, 0.85))' }}>
+            <div className="group-header" style={{ marginBottom: '0.45rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                <span className="group-title" style={{ color: '#f87171' }}>🎭 Efek Komedi / Muka Lucu Viral (PWK Style)</span>
+                <span style={{ fontSize: '0.66rem', fontWeight: 700, padding: '0.15rem 0.5rem', borderRadius: '4px', background: 'rgba(239, 68, 68, 0.2)', color: '#fca5a5', border: '1px solid rgba(239, 68, 68, 0.4)' }}>
+                  VIRAL HUMOR
+                </span>
+              </div>
+            </div>
+            <p style={{ fontSize: '0.74rem', color: 'var(--text-muted)', margin: '0 0 0.85rem 0', lineHeight: 1.45 }}>
+              Terapkan efek ekspresi dramatis dan kocak ala podcast PWK (Praz Teguh): Snap Zoom mendadak ke wajah, rona merah membara, efek kepala besar fisheye, dan sound effect dentuman khas.
+            </p>
+
+            {/* Presets Pills */}
+            <div className="pill-group" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.5rem', marginBottom: '0.85rem' }}>
+              {[
+                { id: 'none', label: '❌ Tanpa Efek Komedi', desc: 'Tidak ada efek humor tambahan' },
+                { id: 'pwk_snap_zoom', label: '💥 Snap Zoom Punch (1.35x)', desc: 'Zoom cepat mengagetkan ke wajah saat tatap kamera' },
+                { id: 'pwk_red_blush', label: '😡 Wajah Merah / Angered Blush', desc: 'Rona merah pekat dramatis saat ekspresi kesal atau kaget' },
+                { id: 'pwk_funny_fisheye', label: '🐡 Kepala Besar / Funny Fisheye', desc: 'Distorsi cembung kocak pembesar kepala ala PWK' },
+              ].map(opt => (
+                <button
+                  key={opt.id}
+                  type="button"
+                  className={`pill-btn ${comedyEffectPreset === opt.id ? 'active' : ''}`}
+                  style={{
+                    fontSize: '0.75rem',
+                    padding: '0.5rem 0.75rem',
+                    borderRadius: '8px',
+                    textAlign: 'left',
+                    background: comedyEffectPreset === opt.id ? 'rgba(239, 68, 68, 0.22)' : 'rgba(255, 255, 255, 0.03)',
+                    borderColor: comedyEffectPreset === opt.id ? '#ef4444' : 'rgba(255, 255, 255, 0.08)',
+                    color: comedyEffectPreset === opt.id ? '#fee2e2' : 'var(--text-secondary)',
+                    fontWeight: comedyEffectPreset === opt.id ? 600 : 400,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease'
+                  }}
+                  onClick={() => setComedyEffectPreset(opt.id as ComedyEffectPreset)}
+                >
+                  <div style={{ fontWeight: 600 }}>{opt.label}</div>
+                  <div style={{ fontSize: '0.67rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>{opt.desc}</div>
+                </button>
+              ))}
+            </div>
+
+            {comedyEffectPreset !== 'none' && (
+              <div style={{
+                padding: '0.85rem',
+                borderRadius: '8px',
+                background: 'rgba(239, 68, 68, 0.08)',
+                border: '1px solid rgba(239, 68, 68, 0.25)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.75rem'
+              }}>
+                {/* Duration Slider */}
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', marginBottom: '0.3rem' }}>
+                    <span style={{ color: '#fee2e2', fontWeight: 500 }}>⏱️ Durasi Efek Lucu:</span>
+                    <span style={{ color: '#f87171', fontWeight: 700 }}>{comedyEffectDuration.toFixed(1)} detik</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0.5"
+                    max="2.5"
+                    step="0.1"
+                    value={comedyEffectDuration}
+                    onChange={e => setComedyEffectDuration(parseFloat(e.target.value))}
+                    style={{ width: '100%', accentColor: '#ef4444', cursor: 'pointer' }}
+                  />
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
+                    <span>0.5s (Kilat)</span>
+                    <span>1.2s (Standar PWK)</span>
+                    <span>2.5s (Panjang)</span>
+                  </div>
+                </div>
+
+                {/* SFX Toggle */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.2rem' }}>
+                  <input
+                    type="checkbox"
+                    id="comedySfxCheck"
+                    checked={comedySfxEnabled}
+                    onChange={e => setComedySfxEnabled(e.target.checked)}
+                    style={{ cursor: 'pointer', accentColor: '#ef4444', transform: 'scale(1.15)' }}
+                  />
+                  <label htmlFor="comedySfxCheck" style={{ cursor: 'pointer', fontSize: '0.76rem', color: '#fee2e2', fontWeight: 500 }}>
+                    🔊 Sertakan Sound Effect Dentuman Sub-Bass Khas PWK (Boom Punch)
+                  </label>
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* 9. Hardware Acceleration & Video Encoder */}
           <div className="studio-card-group">
             <div className="group-header" style={{ marginBottom: '0.65rem' }}>
@@ -6030,7 +6261,19 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                             height: '100%',
                             objectFit: isLandscape || aspectRatio === '16:9' ? 'contain' : 'cover',
                             objectPosition: isLandscape ? 'center center' : `${previewCropPercent}% 50%`,
-                            transition: 'object-position 0.3s ease-out'
+                            transform: cameraTrackingMode === 'fit_close_up'
+                              ? 'scale(1.45)'
+                              : cameraTrackingMode === 'fit_balanced'
+                              ? 'scale(1.25)'
+                              : comedyEffectPreset === 'pwk_snap_zoom'
+                              ? 'scale(1.35)'
+                              : undefined,
+                            filter: comedyEffectPreset === 'pwk_red_blush'
+                              ? 'sepia(0.35) saturate(2.2) hue-rotate(-20deg) contrast(1.15)'
+                              : comedyEffectPreset === 'pwk_funny_fisheye'
+                              ? 'contrast(1.12) brightness(1.04)'
+                              : undefined,
+                            transition: 'object-position 0.3s ease-out, transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), filter 0.3s ease-out'
                           }}
                           onPlay={() => {
                             setIsPlaying(true);

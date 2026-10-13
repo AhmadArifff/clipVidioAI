@@ -150,6 +150,8 @@ export type FontSizeOption = 'small' | 'medium' | 'big' | 'custom';
 export type TextCaseOption = 'uppercase' | 'capitalize' | 'lowercase';
 export type HardwareAccelOption = 'auto' | 'nvenc' | 'amf' | 'qsv' | 'cpu' | 'browser_wasm';
 export type KeywordAccentMode = 'off' | 'accent_only' | 'accent_and_emoji';
+export type CameraTrackingMode = 'off' | 'fit_balanced' | 'fit_close_up' | 'dynamic_pan_only' | 'static_center';
+export type ComedyEffectPreset = 'none' | 'pwk_snap_zoom' | 'pwk_red_blush' | 'pwk_funny_fisheye';
 
 export interface FontItem {
   name: string;
@@ -292,6 +294,14 @@ export interface RenderSettings {
   podcastDividerStyle?: PodcastDividerStyle;
   podcastHostCx?: number;
   podcastGuestCx?: number;
+  // v3.6 Smart Camera Tracking (CapCut Style) & Fit to Canvas
+  cameraTrackingMode?: CameraTrackingMode;
+  trackingSmoothness?: number; // 1 to 10
+  // v3.6 Comedy Expression FX (PWK Style)
+  comedyEffectPreset?: ComedyEffectPreset;
+  comedyEffectStartTime?: number; // seconds
+  comedyEffectDuration?: number; // default 1.5s
+  comedySfxEnabled?: boolean;
 }
 
 export interface RenderClipStatus {

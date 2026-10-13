@@ -2832,6 +2832,249 @@ def detect_speaker_center_ratio(video_path: str, facecam_position: str = "auto",
     return float(box.get("cx", 0.5))
 
 
+def extract_face_trajectory(
+    video_path: str,
+    fps_sample: float = 6.0,
+    smoothing_alpha: float = 0.15,
+    max_duration: Optional[float] = None
+) -> List[Dict[str, float]]:
+    """
+    Extracts temporal face movement trajectory across video timeline.
+    Samples at moderate framerate, applies exponential moving average (EMA)
+    smoothing and deadband thresholding to eliminate micro-shakiness.
+    Returns keypoints with timestamp t, cx, cy, w, h normalized coordinates.
+    """
+    default_trajectory = [{"t": 0.0, "cx": 0.50, "cy": 0.35, "w": 0.25, "h": 0.25}]
+    if not video_path or not os.path.exists(video_path):
+        return default_trajectory
+
+    try:
+        import cv2
+
+        cap = cv2.VideoCapture(video_path)
+        if not cap.isOpened():
+            return default_trajectory
+
+        fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
+        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT) or 0)
+        dur = total_frames / fps if fps > 0 else 0.0
+        if max_duration and max_duration > 0:
+            dur = min(dur, float(max_duration))
+
+        step = max(1, int(round(fps / max(1.0, float(fps_sample)))))
+
+        yunet_detector = None
+        target_model = None
+        for cand in [YUNET_MODEL_PATH, BASE_DIR / "face_detection_yunet.onnx", BASE_DIR / "cascades" / "face_detection_yunet.onnx"]:
+            if cand.exists():
+                target_model = cand
+                break
+        if target_model:
+            try:
+                yunet_detector = cv2.FaceDetectorYN.create(
+                    str(target_model), "", (320, 180), 0.60, 0.3, 5000
+                )
+            except Exception:
+                yunet_detector = None
+
+        raw_samples: List[Dict[str, float]] = []
+        frame_idx = 0
+        while cap.isOpened() and frame_idx < total_frames:
+            t = float(frame_idx) / fps
+            if max_duration and t > max_duration:
+                break
+
+            cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
+            ret, frame = cap.read()
+            frame_idx += step
+            if not ret or frame is None:
+                continue
+
+            fh, fw = frame.shape[:2]
+            found_box = None
+
+            if yunet_detector is not None:
+                try:
+                    small = cv2.resize(frame, (320, 180))
+                    yunet_detector.setInputSize((320, 180))
+                    res = yunet_detector.detect(small)
+                    if res[1] is not None and len(res[1]) > 0:
+                        best_face = max(res[1], key=lambda f: float(f[2] * f[3]) * float(f[-1]))
+                        box = best_face[0:4]
+                        fcx = float(box[0] + box[2] / 2.0) / 320.0
+                        fcy = float(box[1] + box[3] / 2.0) / 180.0
+                        bw = float(box[2]) / 320.0
+                        bh = float(box[3]) / 180.0
+                        if bw >= 0.03 and bh >= 0.03:
+                            found_box = {"cx": fcx, "cy": fcy, "w": bw, "h": bh}
+                except Exception:
+                    pass
+
+            if found_box is None and CASCADES_DIR.exists():
+                try:
+                    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                    min_sz = max(40, int(fh * 0.08))
+                    cascade_p = CASCADES_DIR / "haarcascade_frontalface_default.xml"
+                    if cascade_p.exists():
+                        c = cv2.CascadeClassifier(str(cascade_p))
+                        faces = c.detectMultiScale(gray, scaleFactor=1.15, minNeighbors=5, minSize=(min_sz, min_sz))
+                        if len(faces) > 0:
+                            fx, fy, bw_px, bh_px = max(faces, key=lambda b: b[2] * b[3])
+                            found_box = {
+                                "cx": float(fx + bw_px / 2.0) / fw,
+                                "cy": float(fy + bh_px / 2.0) / fh,
+                                "w": float(bw_px) / fw,
+                                "h": float(bh_px) / fh
+                            }
+                except Exception:
+                    pass
+
+            if found_box is not None:
+                raw_samples.append({
+                    "t": round(t, 2),
+                    "cx": float(found_box["cx"]),
+                    "cy": float(found_box["cy"]),
+                    "w": float(found_box["w"]),
+                    "h": float(found_box["h"])
+                })
+
+        cap.release()
+
+        if not raw_samples:
+            return default_trajectory
+
+        alpha = max(0.05, min(0.50, float(smoothing_alpha)))
+        smoothed: List[Dict[str, float]] = []
+
+        curr_cx = raw_samples[0]["cx"]
+        curr_cy = raw_samples[0]["cy"]
+        curr_w = raw_samples[0]["w"]
+        curr_h = raw_samples[0]["h"]
+
+        for item in raw_samples:
+            target_cx = max(0.18, min(0.82, item["cx"]))
+            target_cy = max(0.18, min(0.75, item["cy"]))
+
+            if abs(target_cx - curr_cx) > 0.015:
+                curr_cx = curr_cx * (1.0 - alpha) + target_cx * alpha
+            if abs(target_cy - curr_cy) > 0.015:
+                curr_cy = curr_cy * (1.0 - alpha) + target_cy * alpha
+
+            curr_w = curr_w * 0.9 + item["w"] * 0.1
+            curr_h = curr_h * 0.9 + item["h"] * 0.1
+
+            smoothed.append({
+                "t": item["t"],
+                "cx": round(curr_cx, 3),
+                "cy": round(curr_cy, 3),
+                "w": round(curr_w, 3),
+                "h": round(curr_h, 3)
+            })
+
+        if not smoothed:
+            return default_trajectory
+
+        keyframes: List[Dict[str, float]] = [smoothed[0]]
+        last_k_t = smoothed[0]["t"]
+        last_k_cx = smoothed[0]["cx"]
+        last_k_cy = smoothed[0]["cy"]
+
+        for pt in smoothed[1:]:
+            dt = pt["t"] - last_k_t
+            dcx = abs(pt["cx"] - last_k_cx)
+            dcy = abs(pt["cy"] - last_k_cy)
+            if dt >= 1.2 or (dt >= 0.5 and (dcx > 0.06 or dcy > 0.06)):
+                keyframes.append(pt)
+                last_k_t = pt["t"]
+                last_k_cx = pt["cx"]
+                last_k_cy = pt["cy"]
+
+        if keyframes[-1]["t"] < smoothed[-1]["t"]:
+            last_pt = smoothed[-1].copy()
+            keyframes.append(last_pt)
+
+        return keyframes
+
+    except Exception as e:
+        logger.warning(f"Failed to extract face trajectory: {e}")
+        return default_trajectory
+
+
+def _build_piecewise_smoothstep_expr(keyframes: List[Tuple[float, float]]) -> str:
+    """
+    Builds nested if() expressions with cubic smoothstep Hermite interpolation:
+    tau = (t - t0) / (t1 - t0)
+    smooth = 3*tau^2 - 2*tau^3
+    val = v0 + (v1 - v0) * smooth
+    Guarantees zero-jolt, continuous smooth camera motion.
+    """
+    if not keyframes:
+        return "0.5"
+    if len(keyframes) == 1:
+        return f"{keyframes[0][1]:.3f}"
+
+    expr = f"{keyframes[-1][1]:.3f}"
+    for i in range(len(keyframes) - 2, -1, -1):
+        t0, v0 = keyframes[i]
+        t1, v1 = keyframes[i + 1]
+        dt = max(0.01, t1 - t0)
+        dv = v1 - v0
+        if abs(dv) < 0.001:
+            lerp = f"{v0:.3f}"
+        else:
+            tau = f"(t-{t0:.2f})/{dt:.2f}"
+            smooth = f"(3*pow({tau},2)-2*pow({tau},3))"
+            lerp = f"({v0:.3f}+({dv:.3f})*{smooth})"
+        expr = f"if(lt(t,{t1:.2f}),{lerp},{expr})"
+
+    return expr
+
+
+def build_dynamic_tracking_crop_filter(
+    trajectory: List[Dict[str, float]],
+    mode: str = "fit_balanced",
+    target_aspect: str = "9:16",
+    canvas_w: int = 1080,
+    canvas_h: int = 1920
+) -> str:
+    """
+    Generates dynamic FFmpeg crop expression for auto face tracking and Fit to Canvas.
+    Supported modes:
+    - fit_balanced: 1.25x zoom, head & shoulders portrait composition (CapCut style)
+    - fit_close_up: 1.45x zoom, tight framing centered on face
+    - dynamic_pan_only: 1.0x standard framing, smooth horizontal tracking
+    """
+    if not trajectory or len(trajectory) < 2 or mode not in ["fit_balanced", "fit_close_up", "dynamic_pan_only"]:
+        return ""
+
+    kfs_x = [(float(pt.get("t", 0.0)), float(pt.get("cx", 0.5))) for pt in trajectory]
+    kfs_y = [(float(pt.get("t", 0.0)), float(pt.get("cy", 0.35))) for pt in trajectory]
+
+    expr_cx = _build_piecewise_smoothstep_expr(kfs_x)
+    expr_cy = _build_piecewise_smoothstep_expr(kfs_y)
+
+    if mode == "dynamic_pan_only":
+        cw_expr = "min(iw,ih*9/16)"
+        ch_expr = "ih"
+        crop_x = f"max(0,min(iw-ow,iw*({expr_cx})-ow/2))"
+        crop_y = "0"
+        return f"crop=w='{cw_expr}':h='{ch_expr}':x='{crop_x}':y='{crop_y}',scale={canvas_w}:{canvas_h}"
+
+    elif mode == "fit_close_up":
+        cw_expr = "min(iw,ih*9/16/1.45)"
+        ch_expr = "ih/1.45"
+        crop_x = f"max(0,min(iw-ow,iw*({expr_cx})-ow/2))"
+        crop_y = f"max(0,min(ih-oh,ih*({expr_cy})-oh*0.38))"
+        return f"crop=w='{cw_expr}':h='{ch_expr}':x='{crop_x}':y='{crop_y}',scale={canvas_w}:{canvas_h}"
+
+    else:
+        cw_expr = "min(iw,ih*9/16/1.25)"
+        ch_expr = "ih/1.25"
+        crop_x = f"max(0,min(iw-ow,iw*({expr_cx})-ow/2))"
+        crop_y = f"max(0,min(ih-oh,ih*({expr_cy})-oh*0.38))"
+        return f"crop=w='{cw_expr}':h='{ch_expr}':x='{crop_x}':y='{crop_y}',scale={canvas_w}:{canvas_h}"
+
+
 def _generate_background_canvas_filter(
     canvas_w: int,
     canvas_h: int,
@@ -2892,7 +3135,9 @@ def build_ffmpeg_filtergraph(
     foreground_scale: float = 100.0,
     foreground_position_y: float = 50.0,
     foreground_border_radius: int = 0,
-    foreground_shadow: bool = False
+    foreground_shadow: bool = False,
+    camera_tracking_mode: str = "off",
+    tracking_trajectory: Optional[List[Dict[str, float]]] = None
 ) -> Tuple[str, str]:
     """
     Constructs the FFmpeg -filter_complex chain with proper aspect ratio center-cropping,
@@ -3139,6 +3384,16 @@ def build_ffmpeg_filtergraph(
         has_custom_bg = (bg_input_idx is not None) or (background_type in ["color", "gradient", "custom_upload"]) or (background_type == "preset" and background_value != "black") or (background_style == "blurred")
 
         if aspect_ratio == "9:16":
+            dynamic_crop_916 = None
+            if camera_tracking_mode in ["fit_balanced", "fit_close_up", "dynamic_pan_only"] and tracking_trajectory and len(tracking_trajectory) >= 2:
+                dynamic_crop_916 = build_dynamic_tracking_crop_filter(
+                    tracking_trajectory,
+                    mode=camera_tracking_mode,
+                    target_aspect="9:16",
+                    canvas_w=1080,
+                    canvas_h=1920
+                )
+
             safe_cx = float(face_cx)
             if 0.46 <= safe_cx <= 0.54:
                 safe_cx = 0.50
@@ -3160,14 +3415,25 @@ def build_ffmpeg_filtergraph(
                 fg_h = fg_h if fg_h % 2 == 0 else fg_h - 1
                 overlay_y = int(round((1920 - fg_h) * pos_y_factor))
 
-                filters.append(
-                    f"[0:v]{crop_916},scale={fg_w}:{fg_h}[fg_916];"
-                    f"{bg_tag}[fg_916]overlay=(1080-{fg_w})/2:{overlay_y}[layout_base]"
-                )
+                if dynamic_crop_916:
+                    filters.append(
+                        f"[0:v]{dynamic_crop_916},scale={fg_w}:{fg_h}[fg_916];"
+                        f"{bg_tag}[fg_916]overlay=(1080-{fg_w})/2:{overlay_y}[layout_base]"
+                    )
+                else:
+                    filters.append(
+                        f"[0:v]{crop_916},scale={fg_w}:{fg_h}[fg_916];"
+                        f"{bg_tag}[fg_916]overlay=(1080-{fg_w})/2:{overlay_y}[layout_base]"
+                    )
             else:
-                filters.append(
-                    f"[0:v]{crop_916},scale=1080:1920[layout_base]"
-                )
+                if dynamic_crop_916:
+                    filters.append(
+                        f"[0:v]{dynamic_crop_916}[layout_base]"
+                    )
+                else:
+                    filters.append(
+                        f"[0:v]{crop_916},scale=1080:1920[layout_base]"
+                    )
             current_v = "[layout_base]"
 
         elif aspect_ratio == "1:1":
@@ -3364,11 +3630,19 @@ def render_clip_to_mp4(
     podcast_layout_mode: Optional[str] = "stacked_split",
     podcast_divider_style: Optional[str] = "clean_white",
     podcast_host_cx: Optional[float] = None,
-    podcast_guest_cx: Optional[float] = None
+    podcast_guest_cx: Optional[float] = None,
+    # v3.6 Smart Camera Tracking & Comedy Expression FX
+    camera_tracking_mode: str = "off",
+    tracking_smoothness: float = 0.15,
+    comedy_effect_preset: str = "none",
+    comedy_effect_start_time: Optional[float] = None,
+    comedy_effect_duration: float = 1.2,
+    comedy_sfx_enabled: bool = True
 ) -> str:
     """
     Renders the final short-form video with layout, aspect ratio, custom backgrounds,
-    titles, subtitles, watermark branding, background music with start offset, and hook sound effect at frame 0.
+    titles, subtitles, watermark branding, background music with start offset, hook sound effect at frame 0,
+    and optional smart camera tracking and comedy expression effects.
     """
     if not os.path.exists(video_path) or os.path.getsize(video_path) < 1000:
         raise RuntimeError(f"Input video file is missing or empty: {video_path}")
@@ -3414,6 +3688,24 @@ def render_clip_to_mp4(
     input_idx_counter = 1
     dur = max(1.0, float(clip_duration))
 
+    # Extract temporal face trajectory for dynamic camera tracking
+    tracking_trajectory = None
+    if camera_tracking_mode in ["fit_balanced", "fit_close_up", "dynamic_pan_only"] and streamer_preset == "none":
+        try:
+            tracking_trajectory = extract_face_trajectory(
+                video_path,
+                fps_sample=6.0,
+                smoothing_alpha=tracking_smoothness,
+                max_duration=dur
+            )
+            logger.info(
+                f"Auto Face Tracking extracted {len(tracking_trajectory)} keypoints "
+                f"(mode={camera_tracking_mode}, smoothness={tracking_smoothness:.2f})"
+            )
+        except Exception as e:
+            logger.warning(f"Face trajectory extraction failed, falling back to static framing: {e}")
+            tracking_trajectory = None
+
     # Prepare background input stream if media file is present
     bg_input_idx = None
     resolved_bg_path = background_file_path
@@ -3447,7 +3739,9 @@ def render_clip_to_mp4(
         foreground_scale=foreground_scale,
         foreground_position_y=foreground_position_y,
         foreground_border_radius=foreground_border_radius,
-        foreground_shadow=foreground_shadow
+        foreground_shadow=foreground_shadow,
+        camera_tracking_mode=camera_tracking_mode,
+        tracking_trajectory=tracking_trajectory
     )
 
     filter_chains = [filter_complex]
@@ -3469,6 +3763,48 @@ def render_clip_to_mp4(
             f"[v_hk_zoomed][v_hk_normal]concat=n=2:v=1:a=0[v_hooked]"
         )
         out_video_map = "[v_hooked]"
+
+    # Comedy Expression FX (PWK Style)
+    pwk_start = None
+    if comedy_effect_preset in ["pwk_snap_zoom", "pwk_red_blush", "pwk_funny_fisheye"]:
+        pwk_start = float(comedy_effect_start_time if comedy_effect_start_time is not None else dur * 0.40)
+        pwk_start = max(0.0, min(dur - 0.5, pwk_start))
+        pwk_dur = max(0.5, min(3.0, float(comedy_effect_duration or 1.2)))
+        pwk_end = min(dur, pwk_start + pwk_dur)
+
+        if comedy_effect_preset == "pwk_snap_zoom":
+            if aspect_ratio == "16:9_landscape":
+                cw, ch = 1920, 1080
+                zw, zh = 2592, 1458
+            else:
+                cw, ch = 1080, 1920
+                zw, zh = 1458, 2592
+
+            filter_chains.append(
+                f"{out_video_map}split=2[v_pwk_base][v_pwk_in];"
+                f"[v_pwk_in]trim=start={pwk_start:.2f}:end={pwk_end:.2f},setpts=PTS-STARTPTS,"
+                f"scale={zw}:{zh},crop={cw}:{ch}:(in_w-{cw})/2:(in_h-{ch})*0.35,eq=contrast=1.15:saturation=1.12[v_pwk_snapped];"
+                f"[v_pwk_base][v_pwk_snapped]overlay=0:0:enable='between(t,{pwk_start:.2f},{pwk_end:.2f})'[v_pwk_done]"
+            )
+            out_video_map = "[v_pwk_done]"
+
+        elif comedy_effect_preset == "pwk_red_blush":
+            filter_chains.append(
+                f"{out_video_map}split=2[v_pwk_base][v_pwk_in];"
+                f"[v_pwk_in]trim=start={pwk_start:.2f}:end={pwk_end:.2f},setpts=PTS-STARTPTS,"
+                f"colorbalance=rs=0.45:rm=0.35:rh=0.25:gs=-0.08:bs=-0.08,eq=contrast=1.18:saturation=1.35[v_pwk_red];"
+                f"[v_pwk_base][v_pwk_red]overlay=0:0:enable='between(t,{pwk_start:.2f},{pwk_end:.2f})'[v_pwk_done]"
+            )
+            out_video_map = "[v_pwk_done]"
+
+        elif comedy_effect_preset == "pwk_funny_fisheye":
+            filter_chains.append(
+                f"{out_video_map}split=2[v_pwk_base][v_pwk_in];"
+                f"[v_pwk_in]trim=start={pwk_start:.2f}:end={pwk_end:.2f},setpts=PTS-STARTPTS,"
+                f"lenscorrection=cx=0.5:cy=0.4:k1=-0.28:k2=0.08[v_pwk_fish];"
+                f"[v_pwk_base][v_pwk_fish]overlay=0:0:enable='between(t,{pwk_start:.2f},{pwk_end:.2f})'[v_pwk_done]"
+            )
+            out_video_map = "[v_pwk_done]"
 
     # 1. Apply Title Overlay (Full-Color Emojis & Titles)
     if title_overlay_path and os.path.exists(title_overlay_path):
@@ -3615,6 +3951,15 @@ def render_clip_to_mp4(
             f"[{sfx_idx}:a]asetpts=PTS-STARTPTS,atrim=end={dur:.2f},volume={sfx_vol:.3f}[sfx_proc]"
         )
         audio_inputs_to_mix.append("[sfx_proc]")
+
+    # Comedy Sound Effect (PWK Boom/Punch) timed with visual comedic hit
+    if comedy_effect_preset in ["pwk_snap_zoom", "pwk_red_blush", "pwk_funny_fisheye"] and comedy_sfx_enabled and pwk_start is not None:
+        pwk_start_ms = max(0, int(pwk_start * 1000))
+        filter_chains.append(
+            f"aevalsrc=sin(2*PI*85*exp(-3.5*t)*t)*exp(-2.2*t):d=1.2:s=44100[pwk_sfx_raw];"
+            f"[pwk_sfx_raw]adelay=delays={pwk_start_ms}|{pwk_start_ms}[pwk_sfx_proc]"
+        )
+        audio_inputs_to_mix.append("[pwk_sfx_proc]")
 
     # Mix audio streams together & Apply Digital Broadcast Loudness Mastering (-14 LUFS)
     if len(audio_inputs_to_mix) > 1:
