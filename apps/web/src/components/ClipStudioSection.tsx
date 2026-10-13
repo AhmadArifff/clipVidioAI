@@ -2530,9 +2530,9 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
         <div className="studio-controls-pane">
           {/* 0. AI Smart Clip Optimizer (v3.5) */}
           <div className="studio-card-group" style={{
-            background: 'linear-gradient(135deg, rgba(30, 27, 75, 0.55), rgba(15, 23, 42, 0.85))',
-            borderColor: 'rgba(99, 102, 241, 0.4)',
-            boxShadow: '0 4px 20px -2px rgba(99, 102, 241, 0.15)',
+            background: 'rgba(15, 23, 42, 0.65)',
+            borderColor: 'rgba(99, 102, 241, 0.22)',
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
             position: 'relative',
             overflow: 'hidden'
           }}>
@@ -2542,7 +2542,7 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
               right: 0,
               width: '140px',
               height: '140px',
-              background: 'radial-gradient(circle, rgba(99, 102, 241, 0.18) 0%, transparent 70%)',
+              background: 'radial-gradient(circle, rgba(99, 102, 241, 0.1) 0%, transparent 70%)',
               pointerEvents: 'none'
             }} />
 
@@ -2678,8 +2678,8 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                     padding: '0.65rem 1rem',
                     background: recAppliedToast
                       ? 'linear-gradient(135deg, #059669, #10b981)'
-                      : 'linear-gradient(135deg, #4f46e5, #7c3aed)',
-                    border: '1px solid rgba(255, 255, 255, 0.15)',
+                      : 'linear-gradient(135deg, #4f46e5, #4338ca)',
+                    border: '1px solid rgba(255, 255, 255, 0.12)',
                     borderRadius: '8px',
                     color: '#ffffff',
                     fontWeight: 700,
@@ -2689,10 +2689,8 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: '0.5rem',
-                    transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-                    boxShadow: recAppliedToast
-                      ? '0 0 16px rgba(16, 185, 129, 0.4)'
-                      : '0 4px 14px rgba(79, 70, 229, 0.35)',
+                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.25)',
                     marginTop: '0.2rem'
                   }}
                 >
@@ -5688,9 +5686,9 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                   onClick={handleToggleAllClips}
                   title={selectedClips.length === allClips.length ? t.studio.unmarkAllClips : t.studio.markAllClips}
                   style={{
-                    background: selectedClips.length === allClips.length ? 'rgba(239, 68, 68, 0.12)' : 'rgba(168, 85, 247, 0.15)',
-                    border: selectedClips.length === allClips.length ? '1px solid rgba(239, 68, 68, 0.35)' : '1px solid rgba(168, 85, 247, 0.4)',
-                    color: selectedClips.length === allClips.length ? '#f87171' : 'var(--primary, #a855f7)',
+                    background: selectedClips.length === allClips.length ? 'rgba(239, 68, 68, 0.12)' : 'rgba(99, 102, 241, 0.12)',
+                    border: selectedClips.length === allClips.length ? '1px solid rgba(239, 68, 68, 0.3)' : '1px solid rgba(99, 102, 241, 0.3)',
+                    color: selectedClips.length === allClips.length ? '#f87171' : '#818cf8',
                     borderRadius: '6px',
                     padding: '0.22rem 0.55rem',
                     fontSize: '0.72rem',
@@ -6598,7 +6596,7 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                         height: '100%',
                         background: batchProgress.overall_status === 'error'
                           ? '#ef4444'
-                          : 'linear-gradient(90deg, #ff5e3a, #ff2a5f)',
+                          : 'linear-gradient(90deg, #4f46e5, #38bdf8)',
                         width: `${Math.round((batchProgress.clips.filter(c => c.status === 'completed').length / (batchProgress.total_clips || 1)) * 100)}%`,
                         transition: 'width 0.3s ease'
                       }}

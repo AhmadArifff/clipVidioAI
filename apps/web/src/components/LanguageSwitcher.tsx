@@ -78,15 +78,15 @@ export const LanguageSwitcher: React.FC = () => {
           padding: '4px 10px',
           fontSize: '0.75rem',
           fontWeight: 600,
-          border: 'none',
           borderRadius: '16px',
           cursor: 'pointer',
           transition: 'all 0.2s ease',
           background: language === 'id' 
-            ? 'linear-gradient(135deg, var(--primary) 0%, #a855f7 100%)' 
+            ? 'rgba(99, 102, 241, 0.25)' 
             : 'transparent',
           color: language === 'id' ? '#ffffff' : 'var(--text-secondary)',
-          boxShadow: language === 'id' ? '0 2px 8px rgba(168, 85, 247, 0.35)' : 'none',
+          border: language === 'id' ? '1px solid rgba(99, 102, 241, 0.45)' : '1px solid transparent',
+          boxShadow: 'none',
         }}
         title="Bahasa Indonesia"
       >
@@ -104,15 +104,15 @@ export const LanguageSwitcher: React.FC = () => {
           padding: '4px 10px',
           fontSize: '0.75rem',
           fontWeight: 600,
-          border: 'none',
           borderRadius: '16px',
           cursor: 'pointer',
           transition: 'all 0.2s ease',
           background: language === 'en' 
-            ? 'linear-gradient(135deg, var(--primary) 0%, #a855f7 100%)' 
+            ? 'rgba(99, 102, 241, 0.25)' 
             : 'transparent',
           color: language === 'en' ? '#ffffff' : 'var(--text-secondary)',
-          boxShadow: language === 'en' ? '0 2px 8px rgba(168, 85, 247, 0.35)' : 'none',
+          border: language === 'en' ? '1px solid rgba(99, 102, 241, 0.45)' : '1px solid transparent',
+          boxShadow: 'none',
         }}
         title="English"
       >

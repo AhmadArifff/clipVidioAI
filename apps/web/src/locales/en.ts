@@ -94,6 +94,7 @@ export const en = {
     // Analysis Range
     analysisRange: "Analysis Range",
     entireVideo: "Entire Video",
+    entireVideoSmartNotice: "Long videos (up to 1 hour+) are automatically sliced and compacted to safe AI token limits using retention heatmaps to prevent overload errors.",
     customRange: "Custom Range",
     startPlaceholder: "Start (e.g. 29:00)",
     endPlaceholder: "End (e.g. 31:15)",
@@ -156,6 +157,9 @@ export const en = {
     loadingFromHistory: "Loading from history...",
     restoringHotspots: "Restoring Viral Hotspots",
     reconstructingTimestamps: "Reconstructing engagement timestamps from saved analysis...",
+    tokenOptimizedTitle: "Safe Token Limit Protection Active",
+    tokenOptimizedDesc: (mins: number, orig: number, compact: number) =>
+      `Long video detected (~${mins} minutes). Transcript was automatically sliced and compacted from ${orig} cues into ${compact} select dialogue segments to fit safe AI token limits and prevent server overload errors.`,
   },
   results: {
     refreshPlayer: "🔄 Refresh Player",
@@ -170,6 +174,8 @@ export const en = {
     recommendedClips: "Recommended Clips",
     sortLabel: (sortName: string) => `SORT: ${sortName}`,
     aiModelBadge: "AI Model:",
+    tokenOptimizedBadge: "Safe Token Budget:",
+    dialogueSegments: "dialogue segments",
     generatedClipsBadge: "Generated Clips:",
     markedClipsBadge: "Marked Clips:",
     searchPlaceholder: "🔍 Search clips or transcripts...",

@@ -178,6 +178,97 @@ def parse_lenient_json_analysis(raw_text: str, channel: str = "", lang_code: str
     return None
 
 
+def compact_transcript(enriched_transcript: list, heatmap: list = None, target_max_lines: int = 950) -> list:
+    """
+    Compacts transcript dialogue into coherent sentences and bounded tokens.
+    Prevents Gemini 503 high demand and token overload errors.
+    """
+    if not enriched_transcript:
+        return []
+
+    # Step 1: Consolidate micro-cues into natural dialogue sentences
+    consolidated = []
+    current = None
+
+    for item in enriched_transcript:
+        text = (item.get('text') or '').strip()
+        if not text:
+            continue
+
+        start = float(item.get('start', 0.0))
+        end = float(item.get('end', start + 1.0))
+        eng = float(item.get('engagement', 0.0))
+
+        if current is None:
+            current = {'start': start, 'end': end, 'text': text, 'eng': eng, 'count': 1}
+            continue
+
+        time_gap = start - current['end']
+        can_merge = (
+            time_gap < 1.2 and
+            len(current['text']) < 140 and
+            not current['text'].endswith(('.', '?', '!', '...', '…'))
+        )
+
+        if can_merge:
+            current['end'] = end
+            current['text'] = current['text'] + ' ' + text
+            current['eng'] = max(current['eng'], eng)
+            current['count'] += 1
+        else:
+            consolidated.append(current)
+            current = {'start': start, 'end': end, 'text': text, 'eng': eng, 'count': 1}
+
+    if current is not None:
+        consolidated.append(current)
+
+    # If already within budget, format directly
+    if len(consolidated) <= target_max_lines:
+        result = []
+        for c in consolidated:
+            eng_str = f"|{c['eng']:.2f}" if heatmap and c['eng'] > 0 else ""
+            result.append(f"{c['start']:.1f}|{c['end']:.1f}{eng_str} {c['text']}")
+        return result
+
+    # Step 2: Intelligent importance sampling if still exceeding target_max_lines
+    total_len = len(consolidated)
+    max_time = consolidated[-1]['end'] if consolidated else 1.0
+
+    keep_indices = set()
+
+    # Priority anchors:
+    # 1. Intro (first 180s)
+    # 2. Outro (last 180s)
+    for idx, c in enumerate(consolidated):
+        if c['start'] <= 180.0:
+            keep_indices.add(idx)
+        if c['end'] >= max_time - 180.0:
+            keep_indices.add(idx)
+
+    # 3. High engagement retention peaks
+    sorted_by_eng = sorted(range(total_len), key=lambda i: consolidated[i]['eng'], reverse=True)
+    peak_quota = min(target_max_lines // 2, total_len)
+    for idx in sorted_by_eng[:peak_quota]:
+        keep_indices.add(idx)
+
+    # 4. Fill remaining quota uniformly across the video to preserve narrative continuity
+    remaining_quota = max(0, target_max_lines - len(keep_indices))
+    if remaining_quota > 0:
+        step = max(1, total_len / remaining_quota)
+        for i in range(remaining_quota):
+            idx = min(total_len - 1, int(i * step))
+            keep_indices.add(idx)
+
+    sorted_indices = sorted(keep_indices)
+    result = []
+    for idx in sorted_indices:
+        c = consolidated[idx]
+        eng_str = f"|{c['eng']:.2f}" if heatmap and c['eng'] > 0 else ""
+        result.append(f"{c['start']:.1f}|{c['end']:.1f}{eng_str} {c['text']}")
+
+    return result
+
+
 router = APIRouter(tags=["Analyze"])
 
 
@@ -952,15 +1043,30 @@ async def analyze_video(request: AnalyzeRequest):
         lang_name = detected_lang.get('name', 'English')
         logger.info(f"Detected video language: {lang_name} ({lang_code}) - confidence {detected_lang.get('confidence', 0.0)}")
 
-        transcript_dump = []
-        for line in enriched_transcript:
-            eng = f"|{line['engagement']:.2f}" if heatmap and line['engagement'] > 0 else ""
-            transcript_dump.append(f"{line['start']:.1f}|{line['end']:.1f}{eng} {line['text']}")
+        transcript_dump = compact_transcript(
+            enriched_transcript,
+            heatmap=heatmap,
+            target_max_lines=950
+        )
+        orig_cues = len(enriched_transcript)
+        compact_cues = len(transcript_dump)
+        dur_mins = int(round(duration / 60))
+        is_token_optimized = (duration >= 1800) or (orig_cues > compact_cues)
 
-        MAX_LINES = 3500 if is_long_video else 2000
-        if len(transcript_dump) > MAX_LINES:
-            logger.warning(f"Transcript {len(transcript_dump)} lines  -  truncating to {MAX_LINES}.")
-            transcript_dump = transcript_dump[:MAX_LINES]
+        if is_token_optimized:
+            yield _sse({
+                "step": 4,
+                "step_progress": 5,
+                "overall_progress": 70,
+                "stage": "Smart Token Optimization",
+                "detail": f"Video berdurasi panjang ({dur_mins} menit). Transkrip dioptimasi cerdas dari {orig_cues} cue menjadi {compact_cues} segmen dialog berbasis heatmap retensi agar berada dalam batas token aman dan bebas overload server AI.",
+                "message": f"Video panjang ({dur_mins}m): Transkrip dipotong & dioptimasi cerdas ke {compact_cues} segmen aman token untuk mencegah overload server AI.",
+                "token_optimized": True,
+                "original_cues": orig_cues,
+                "compact_cues": compact_cues,
+                "duration_minutes": dur_mins
+            })
+            await asyncio.sleep(0.4)
 
         transcript_text = "\n".join(transcript_dump)
 
@@ -1194,20 +1300,20 @@ async def analyze_video(request: AnalyzeRequest):
 
                 for idx, model_name in enumerate(models_to_try):
                     next_model_hint = models_to_try[idx + 1] if idx + 1 < len(models_to_try) else None
-                    MAX_RETRIES = 1
+                    MAX_RETRIES = 3
                     MODEL_TIMEOUT_SEC = 120.0
 
                     for attempt in range(MAX_RETRIES):
                         if attempt > 0:
-                            wait = 2
+                            wait = attempt * 2 + 1
                             yield _sse({
                                 "step": 4,
                                 "step_progress": 25,
                                 "overall_progress": 75,
                                 "stage": "Transient Retry",
-                                "detail": f"{model_name} busy  -  waiting {wait}s before retry ({attempt + 1}/{MAX_RETRIES})...",
+                                "detail": f"{model_name} busy (503/high demand) - waiting {wait}s before retry ({attempt + 1}/{MAX_RETRIES})...",
                                 "model": model_name,
-                                "message": f"{model_name} is busy  -  waiting {wait}s before retry {attempt + 1}/{MAX_RETRIES}..."
+                                "message": f"{model_name} is busy - waiting {wait}s before retry {attempt + 1}/{MAX_RETRIES}..."
                             })
                             await asyncio.sleep(wait)
 
@@ -1396,38 +1502,50 @@ async def analyze_video(request: AnalyzeRequest):
                 error_to_report = encountered_quota_error or last_error
                 if error_to_report is not None:
                     err_str = str(error_to_report).lower()
-                    if any(x in err_str for x in ('429', 'quota', 'resource exhausted', 'rate limit')):
+                    if any(x in err_str for x in ('503', 'unavailable', 'overloaded')):
+                        logger.warning("Google Gemini servers returned 503 after all retries. Engaging intelligent heuristic fallback synthesis.")
+                        yield _sse({
+                            "step": 4,
+                            "step_progress": 85,
+                            "overall_progress": 88,
+                            "stage": "Intelligent Heuristic Fallback",
+                            "detail": "Google Gemini servers are experiencing high demand. Seamlessly synthesizing top viral clips from YouTube retention heatmaps and transcript dialogue...",
+                            "model": "Heatmap & Dialogue Synthesizer",
+                            "message": "Gemini servers busy (503) - extracting viral clips via Retention Heatmaps & Sentence Boundary Analysis..."
+                        })
+                        analysis_data = {"clips": [], "summary": ""}
+                    elif any(x in err_str for x in ('429', 'quota', 'resource exhausted', 'rate limit')):
                         yield _sse({
                             "error": f"Quota limit reached across all {num_keys} Gemini API key(s) and Flash models. Please add more backup keys (comma-separated), generate fresh free keys at aistudio.google.com, or switch to OpenRouter.",
                             "status": 429
                         })
-                    elif any(x in err_str for x in ('503', 'unavailable', 'overloaded')):
-                        yield _sse({
-                            "error": "Google Gemini servers are currently experiencing high demand. Please try again or switch to OpenRouter.",
-                            "status": 503
-                        })
+                        return
                     elif any(x in err_str for x in ('401', '403', 'api_key', 'invalid', 'permission')):
                         yield _sse({
                             "error": "Invalid or restricted Gemini API key. Please verify your keys or generate a new free key at aistudio.google.com.",
                             "status": 401
                         })
+                        return
                     elif any(x in err_str for x in ('404', 'not found', 'not supported')):
                         yield _sse({
                             "error": "All tested Gemini Flash models were unavailable or not supported for your key(s). Please check your Gemini API key or switch to OpenRouter.",
                             "status": 404
                         })
+                        return
                     else:
-                        logger.error(f"Gemini error after all fallback models: {error_to_report}")
+                        logger.warning(f"Gemini error after all fallback models ({error_to_report}). Engaging heuristic fallback.")
                         yield _sse({
-                            "error": f"AI analysis failed across all Gemini keys/models ({str(error_to_report)}). Please change your API key or try again in a few moments.",
-                            "status": 500
+                            "step": 4,
+                            "step_progress": 85,
+                            "overall_progress": 88,
+                            "stage": "Emergency Fallback",
+                            "detail": f"AI model encountered transient error. Recovering viral clips via Retention Heatmaps...",
+                            "model": "Heatmap & Dialogue Synthesizer",
+                            "message": "AI model busy - recovering viral clips via Retention Heatmaps..."
                         })
+                        analysis_data = {"clips": [], "summary": ""}
                 else:
-                    yield _sse({
-                        "error": "No response received after trying all Gemini keys and Flash models. Please change your API key or try again.",
-                        "status": 500
-                    })
-                return
+                    analysis_data = {"clips": [], "summary": ""}
 
         # Fallback clip synthesis if 0 clips were returned after all models
         if len(analysis_data.get('clips', [])) == 0 and enriched_transcript:
@@ -1593,7 +1711,10 @@ async def analyze_video(request: AnalyzeRequest):
             model=successful_model or requested_model,
             video_url=video_url,
             source_type=source_type,
-            subtitle_language=request.subtitle_language or "id"
+            subtitle_language=request.subtitle_language or "id",
+            token_optimized=is_token_optimized,
+            original_cues=orig_cues,
+            compact_cues=compact_cues
         )
 
         yield _sse({"done": True, "result": final_result.model_dump()})

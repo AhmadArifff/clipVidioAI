@@ -113,6 +113,9 @@ export interface AnalyzeResponse {
   video_url?: string;
   source_type?: 'youtube' | 'upload' | 'gdrive';
   subtitle_language?: string;
+  token_optimized?: boolean;
+  original_cues?: number;
+  compact_cues?: number;
 }
 
 export type AspectRatioOption = '9:16' | '1:1' | '4:3' | '16:9' | '16:9_landscape';

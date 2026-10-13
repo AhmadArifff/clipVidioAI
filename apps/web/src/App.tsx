@@ -106,6 +106,11 @@ export default function App() {
   const [rangeType, setRangeType] = useState<'entire' | 'custom'>('entire');
   const [customRangeStart, setCustomRangeStart] = useState<string>('');
   const [customRangeEnd, setCustomRangeEnd] = useState<string>('');
+  const [tokenOptimizationInfo, setTokenOptimizationInfo] = useState<{
+    durationMins: number;
+    originalCues: number;
+    compactCues: number;
+  } | null>(null);
 
   // Manual subtitles states
   const [subtitlesSource, setSubtitlesSource] = useState<'youtube' | 'manual'>('youtube');
@@ -1511,6 +1516,7 @@ export default function App() {
     setError(null);
     setResult(null);
     setActiveClip(null);
+    setTokenOptimizationInfo(null);
     setCurrentStep(1);
     setStepProgress({ 1: 20, 2: 0, 3: 0, 4: 0 });
     setOverallProgress(5);
@@ -1604,6 +1610,13 @@ export default function App() {
               if (event.message) {
                 setLoadingDetails(event.message);
               }
+              if (event.token_optimized) {
+                setTokenOptimizationInfo({
+                  durationMins: Number(event.duration_minutes || 0),
+                  originalCues: Number(event.original_cues || 0),
+                  compactCues: Number(event.compact_cues || 0),
+                });
+              }
             }
           }
           if (streamDone) break;
@@ -1636,6 +1649,14 @@ export default function App() {
 
       if (!resultData) {
         throw new Error('Connection to the server was closed before analysis completed. On mobile devices, ensure your browser screen stays awake and network is stable, then try again.');
+      }
+
+      if (resultData && resultData.token_optimized) {
+        setTokenOptimizationInfo({
+          durationMins: Math.round((resultData.duration || 0) / 60),
+          originalCues: resultData.original_cues || 0,
+          compactCues: resultData.compact_cues || 0,
+        });
       }
 
       // Cache the successful response safely (handling mobile Safari quota limits)
@@ -2420,14 +2441,19 @@ Transcript:
             href="https://tako.id/johansa"
             target="_blank"
             rel="noopener noreferrer"
-            className="glowing-btn"
             style={{
-              padding: '0.5rem 1rem',
+              padding: '0.45rem 0.95rem',
               fontSize: '0.8rem',
               borderRadius: '8px',
               textDecoration: 'none',
-              boxShadow: '0 4px 12px rgba(255, 94, 58, 0.2)',
-              background: 'linear-gradient(135deg, var(--secondary) 0%, #f43f5e 100%)'
+              background: 'rgba(255, 255, 255, 0.05)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              color: '#cbd5e1',
+              boxShadow: 'none',
+              transition: 'all 0.2s ease',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.4rem'
             }}
           >
             🐈‍⬛ {t.header.supportProject}
@@ -3382,6 +3408,24 @@ Transcript:
                 </div>
               )}
             </div>
+            {rangeType === 'entire' && (
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.55rem',
+                fontSize: '0.8rem',
+                color: '#38bdf8',
+                background: 'rgba(56, 189, 248, 0.08)',
+                border: '1px solid rgba(56, 189, 248, 0.2)',
+                padding: '0.5rem 0.75rem',
+                borderRadius: '8px',
+                marginTop: '0.35rem',
+                lineHeight: 1.4
+              }}>
+                <span style={{ fontSize: '1rem', flexShrink: 0 }}>🛡️</span>
+                <span>{t.form.entireVideoSmartNotice}</span>
+              </div>
+            )}
             {rangeType === 'custom' && (
               <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                 {t.form.rangeFormatHint}
@@ -3403,20 +3447,20 @@ Transcript:
               style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', userSelect: 'none' }}
               onClick={() => setShowHistory(h => !h)}
             >
-              <span style={{ fontSize: '1.5rem', filter: 'drop-shadow(0 0 8px rgba(168,85,247,0.5))' }}>🎬</span>
+              <span style={{ fontSize: '1.5rem' }}>🎬</span>
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)' }}>
                     {t.form.previouslyAnalyzed}
                   </h3>
                   <span style={{
-                    background: 'rgba(168, 85, 247, 0.2)',
-                    color: '#c084fc',
+                    background: 'rgba(255, 255, 255, 0.07)',
+                    color: '#94a3b8',
                     fontSize: '0.75rem',
                     fontWeight: 700,
                     padding: '0.15rem 0.65rem',
                     borderRadius: '9999px',
-                    border: '1px solid rgba(168, 85, 247, 0.45)'
+                    border: '1px solid rgba(255, 255, 255, 0.12)'
                   }}>
                     {history.length}
                   </span>
@@ -4063,6 +4107,36 @@ Transcript:
                         {aiDetail || loadingDetails || t.loading.evaluatingGradients}
                       </div>
 
+                      {tokenOptimizationInfo && (
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'flex-start',
+                          gap: '0.65rem',
+                          background: 'rgba(56, 189, 248, 0.08)',
+                          border: '1px solid rgba(56, 189, 248, 0.25)',
+                          borderRadius: '8px',
+                          padding: '0.65rem 0.85rem',
+                          margin: '0.65rem 0',
+                          fontSize: '0.8rem',
+                          lineHeight: 1.45,
+                          color: '#38bdf8'
+                        }}>
+                          <span style={{ fontSize: '1.15rem', flexShrink: 0, marginTop: '0.1rem' }}>🛡️</span>
+                          <div>
+                            <div style={{ fontWeight: 600, color: '#e0f2fe', marginBottom: '0.15rem' }}>
+                              {t.loading.tokenOptimizedTitle}
+                            </div>
+                            <div style={{ color: '#bae6fd', fontSize: '0.76rem' }}>
+                              {t.loading.tokenOptimizedDesc(
+                                tokenOptimizationInfo.durationMins,
+                                tokenOptimizationInfo.originalCues,
+                                tokenOptimizationInfo.compactCues
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
                       {/* 4 Micro-phase progress pills */}
                       <div className="ai-subphases-row">
                         <div className={`ai-subphase-pill ${(stepProgress[4] || 0) >= 25 ? 'completed' : (stepProgress[4] || 0) >= 5 ? 'active' : ''}`}>
@@ -4468,6 +4542,15 @@ Transcript:
                     {result.clips.filter(clip => !!markedClips[`${clip.start_time}_${clip.end_time}`]).length}
                   </strong>
                 </div>
+                {result.token_optimized && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#38bdf8' }}>
+                    <span style={{ fontSize: '1rem' }}>🛡️</span>
+                    <span>{t.results.tokenOptimizedBadge}</span>
+                    <strong style={{ color: '#bae6fd', fontWeight: 600 }}>
+                      {result.compact_cues || 950} {t.results.dialogueSegments}
+                    </strong>
+                  </div>
+                )}
               </div>
 
               {/* Search & Filter Controls */}

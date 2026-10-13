@@ -96,6 +96,7 @@ export const id: Translations = {
     // Analysis Range
     analysisRange: "Rentang Analisis",
     entireVideo: "Seluruh Video",
+    entireVideoSmartNotice: "Video panjang (hingga 1 jam+) otomatis dipotong & dipadatkan sesuai batas token aman AI berbasis heatmap retensi agar bebas error overload.",
     customRange: "Rentang Kustom",
     startPlaceholder: "Mulai (misal: 29:00)",
     endPlaceholder: "Selesai (misal: 31:15)",
@@ -158,6 +159,9 @@ export const id: Translations = {
     loadingFromHistory: "Memuat dari riwayat...",
     restoringHotspots: "Memulihkan Hotspot Viral",
     reconstructingTimestamps: "Menyusun ulang timestamp interaksi dari hasil analisis tersimpan...",
+    tokenOptimizedTitle: "Proteksi Batas Token Aman Aktif",
+    tokenOptimizedDesc: (mins: number, orig: number, compact: number) =>
+      `Video berdurasi panjang (~${mins} menit). Transkrip otomatis dipotong & dioptimasi dari ${orig} cue menjadi ${compact} segmen dialog pilihan berbasis heatmap retensi agar pas dengan batas token aman AI dan mencegah error overload.`,
   },
   results: {
     refreshPlayer: "🔄 Muat Ulang Pemutar",
@@ -172,6 +176,8 @@ export const id: Translations = {
     recommendedClips: "Rekomendasi Klip Viral",
     sortLabel: (sortName: string) => `URUT: ${sortName}`,
     aiModelBadge: "Model AI:",
+    tokenOptimizedBadge: "Batas Token Aman:",
+    dialogueSegments: "segmen dialog",
     generatedClipsBadge: "Klip Dihasilkan:",
     markedClipsBadge: "Klip Ditandai:",
     searchPlaceholder: "🔍 Cari klip atau transkrip...",

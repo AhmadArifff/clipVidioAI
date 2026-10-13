@@ -68,3 +68,6 @@ class AnalyzeResponse(BaseModel):
     video_url: Optional[str] = None
     source_type: Optional[str] = "youtube"
     subtitle_language: Optional[str] = "id"
+    token_optimized: Optional[bool] = None
+    original_cues: Optional[int] = None
+    compact_cues: Optional[int] = None
