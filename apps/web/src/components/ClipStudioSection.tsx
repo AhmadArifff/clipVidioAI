@@ -6155,130 +6155,141 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                 )}
 
                 {/* Subtitle Overlay with Real-time Up/Down Position & Scaled Font */}
-                {captionStyle !== 'none' && (
-                  <div
-                    className={`wireframe-caption-overlay style-${captionStyle}${subtitlePositionMode === 'center' ? ' mode-center' : ''}`}
-                    style={{
-                      ...(subtitlePositionMode === 'center'
-                        ? {
-                            top: `${safeSubCenterY}%`,
-                            bottom: 'auto',
-                            transform: 'translateY(-50%)',
-                          }
-                        : {
-                            bottom: `${safeSubtitleY}%`,
-                            top: 'auto',
-                            transform: 'none',
-                          }),
-                      zIndex: 22,
-                      pointerEvents: 'none',
-                    }}
-                  >
-                    <span
-                      className="wireframe-caption-text"
+                {captionStyle !== 'none' && (() => {
+                  const hasSpokenSubtitles = !!(liveSubtitleInfo && liveSubtitleInfo.words.length > 0);
+                  // Jangan memunculkan dummy placeholder (UNREAL HACK / VIRAL CUAN) jika klip memiliki transkrip riil,
+                  // atau saat video sedang diputar (isPlaying) agar tidak menjadi visual noise.
+                  const shouldShowPlaceholder = fullTranscript.length === 0 && !isPlaying;
+
+                  if (!hasSpokenSubtitles && !shouldShowPlaceholder) {
+                    return null;
+                  }
+
+                  return (
+                    <div
+                      className={`wireframe-caption-overlay style-${captionStyle}${subtitlePositionMode === 'center' ? ' mode-center' : ''}`}
                       style={{
-                        fontFamily: captionFont,
-                        fontSize: (() => {
-                          const scale = isLandscape ? (320 / 1920) : (320 / 1080);
-                          const px = Math.round(fontSizePx * scale);
-                          const minPx = 4;
-                          return `${Math.max(minPx, px)}px`;
-                        })(),
-                        fontWeight: 800,
-                        letterSpacing: '0.03em',
-                        textAlign: 'center',
-                        textShadow: '0 0 2px #000, 0 1px 3px rgba(0,0,0,0.95), 0 0 5px rgba(0,0,0,0.8)',
-                        display: 'inline-block',
+                        ...(subtitlePositionMode === 'center'
+                          ? {
+                              top: `${safeSubCenterY}%`,
+                              bottom: 'auto',
+                              transform: 'translateY(-50%)',
+                            }
+                          : {
+                              bottom: `${safeSubtitleY}%`,
+                              top: 'auto',
+                              transform: 'none',
+                            }),
+                        zIndex: 22,
+                        pointerEvents: 'none',
                       }}
                     >
-                      {liveSubtitleInfo && liveSubtitleInfo.words.length > 0 ? (
-                        liveSubtitleInfo.words.map((word, wIdx) => {
-                          const isWordActive = wIdx === liveSubtitleInfo.activeWordIndex;
-                          const colors = getCaptionStyleColors(captionStyle);
-                          const kw = keywordAccentMode !== 'off' ? classifyKeyword(word) : null;
-                          const wordColor = isWordActive
-                            ? (kw ? kw.hexColor : colors.highlight)
-                            : colors.primary;
+                      <span
+                        className="wireframe-caption-text"
+                        style={{
+                          fontFamily: captionFont,
+                          fontSize: (() => {
+                            const scale = isLandscape ? (320 / 1920) : (320 / 1080);
+                            const px = Math.round(fontSizePx * scale);
+                            const minPx = 4;
+                            return `${Math.max(minPx, px)}px`;
+                          })(),
+                          fontWeight: 800,
+                          letterSpacing: '0.03em',
+                          textAlign: 'center',
+                          textShadow: '0 0 2px #000, 0 1px 3px rgba(0,0,0,0.95), 0 0 5px rgba(0,0,0,0.8)',
+                          display: 'inline-block',
+                        }}
+                      >
+                        {hasSpokenSubtitles ? (
+                          liveSubtitleInfo!.words.map((word, wIdx) => {
+                            const isWordActive = wIdx === liveSubtitleInfo!.activeWordIndex;
+                            const colors = getCaptionStyleColors(captionStyle);
+                            const kw = keywordAccentMode !== 'off' ? classifyKeyword(word) : null;
+                            const wordColor = isWordActive
+                              ? (kw ? kw.hexColor : colors.highlight)
+                              : colors.primary;
 
-                          const displayEmoji = (keywordAccentMode === 'accent_and_emoji' && kw) ? `${kw.emoji} ` : '';
-                          const textVal = `${displayEmoji}${applyLetterCase(word, textCase)}`;
+                            const displayEmoji = (keywordAccentMode === 'accent_and_emoji' && kw) ? `${kw.emoji} ` : '';
+                            const textVal = `${displayEmoji}${applyLetterCase(word, textCase)}`;
 
-                          return (
-                            <React.Fragment key={`${word}_${wIdx}`}>
-                              <span
-                                style={{
-                                  color: wordColor,
-                                  display: 'inline-block',
-                                  transform: isWordActive ? 'scale(1.12)' : 'scale(1.0)',
-                                  transition: 'transform 0.08s ease, color 0.08s ease',
-                                  filter: isWordActive
-                                    ? `drop-shadow(0 0 6px ${kw ? kw.hexColor : 'rgba(255,255,255,0.45)'})`
-                                    : 'none',
-                                }}
-                              >
-                                {textVal}
+                            return (
+                              <React.Fragment key={`${word}_${wIdx}`}>
+                                <span
+                                  style={{
+                                    color: wordColor,
+                                    display: 'inline-block',
+                                    transform: isWordActive ? 'scale(1.12)' : 'scale(1.0)',
+                                    transition: 'transform 0.08s ease, color 0.08s ease',
+                                    filter: isWordActive
+                                      ? `drop-shadow(0 0 6px ${kw ? kw.hexColor : 'rgba(255,255,255,0.45)'})`
+                                      : 'none',
+                                  }}
+                                >
+                                  {textVal}
+                                </span>
+                                {wIdx < liveSubtitleInfo!.words.length - 1 ? ' ' : ''}
+                              </React.Fragment>
+                            );
+                          })
+                        ) : shouldShowPlaceholder ? (
+                          <>
+                            {captionStyle === 'viral_pop' && (
+                              <>
+                                <span style={{ color: '#ffffff' }}>{applyLetterCase('VIRAL', textCase)}</span>{' '}
+                                <span style={{ color: keywordAccentMode !== 'off' ? '#00FF66' : '#FFE600' }}>
+                                  {keywordAccentMode === 'accent_and_emoji' ? '💰 ' : ''}
+                                  {applyLetterCase('CUAN', textCase)}
+                                </span>
+                              </>
+                            )}
+                            {captionStyle === 'beast_punch' && (
+                              <>
+                                <span style={{ color: '#ffffff' }}>{applyLetterCase('UNREAL', textCase)}</span>{' '}
+                                <span style={{ color: keywordAccentMode !== 'off' ? '#FF3300' : '#00FF66' }}>
+                                  {keywordAccentMode === 'accent_and_emoji' ? '🔥 ' : ''}
+                                  {applyLetterCase('HACK', textCase)}
+                                </span>
+                              </>
+                            )}
+                            {captionStyle === 'cyber_violet' && (
+                              <>
+                                <span style={{ color: '#ffffff' }}>{applyLetterCase('CYBER', textCase)}</span>{' '}
+                                <span style={{ color: keywordAccentMode !== 'off' ? '#FF00FF' : '#D946EF' }}>
+                                  {keywordAccentMode === 'accent_and_emoji' ? '😱 ' : ''}
+                                  {applyLetterCase('PUNCH', textCase)}
+                                </span>
+                              </>
+                            )}
+                            {captionStyle === 'fire_red' && (
+                              <>
+                                <span style={{ color: '#ffffff' }}>{applyLetterCase('HOT', textCase)}</span>{' '}
+                                <span style={{ color: '#FF2E2E' }}>{applyLetterCase('FIRE', textCase)}</span>
+                              </>
+                            )}
+                            {captionStyle === 'electric_cyan' && (
+                              <>
+                                <span style={{ color: '#ffffff' }}>{applyLetterCase('ELECTRIC', textCase)}</span>{' '}
+                                <span style={{ color: '#00F0FF' }}>{applyLetterCase('CYAN', textCase)}</span>
+                              </>
+                            )}
+                            {captionStyle === 'golden_aura' && (
+                              <>
+                                <span style={{ color: '#ffffff' }}>{applyLetterCase('GOLDEN', textCase)}</span>{' '}
+                                <span style={{ color: '#FFB800' }}>{applyLetterCase('MOMENT', textCase)}</span>
+                              </>
+                            )}
+                            {captionStyle === 'clean_minimal' && (
+                              <span style={{ color: '#ffffff' }}>
+                                {applyLetterCase('CLEAN SUBTITLE', textCase)}
                               </span>
-                              {wIdx < liveSubtitleInfo.words.length - 1 ? ' ' : ''}
-                            </React.Fragment>
-                          );
-                        })
-                      ) : (
-                        <>
-                          {captionStyle === 'viral_pop' && (
-                            <>
-                              <span style={{ color: '#ffffff' }}>{applyLetterCase('VIRAL', textCase)}</span>{' '}
-                              <span style={{ color: keywordAccentMode !== 'off' ? '#00FF66' : '#FFE600' }}>
-                                {keywordAccentMode === 'accent_and_emoji' ? '💰 ' : ''}
-                                {applyLetterCase('CUAN', textCase)}
-                              </span>
-                            </>
-                          )}
-                          {captionStyle === 'beast_punch' && (
-                            <>
-                              <span style={{ color: '#ffffff' }}>{applyLetterCase('UNREAL', textCase)}</span>{' '}
-                              <span style={{ color: keywordAccentMode !== 'off' ? '#FF3300' : '#00FF66' }}>
-                                {keywordAccentMode === 'accent_and_emoji' ? '🔥 ' : ''}
-                                {applyLetterCase('HACK', textCase)}
-                              </span>
-                            </>
-                          )}
-                          {captionStyle === 'cyber_violet' && (
-                            <>
-                              <span style={{ color: '#ffffff' }}>{applyLetterCase('CYBER', textCase)}</span>{' '}
-                              <span style={{ color: keywordAccentMode !== 'off' ? '#FF00FF' : '#D946EF' }}>
-                                {keywordAccentMode === 'accent_and_emoji' ? '😱 ' : ''}
-                                {applyLetterCase('PUNCH', textCase)}
-                              </span>
-                            </>
-                          )}
-                          {captionStyle === 'fire_red' && (
-                            <>
-                              <span style={{ color: '#ffffff' }}>{applyLetterCase('HOT', textCase)}</span>{' '}
-                              <span style={{ color: '#FF2E2E' }}>{applyLetterCase('FIRE', textCase)}</span>
-                            </>
-                          )}
-                          {captionStyle === 'electric_cyan' && (
-                            <>
-                              <span style={{ color: '#ffffff' }}>{applyLetterCase('ELECTRIC', textCase)}</span>{' '}
-                              <span style={{ color: '#00F0FF' }}>{applyLetterCase('CYAN', textCase)}</span>
-                            </>
-                          )}
-                          {captionStyle === 'golden_aura' && (
-                            <>
-                              <span style={{ color: '#ffffff' }}>{applyLetterCase('GOLDEN', textCase)}</span>{' '}
-                              <span style={{ color: '#FFB800' }}>{applyLetterCase('MOMENT', textCase)}</span>
-                            </>
-                          )}
-                          {captionStyle === 'clean_minimal' && (
-                            <span style={{ color: '#ffffff' }}>
-                              {applyLetterCase('CLEAN SUBTITLE', textCase)}
-                            </span>
-                          )}
-                        </>
-                      )}
-                    </span>
-                  </div>
-                )}
+                            )}
+                          </>
+                        ) : null}
+                      </span>
+                    </div>
+                  );
+                })()}
 
                 {/* Real-time Watermark Overlay */}
                 {watermarkEnabled && (
