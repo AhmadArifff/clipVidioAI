@@ -931,6 +931,7 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
   const directVideoRef = useRef<HTMLVideoElement | null>(null);
   const ambientVideoRef = useRef<HTMLVideoElement | null>(null);
   const trackingTimerRef = useRef<number | null>(null);
+  const lastYtSampleRef = useRef<{ rawTime: number; perfTime: number }>({ rawTime: 0, perfTime: 0 });
 
   // Keep selectedClips in sync if markedClips updates from outside (including 0 clips)
   useEffect(() => {
@@ -1306,17 +1307,36 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
 
   const startTracking = () => {
     stopTracking();
+    lastYtSampleRef.current = { rawTime: 0, perfTime: performance.now() };
+
     trackingTimerRef.current = window.setInterval(() => {
       try {
         if (previewPlayerRef.current && typeof previewPlayerRef.current.getCurrentTime === 'function') {
           const iframe = document.getElementById('studio-yt-iframe-slot');
           if (iframe && iframe.parentElement) {
-            const t = previewPlayerRef.current.getCurrentTime();
-            if (typeof t === 'number' && !isNaN(t)) {
+            const state = typeof previewPlayerRef.current.getPlayerState === 'function' ? previewPlayerRef.current.getPlayerState() : -1;
+            const rawT = previewPlayerRef.current.getCurrentTime();
+            if (typeof rawT === 'number' && !isNaN(rawT)) {
+              let t = rawT;
+              const now = performance.now();
+              if (state === 1) { // 1 = playing
+                if (Math.abs(rawT - lastYtSampleRef.current.rawTime) > 0.015) {
+                  lastYtSampleRef.current = { rawTime: rawT, perfTime: now };
+                }
+                const elapsedSec = (now - lastYtSampleRef.current.perfTime) / 1000.0;
+                // High-precision clock extrapolation between YouTube postMessage ticks:
+                if (elapsedSec >= 0 && elapsedSec < 0.35) {
+                  t = rawT + elapsedSec;
+                }
+              } else {
+                lastYtSampleRef.current = { rawTime: rawT, perfTime: now };
+              }
+
               setCurrentTime(t);
               if (currentPreviewClip && t >= currentPreviewClip.end_time) {
                 if (isLooping) {
                   previewPlayerRef.current.seekTo(currentPreviewClip.start_time, true);
+                  lastYtSampleRef.current = { rawTime: currentPreviewClip.start_time, perfTime: performance.now() };
                 } else {
                   previewPlayerRef.current.pauseVideo();
                 }
@@ -1343,7 +1363,7 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
           }
         }
       } catch (e) {}
-    }, 60);
+    }, 25);
   };
 
   const stopTracking = () => {
@@ -1513,14 +1533,32 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
     if (captionStyle === 'none') return null;
 
     // Shift time by user calibration slider:
+    // Negative offset means earlier (advance), positive means later (delay).
+    // Subtracting offsetSec advances the clock when offset is negative.
     const offsetSec = (subtitleOffsetMs || 0) / 1000.0;
-    const effectiveTime = currentTime + offsetSec;
+
+    // Inherent player bridge latency compensation:
+    // YouTube iframe postMessage audio-to-DOM bridge has ~180ms latency.
+    // Animated punch styles (e.g. beast_punch, viral_pop) also benefit from ~100ms
+    // speech onset anticipation so words punch right as the voice speaks.
+    const isDirectVideo = Boolean(videoUrl && (videoUrl.endsWith('.mp4') || videoUrl.includes('/api/video') || videoUrl.startsWith('blob:')));
+    const isPunchStyle = captionStyle !== 'clean_minimal';
+
+    // Auto lead-in compensation:
+    // For YouTube embed: 180ms bridge latency + (if punch style: 90ms anticipation) = 270ms
+    // For HTML5 direct video: 40ms decode latency + (if punch style: 80ms anticipation) = 120ms
+    const autoLeadInSec = isDirectVideo 
+      ? (isPunchStyle ? 0.12 : 0.04)
+      : (isPunchStyle ? 0.27 : 0.18);
+
+    const effectiveTime = currentTime - offsetSec + autoLeadInSec;
 
     let activeLine: { start: number; end: number; text: string } | null = null;
 
     if (fullTranscript && fullTranscript.length > 0) {
+      // Allow slight lead-in (-0.15s) and hold (+0.30s) so words transition smoothly without flickering in micro-pauses
       const found = fullTranscript.find(
-        (line) => effectiveTime >= (line.start - 0.05) && effectiveTime <= (line.end + 0.20)
+        (line) => effectiveTime >= (line.start - 0.15) && effectiveTime <= (line.end + 0.30)
       );
       if (found) {
         activeLine = found;
@@ -1534,12 +1572,12 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
           (l) => l.start >= currentPreviewClip.start_time - 0.5 && l.start <= currentPreviewClip.end_time + 0.5
         );
         if (inClip.length > 0) {
-          if (effectiveTime <= inClip[0].start) {
+          // Only snap if effectiveTime is actually within the clip bounds or right before the first cue
+          const nearest = inClip.find((l) => effectiveTime >= (l.start - 0.25) && effectiveTime <= (l.end + 0.40));
+          if (nearest) {
+            activeLine = nearest;
+          } else if (effectiveTime < inClip[0].start && (inClip[0].start - effectiveTime) <= 0.4) {
             activeLine = inClip[0];
-          } else {
-            activeLine = inClip.reduce((prev, curr) =>
-              Math.abs(curr.start - effectiveTime) < Math.abs(prev.start - effectiveTime) ? curr : prev
-            );
           }
         }
       }
@@ -1574,11 +1612,24 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
     if (curChunk.length > 0) chunks.push(curChunk);
 
     // Calculate progression across active line
-    const duration = Math.max(0.4, activeLine.end - activeLine.start);
+    const duration = Math.max(0.35, activeLine.end - activeLine.start);
     const progress = Math.min(1.0, Math.max(0.0, (effectiveTime - activeLine.start) / duration));
 
-    const totalWords = rawWords.length;
-    const activeWordIndex = Math.min(totalWords - 1, Math.floor(progress * totalWords));
+    // Syllable / character-weighted word timing (short words transition faster, long words stay longer)
+    const wordWeights = rawWords.map(w => Math.max(2, w.replace(/[^a-zA-Z0-9]/g, '').length));
+    const totalWeight = wordWeights.reduce((a, b) => a + b, 0);
+
+    const targetWeight = progress * totalWeight;
+    let cumWeight = 0;
+    let activeWordIndex = 0;
+    for (let i = 0; i < rawWords.length; i++) {
+      cumWeight += wordWeights[i];
+      if (targetWeight <= cumWeight) {
+        activeWordIndex = i;
+        break;
+      }
+      activeWordIndex = i;
+    }
 
     let accumulated = 0;
     let chosenChunk = chunks[0] || [];
@@ -1597,7 +1648,7 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
       words: chosenChunk,
       activeWordIndex: activeIndexInChunk,
     };
-  }, [currentTime, subtitleOffsetMs, fullTranscript, currentPreviewClip, captionStyle, keywordAccentMode]);
+  }, [currentTime, subtitleOffsetMs, fullTranscript, currentPreviewClip, captionStyle, keywordAccentMode, videoUrl]);
 
   const handleClearTempClick = () => {
     setShowClearConfirmModal(true);
@@ -4311,6 +4362,15 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                   />
 
                   <div className="quick-presets-row" style={{ display: 'flex', gap: '0.35rem', marginTop: '0.4rem', flexWrap: 'wrap' }}>
+                    <button
+                      type="button"
+                      className={`pill-btn ${subtitleOffsetMs === -200 ? 'active' : ''}`}
+                      onClick={() => setSubtitleOffsetMs(-200)}
+                      style={{ fontSize: '0.7rem', padding: '0.15rem 0.45rem', borderColor: 'rgba(56, 189, 248, 0.4)', color: '#38bdf8' }}
+                      title="Sinkronisasi instan dubbing cepat (-200ms lebih awal)"
+                    >
+                      ⚡ Dubbing Cepat (-200 ms)
+                    </button>
                     <button
                       type="button"
                       className={`pill-btn ${subtitleOffsetMs === -300 ? 'active' : ''}`}

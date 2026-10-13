@@ -2149,6 +2149,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     if words and style_preset != "none":
         # Step A: Sanitize and sort all word timestamps with optional timing shift calibration
         offset_sec = float(subtitle_offset_ms or 0) / 1000.0
+        punch_lead_in = 0.08 if style_preset in ("beast_punch", "viral_pop", "cyber_violet", "fire_red", "electric_cyan", "golden_aura") else 0.0
         valid_words = []
         for w in words:
             raw_text = clean_caption_text(w.get("word", "").strip())
@@ -2157,8 +2158,8 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             w_text = escape_ass_text(apply_text_case(raw_text, text_case))
             raw_st = float(w.get("start", 0.0))
             raw_et = float(w.get("end", raw_st + 0.25))
-            st = max(0.0, raw_st + offset_sec)
-            et = max(st + 0.08, raw_et + offset_sec)
+            st = max(0.0, raw_st + offset_sec - punch_lead_in)
+            et = max(st + 0.08, raw_et + offset_sec - punch_lead_in)
             if et <= st:
                 et = st + 0.08
 
