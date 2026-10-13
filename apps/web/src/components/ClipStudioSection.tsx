@@ -6198,7 +6198,11 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                           letterSpacing: '0.03em',
                           textAlign: 'center',
                           textShadow: '0 0 2px #000, 0 1px 3px rgba(0,0,0,0.95), 0 0 5px rgba(0,0,0,0.8)',
-                          display: 'inline-block',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '0.38em',
+                          flexWrap: 'nowrap',
                         }}
                       >
                         {hasSpokenSubtitles ? (
@@ -6214,22 +6218,21 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                             const textVal = `${displayEmoji}${applyLetterCase(word, textCase)}`;
 
                             return (
-                              <React.Fragment key={`${word}_${wIdx}`}>
-                                <span
-                                  style={{
-                                    color: wordColor,
-                                    display: 'inline-block',
-                                    transform: isWordActive ? 'scale(1.12)' : 'scale(1.0)',
-                                    transition: 'transform 0.08s ease, color 0.08s ease',
-                                    filter: isWordActive
-                                      ? `drop-shadow(0 0 6px ${kw ? kw.hexColor : 'rgba(255,255,255,0.45)'})`
-                                      : 'none',
-                                  }}
-                                >
-                                  {textVal}
-                                </span>
-                                {wIdx < liveSubtitleInfo!.words.length - 1 ? ' ' : ''}
-                              </React.Fragment>
+                              <span
+                                key={`${word}_${wIdx}`}
+                                style={{
+                                  color: wordColor,
+                                  display: 'inline-block',
+                                  transform: isWordActive ? 'scale(1.10)' : 'scale(1.0)',
+                                  transition: 'transform 0.08s ease, color 0.08s ease',
+                                  filter: isWordActive
+                                    ? `drop-shadow(0 0 6px ${kw ? kw.hexColor : 'rgba(255,255,255,0.45)'})`
+                                    : 'none',
+                                  margin: '0 0.06em',
+                                }}
+                              >
+                                {textVal}
+                              </span>
                             );
                           })
                         ) : shouldShowPlaceholder ? (

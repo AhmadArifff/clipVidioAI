@@ -2547,7 +2547,10 @@ label[for="manual-subtitle-file"]:hover {
   color: #ffffff;
   text-shadow: 0 1px 4px #000, 0 0 10px rgba(0,0,0,0.8);
   white-space: nowrap;
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.36em;
 }
 
 .preview-tip {
