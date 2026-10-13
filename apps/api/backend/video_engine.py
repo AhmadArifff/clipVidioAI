@@ -1316,7 +1316,9 @@ def transcribe_clip_words(
     # 1. Primary: Use the analyzed video transcript (exact matches from YouTube / Whisper)
     if fallback_transcript:
         words = []
-        for line in fallback_transcript:
+        # Pre-process: clamp overlapping cue ends to next cue start and realistic speech cadence (~0.40s/word)
+        sorted_transcript = sorted(fallback_transcript, key=lambda l: float(l.get("start", 0.0)))
+        for idx, line in enumerate(sorted_transcript):
             line_text = line.get("text", "").strip()
             if not line_text:
                 continue
@@ -1325,14 +1327,28 @@ def transcribe_clip_words(
             if not cleaned_line:
                 continue
 
+            words_cnt = max(1, len(cleaned_line.split()))
+            max_spoken_dur = max(0.6, words_cnt * 0.40)
+
             l_start = float(line.get("start", 0.0))
             if "end" in line and float(line.get("end", 0.0)) > l_start:
-                l_end = float(line.get("end", 0.0))
+                raw_end = float(line.get("end", 0.0))
             elif "duration" in line and float(line.get("duration", 0.0)) > 0:
-                l_end = l_start + float(line.get("duration", 0.0))
+                raw_end = l_start + float(line.get("duration", 0.0))
             else:
-                words_cnt = max(1, len(cleaned_line.split()))
-                l_end = l_start + max(1.8, words_cnt * 0.38)
+                raw_end = l_start + max_spoken_dur
+
+            # Strict Boundary: Current cue must end when the next spoken cue begins
+            next_line = sorted_transcript[idx + 1] if idx + 1 < len(sorted_transcript) else None
+            if next_line and float(next_line.get("start", 0.0)) > l_start:
+                l_end = min(raw_end, float(next_line.get("start", 0.0)))
+            else:
+                l_end = min(raw_end, l_start + max_spoken_dur)
+
+            if l_end - l_start > max_spoken_dur:
+                l_end = l_start + max_spoken_dur
+            if l_end <= l_start:
+                l_end = l_start + max(0.35, words_cnt * 0.25)
 
             # If clip range is defined, filter lines overlapping the clip
             if clip_end_time > clip_start_time:

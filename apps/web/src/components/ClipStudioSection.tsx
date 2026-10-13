@@ -1528,6 +1528,51 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
     return Math.round(selectedClips.reduce((acc, c) => acc + (c.end_time - c.start_time), 0));
   }, [selectedClips]);
 
+  // Pre-process transcript:
+  // 1. Clamps overlapping cue ends to next cue start (eliminates YouTube rolling caption duration inflation)
+  // 2. Caps cue durations to realistic speech cadence (~0.40s/word) so fast talkers aren't artificially stretched
+  const syncedTranscript = useMemo(() => {
+    if (!fullTranscript || fullTranscript.length === 0) return [];
+
+    const sorted = [...fullTranscript].sort((a, b) => a.start - b.start);
+    const cleaned: Array<{ start: number; end: number; text: string }> = [];
+
+    for (let i = 0; i < sorted.length; i++) {
+      const cur = sorted[i];
+      const next = sorted[i + 1];
+      const wordCount = Math.max(1, cur.text.trim().split(/\s+/).filter(Boolean).length);
+
+      // Max realistic spoken duration for conversational speech (~0.40s per word, min 0.6s)
+      const maxSpokenDuration = Math.max(0.6, wordCount * 0.40);
+
+      let realEnd = cur.end;
+      if (next && next.start > cur.start) {
+        // Strict Boundary: Current cue MUST end when the next spoken cue starts!
+        realEnd = Math.min(cur.end, next.start);
+      } else {
+        // If single cue or end of track, cap by realistic spoken duration
+        realEnd = Math.min(cur.end, cur.start + maxSpokenDuration);
+      }
+
+      // Ensure that even within a gap, the cue doesn't stretch beyond realistic speech duration
+      if (realEnd - cur.start > maxSpokenDuration) {
+        realEnd = cur.start + maxSpokenDuration;
+      }
+
+      if (realEnd <= cur.start) {
+        realEnd = cur.start + Math.max(0.35, wordCount * 0.25);
+      }
+
+      cleaned.push({
+        start: cur.start,
+        end: realEnd,
+        text: cur.text,
+      });
+    }
+
+    return cleaned;
+  }, [fullTranscript]);
+
   // Active synchronized subtitle for studio preview
   const liveSubtitleInfo = useMemo(() => {
     if (captionStyle === 'none') return null;
@@ -1545,48 +1590,38 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
     const isPunchStyle = captionStyle !== 'clean_minimal';
 
     // Auto lead-in compensation:
-    // For YouTube embed: 180ms bridge latency + (if punch style: 90ms anticipation) = 270ms
+    // For YouTube embed: 180ms bridge latency + (if punch style: 100ms anticipation) = 280ms
     // For HTML5 direct video: 40ms decode latency + (if punch style: 80ms anticipation) = 120ms
     const autoLeadInSec = isDirectVideo 
       ? (isPunchStyle ? 0.12 : 0.04)
-      : (isPunchStyle ? 0.27 : 0.18);
+      : (isPunchStyle ? 0.28 : 0.18);
 
     const effectiveTime = currentTime - offsetSec + autoLeadInSec;
 
+    // Reverse chronological search:
+    // Always pick the MOST RECENT cue whose start has arrived!
+    // This strictly prevents staying locked on an older cue when the next cue has already begun speaking.
     let activeLine: { start: number; end: number; text: string } | null = null;
 
-    if (fullTranscript && fullTranscript.length > 0) {
-      // Allow slight lead-in (-0.15s) and hold (+0.30s) so words transition smoothly without flickering in micro-pauses
-      const found = fullTranscript.find(
-        (line) => effectiveTime >= (line.start - 0.15) && effectiveTime <= (line.end + 0.30)
-      );
-      if (found) {
-        activeLine = found;
+    if (syncedTranscript && syncedTranscript.length > 0) {
+      for (let i = syncedTranscript.length - 1; i >= 0; i--) {
+        const line = syncedTranscript[i];
+        if (effectiveTime >= (line.start - 0.08) && effectiveTime <= (line.end + 0.12)) {
+          activeLine = line;
+          break;
+        }
       }
     }
 
-    // Fallback: If not in fullTranscript or fullTranscript is empty, check currentPreviewClip
-    if (!activeLine && currentPreviewClip) {
-      if (fullTranscript && fullTranscript.length > 0) {
-        const inClip = fullTranscript.filter(
-          (l) => l.start >= currentPreviewClip.start_time - 0.5 && l.start <= currentPreviewClip.end_time + 0.5
-        );
-        if (inClip.length > 0) {
-          // Only snap if effectiveTime is actually within the clip bounds or right before the first cue
-          const nearest = inClip.find((l) => effectiveTime >= (l.start - 0.25) && effectiveTime <= (l.end + 0.40));
-          if (nearest) {
-            activeLine = nearest;
-          } else if (effectiveTime < inClip[0].start && (inClip[0].start - effectiveTime) <= 0.4) {
-            activeLine = inClip[0];
-          }
+    // Fallback: If right before the first cue in clip
+    if (!activeLine && currentPreviewClip && syncedTranscript.length > 0) {
+      const inClip = syncedTranscript.filter(
+        (l) => l.start >= currentPreviewClip.start_time - 0.5 && l.start <= currentPreviewClip.end_time + 0.5
+      );
+      if (inClip.length > 0) {
+        if (effectiveTime >= inClip[0].start - 0.35 && effectiveTime < inClip[0].start) {
+          activeLine = inClip[0];
         }
-      }
-      if (!activeLine && currentPreviewClip.transcript) {
-        activeLine = {
-          start: currentPreviewClip.start_time,
-          end: currentPreviewClip.end_time,
-          text: currentPreviewClip.transcript.slice(0, 100),
-        };
       }
     }
 
@@ -1648,7 +1683,7 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
       words: chosenChunk,
       activeWordIndex: activeIndexInChunk,
     };
-  }, [currentTime, subtitleOffsetMs, fullTranscript, currentPreviewClip, captionStyle, keywordAccentMode, videoUrl]);
+  }, [currentTime, subtitleOffsetMs, syncedTranscript, currentPreviewClip, captionStyle, keywordAccentMode, videoUrl]);
 
   const handleClearTempClick = () => {
     setShowClearConfirmModal(true);

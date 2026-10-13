@@ -670,5 +670,37 @@ Modul **AI Smart Clip Settings & Viral Retention Engine** menganalisis topik, tr
 
 ---
 
+## 16. Modul Speech Cadence Clamping & Subtitle Latency Optimization (v3.5.1)
+
+### 16.1 Latar Belakang & Gejala Lapangan
+Pada video dengan dialog percakapan cepat (seperti podcast dan talkshow), pengguna mendapati teks subtitle punch viral (contoh: Beast Punch) mengalami keterlambatan (*lag*), di mana teks masih tertahan pada kata terakhir segmen sebelumnya (contoh: *"SEKARANG."*) sementara teks bawaan video asli sudah berpindah ke kalimat berikutnya (*"beda lagi sekarang. Enggak tahu"*).
+
+### 16.2 Analisis Akar Masalah (Root Cause Analysis)
+1. **Overlap Inflation pada Auto-Caption YouTube**: YouTube ASR menghasilkan rolling 2-line box dengan durasi per cue yang membengkak (3.0s hingga 5.0s per frasa) agar teks tetap terlihat pada pemutar bawaan YouTube.
+2. **Forward Search Starvation pada Single-Line Punch Captions**: Pemutar punch caption hanya menampilkan satu kata atau satu baris pendek pada satu waktu. Fungsi pencarian maju `array.find()` dari indeks 0 selalu mengembalikan Cue 1 selama durasi Cue 1 belum kedaluwarsa, mengabaikan Cue 2 yang sudah mulai berbicara di detik yang sama.
+3. **Alokasi Durasi Kata Seragam (Uniform Word Timing)**: Membagi total durasi secara rata ke semua kata menyebabkan kata-kata pendek menahan layar terlalu lama.
+
+### 16.3 Solusi Teknis & Pola Desain (Pola Cadence Clamping)
+1. **Speech Cadence Clamping Pipeline**:
+   * Membatasi akhir segmen terhadap waktu mulai segmen berikutnya: `clampedEnd = Math.min(cur.end, next.start)`.
+   * Membatasi durasi berdasarkan ritme fonetik manusia realistis: `maxSpokenDuration = Math.max(0.6, wordCount * 0.40)`.
+   * Menetapkan durasi efektif: `realEnd = Math.min(clampedEnd, cur.start + maxSpokenDuration)`.
+2. **Pencarian Terbalik (Reverse-Chronological Cue Selection)**:
+   * Melakukan pemindaian mundur dari indeks paling akhir ke 0 pada `liveSubtitleInfo` (`ClipStudioSection.tsx`). Sistem langsung mengunci segmen terbaru seketika pembicara mengucapkan kata pertama di segmen tersebut.
+3. **Distribusi Waktu Kata Berbobot Karakter (Character-Weighted Timing)**:
+   * Bobot durasi tiap kata dihitung proporsional terhadap panjang karakter (`word.length / totalChars`), memberikan pergantian kata yang dinamis dan alami.
+4. **Paritas Backend Video Engine (`video_engine.py`)**:
+   * Pipeline penyesuaian durasi dan fallback kata di backend Python diselaraskan 100% dengan frontend agar hasil render file video akhir identik dengan Studio Live Preview.
+5. **Ekstrapolasi Waktu Presisi Tinggi & Preset Cepat**:
+   * Timer interval 25ms dengan sinkronisasi `performance.now()`, auto-offset 280ms, dan tombol 1-klik `⚡ Dubbing Cepat (-200 ms)`.
+
+### 16.4 Status Implementasi (v3.5.1)
+* **Status**: **SELESAI & TERVERIFIKASI (DONE)**
+* **Tugas Terkait**: T32 (Speech Cadence Clamping, Reverse-Chronological Cue Selection, Microsecond Extrapolation, dan Paritas Python Video Engine).
+* **Hasil Verifikasi**: Build Vite `apps/web` 100% lulus (0 error), kompilasi Python `video_engine.py` 100% lulus, dan kasus terdokumentasi di `.agents/04-case-bank/cases/case-20261013-speech-cadence-subtitle-sync.md`.
+
+
+---
+
 
 
