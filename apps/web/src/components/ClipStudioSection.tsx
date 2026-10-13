@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { useLanguage } from '../locales';
 import { resilientFetch } from '../utils/api';
 import type {
@@ -307,7 +308,7 @@ export const CLIENT_VIRAL_ARCHETYPES: Record<ViralArchetypeKey, ViralArchetypePr
     name: 'MrBeast Hyper-Hype',
     icon: '⚡',
     badge: 'High Energy & Retention',
-    description: 'Beast Punch (Neon Green), The Bold Font, Phonk Hype (22%), dan Hook Zoom 1.15x.',
+    description: 'Beast Punch (Neon Green), The Bold Font, Phonk Hype (22%), Hook Zoom 1.15x, dan Micro Pacing 1.04x.',
     settings: {
       caption_style: 'beast_punch',
       caption_font: 'The Bold Font',
@@ -323,6 +324,9 @@ export const CLIENT_VIRAL_ARCHETYPES: Record<ViralArchetypeKey, ViralArchetypePr
       podcast_divider_style: 'glow_cyan',
       title_position: 'auto',
       title_duration: '5s',
+      speed_ramp_ratio: 1.04,
+      vocal_isolation_mode: 'center_vocal_extract',
+      camera_tracking_mode: 'fit_balanced',
     }
   },
   hormozi_finance: {
@@ -330,7 +334,7 @@ export const CLIENT_VIRAL_ARCHETYPES: Record<ViralArchetypeKey, ViralArchetypePr
     name: 'Alex Hormozi Cuan',
     icon: '💼',
     badge: 'Authority & Action',
-    description: 'Viral Pop (Kuning), Outfit, BGM Lo-Fi (18%), dan penanda aksen emoji finansial.',
+    description: 'Viral Pop (Kuning), Outfit, BGM Lo-Fi (18%), aksen emoji finansial, dan Micro Pacing 1.03x.',
     settings: {
       caption_style: 'viral_pop',
       caption_font: 'Outfit',
@@ -346,6 +350,9 @@ export const CLIENT_VIRAL_ARCHETYPES: Record<ViralArchetypeKey, ViralArchetypePr
       podcast_divider_style: 'glow_gold',
       title_position: 'auto',
       title_duration: '5s',
+      speed_ramp_ratio: 1.03,
+      vocal_isolation_mode: 'center_vocal_extract',
+      camera_tracking_mode: 'fit_balanced',
     }
   },
   rogan_podcast: {
@@ -369,6 +376,9 @@ export const CLIENT_VIRAL_ARCHETYPES: Record<ViralArchetypeKey, ViralArchetypePr
       podcast_divider_style: 'glow_cyan',
       title_position: 'auto',
       title_duration: '5s',
+      speed_ramp_ratio: 1.02,
+      vocal_isolation_mode: 'off',
+      camera_tracking_mode: 'off',
     }
   },
   vox_documentary: {
@@ -392,6 +402,9 @@ export const CLIENT_VIRAL_ARCHETYPES: Record<ViralArchetypeKey, ViralArchetypePr
       podcast_divider_style: 'dark_line',
       title_position: 'auto',
       title_duration: 'entire',
+      speed_ramp_ratio: 1.03,
+      vocal_isolation_mode: 'center_vocal_extract',
+      camera_tracking_mode: 'fit_balanced',
     }
   },
   daily_vlog: {
@@ -415,9 +428,46 @@ export const CLIENT_VIRAL_ARCHETYPES: Record<ViralArchetypeKey, ViralArchetypePr
       podcast_divider_style: 'clean_white',
       title_position: 'auto',
       title_duration: '5s',
+      speed_ramp_ratio: 1.03,
+      vocal_isolation_mode: 'center_vocal_extract',
+      camera_tracking_mode: 'fit_balanced',
     }
   }
 };
+
+export function getClientParamImpacts(lang: string): Record<string, string> {
+  const isEn = lang === 'en';
+  if (isEn) {
+    return {
+      caption_style: "+24% instant readability on fast-scrolling mobile feeds",
+      caption_font: "Punchy typography optimized for ultra-fast reading without distractions",
+      keyword_accent_mode: "Highlights emotional anchors and figures (+30% viewer engagement)",
+      hook_zoom_enabled: "3-second pattern interruption cuts viewer bounce rate at start",
+      bgm_preset: "Evokes target emotions and boosts video completion rate",
+      bgm_volume: "Calibrated loudness ensuring crisp vocal dominance over music",
+      auto_ducking: "Auto-attenuates background music during speech for zero muddiness",
+      speed_ramp_ratio: "Anti-Content ID YouTube Shield & tighter pacing without pitch shift",
+      vocal_isolation_mode: "Isolates speech and strips copyrighted background music up to 99%",
+      camera_tracking_mode: "Dynamic face framing keeps speaker centered in 9:16 vertical canvas",
+      podcast_layout_mode: "Balanced vertical split keeps both speakers visible without clipping",
+      title_position: "Top hook headline captures attention in the first 2 seconds"
+    };
+  }
+  return {
+    caption_style: "+24% keterbacaan instan di layar ponsel saat scroll cepat",
+    caption_font: "Tipografi tegas tanpa distraksi membaca cepat di feed TikTok",
+    keyword_accent_mode: "Menyorot emosi dan angka kunci (+30% retensi interaksi)",
+    hook_zoom_enabled: "Pattern interruption di detik 0 sampai 3 memotong bounce rate",
+    bgm_preset: "Membangun atmosfer emosional penonton sesuai jenis konten",
+    bgm_volume: "Keseimbangan audio terukur agar vokal tetap lantang",
+    auto_ducking: "BGM otomatis turun saat vokal aktif (Bebas audio berlumpur)",
+    speed_ramp_ratio: "Anti-Content ID YouTube & pemadatan tempo klip tanpa distorsi vokal",
+    vocal_isolation_mode: "Meredam BGM asli dari sumber hingga 99% agar bebas klaim hak cipta",
+    camera_tracking_mode: "Wajah pembicara otomatis terpusat dinamis di kanvas vertikal 9:16",
+    podcast_layout_mode: "Komposisi dua pembicara vertikal terbelah seimbang",
+    title_position: "Headline pengait teratas menarik mata penonton sejak detik pertama"
+  };
+}
 
 export function computeClientRecommendation(clip: ViralClip, lang: string): ClipSettingsRecommendation {
   const combined = `${clip.title || ''} ${clip.custom_title || ''} ${clip.title_suggestion || ''} ${clip.transcript || ''}`.toLowerCase();
@@ -479,7 +529,8 @@ export function computeClientRecommendation(clip: ViralClip, lang: string): Clip
       visual_retention: 94,
       overall_score: 95
     },
-    settings: arch.settings
+    settings: arch.settings,
+    param_impacts: getClientParamImpacts(lang)
   };
 }
 
@@ -737,6 +788,15 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
   const [recommendation, setRecommendation] = useState<ClipSettingsRecommendation | null>(null);
   const [activeArchetypeId, setActiveArchetypeId] = useState<ViralArchetypeKey | null>(null);
   const [recAppliedToast, setRecAppliedToast] = useState<boolean>(false);
+  // v3.8 AI Recommendation Diff & 3-Second Preview Spotlight state
+  const [isDiffInspectorOpen, setIsDiffInspectorOpen] = useState<boolean>(false);
+  const [previewHighlight, setPreviewHighlight] = useState<{
+    target: 'caption' | 'hook_zoom' | 'shield' | 'audio' | 'layout' | 'title' | 'general';
+    label: string;
+    impact: string;
+    activeUntil: number;
+  } | null>(null);
+  const highlightTimerRef = useRef<number | null>(null);
 
   // Background Music (BGM) state
   const [bgmPreset, setBgmPreset] = useState<string>(() => getSavedStudioPreferences().bgmPreset ?? DEFAULT_STUDIO_PREFS.bgmPreset ?? 'none');
@@ -1136,6 +1196,30 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
     return () => { isMounted = false; };
   }, [currentPreviewClip?.start_time, currentPreviewClip?.end_time, currentPreviewClip?.title, subtitleLanguage]);
 
+  const triggerPreviewHighlight = (
+    target: 'caption' | 'hook_zoom' | 'shield' | 'audio' | 'layout' | 'title' | 'general',
+    label: string,
+    impact: string
+  ) => {
+    if (highlightTimerRef.current) {
+      window.clearTimeout(highlightTimerRef.current);
+      highlightTimerRef.current = null;
+    }
+    setPreviewHighlight({
+      target,
+      label,
+      impact,
+      activeUntil: Date.now() + 3000,
+    });
+    if (phoneContainerRef.current) {
+      phoneContainerRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    highlightTimerRef.current = window.setTimeout(() => {
+      setPreviewHighlight(null);
+      highlightTimerRef.current = null;
+    }, 3000);
+  };
+
   const handleApplyRecommendation = (recToApply?: ClipSettingsRecommendation | null) => {
     const target = recToApply || recommendation;
     if (!target || !target.settings) return;
@@ -1158,8 +1242,12 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
     if (s.podcast_divider_style) setPodcastDividerStyle(s.podcast_divider_style as PodcastDividerStyle);
     if (s.title_position) setTitlePosition(s.title_position as TitlePosition);
     if (s.title_duration) setTitleDuration(s.title_duration as TitleDurationOption);
+    if (typeof s.speed_ramp_ratio === 'number') setSpeedRampRatio(s.speed_ramp_ratio);
+    if (s.vocal_isolation_mode) setVocalIsolationMode(s.vocal_isolation_mode);
+    if (s.camera_tracking_mode) setCameraTrackingMode(s.camera_tracking_mode);
 
     setActiveArchetypeId(target.archetype_id);
+    setIsDiffInspectorOpen(false);
     setRecAppliedToast(true);
     setTimeout(() => {
       setRecAppliedToast(false);
@@ -1188,7 +1276,8 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
         visual_retention: 94,
         overall_score: 95
       },
-      settings: arch.settings
+      settings: arch.settings,
+      param_impacts: getClientParamImpacts(lang)
     };
 
     setRecommendation(customRec);
@@ -1196,6 +1285,15 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
       currentPreviewClip.recommendation = customRec;
     }
     handleApplyRecommendation(customRec);
+  };
+
+  const handleRegenerateRecommendation = () => {
+    if (!currentPreviewClip) return;
+    const archetypes: ViralArchetypeKey[] = ['beast_hype', 'hormozi_finance', 'rogan_podcast', 'vox_documentary', 'daily_vlog'];
+    const currentIdx = activeArchetypeId ? archetypes.indexOf(activeArchetypeId) : -1;
+    const nextIdx = (currentIdx + 1) % archetypes.length;
+    const nextKey = archetypes[nextIdx];
+    handleSelectArchetype(nextKey);
   };
 
   // Fetch face/object detection coordinates
@@ -2829,33 +2927,62 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                   </div>
                 </div>
 
-                {/* 1-Click Apply AI Recommendation Button */}
-                <button
-                  type="button"
-                  onClick={() => handleApplyRecommendation(recommendation)}
-                  style={{
-                    width: '100%',
-                    padding: '0.65rem 1rem',
-                    background: recAppliedToast
-                      ? 'linear-gradient(135deg, #059669, #10b981)'
-                      : 'linear-gradient(135deg, #4f46e5, #4338ca)',
-                    border: '1px solid rgba(255, 255, 255, 0.12)',
-                    borderRadius: '8px',
-                    color: '#ffffff',
-                    fontWeight: 700,
-                    fontSize: '0.82rem',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '0.5rem',
-                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.25)',
-                    marginTop: '0.2rem'
-                  }}
-                >
-                  {recAppliedToast ? t.studio.smartRecAppliedToast : t.studio.smartRecApplyBtn}
-                </button>
+                {/* Action Buttons: Inspect Diff vs 1-Click Apply */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.45rem', marginTop: '0.2rem' }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsDiffInspectorOpen(true);
+                      if (phoneContainerRef.current) {
+                        phoneContainerRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                      }
+                    }}
+                    style={{
+                      padding: '0.65rem 0.75rem',
+                      background: 'rgba(99, 102, 241, 0.18)',
+                      border: '1px solid rgba(99, 102, 241, 0.45)',
+                      borderRadius: '8px',
+                      color: '#c7d2fe',
+                      fontWeight: 700,
+                      fontSize: '0.76rem',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '0.35rem',
+                      transition: 'all 0.18s ease',
+                      boxShadow: '0 2px 6px rgba(0, 0, 0, 0.2)'
+                    }}
+                    title={t.studio.smartRecInspectBtn}
+                  >
+                    <span>🔍</span> {t.studio.smartRecInspectBtn}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleApplyRecommendation(recommendation)}
+                    style={{
+                      padding: '0.65rem 0.75rem',
+                      background: recAppliedToast
+                        ? 'linear-gradient(135deg, #059669, #10b981)'
+                        : 'linear-gradient(135deg, #4f46e5, #4338ca)',
+                      border: '1px solid rgba(255, 255, 255, 0.12)',
+                      borderRadius: '8px',
+                      color: '#ffffff',
+                      fontWeight: 700,
+                      fontSize: '0.76rem',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '0.35rem',
+                      transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.25)'
+                    }}
+                  >
+                    {recAppliedToast ? t.studio.smartRecAppliedToast : t.studio.smartRecApplyBtn}
+                  </button>
+                </div>
 
                 {/* Quick Viral Archetype Switcher */}
                 <div style={{ marginTop: '0.5rem', borderTop: '1px solid rgba(255, 255, 255, 0.06)', paddingTop: '0.6rem' }}>
@@ -6338,7 +6465,7 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
         </div>
 
         {/* Right Column: Real Video Live Preview */}
-        <div className="studio-preview-pane">
+        <div className={`studio-preview-pane ${previewHighlight ? 'has-active-spotlight' : ''}`}>
           <div className="preview-sticky-wrap">
             <div className="preview-header-bar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.45rem 0.6rem' }}>
               <span className="preview-title" style={{ fontWeight: 700, fontSize: '0.88rem' }}>{t.studio.livePreview}</span>
@@ -6363,6 +6490,25 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
               className={`phone-wireframe-container real-preview-container ${isLandscape ? 'is-landscape' : ''}`}
               style={{ width: `${phoneWidth}px`, height: `${phoneHeight}px` }}
             >
+              {/* 3-Second Visual Spotlight Overlay & Countdown Banner */}
+              {previewHighlight && (
+                <div className="preview-spotlight-banner">
+                  <div className="spotlight-badge-title">
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                      <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#38bdf8', boxShadow: '0 0 8px #38bdf8', display: 'inline-block' }}></span>
+                      {previewHighlight.label}
+                    </span>
+                    <span className="spotlight-timer-text">3s</span>
+                  </div>
+                  <div className="spotlight-badge-impact">
+                    {previewHighlight.impact}
+                  </div>
+                  <div className="spotlight-progress-track">
+                    <div className="spotlight-progress-bar"></div>
+                  </div>
+                </div>
+              )}
+
               {/* Background Backdrop (Black, Ambient Blurred, Gradients, or Preset/Custom Media) */}
               <div
                 className="real-frame-bg-layer"
@@ -6517,7 +6663,7 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                   )}
 
                   {/* Content scaled by aspect ratio with real playable video */}
-                  <div className={`wireframe-content-box aspect-${aspectRatio.replace(':', '').replace('_', '')} ${streamerPreset === 'split_top_cam' || (streamerPreset === 'podcast_split' && podcastLayoutMode === 'stacked_split') ? 'split-mode' : ''}`}>
+                  <div className={`wireframe-content-box aspect-${aspectRatio.replace(':', '').replace('_', '')} ${streamerPreset === 'split_top_cam' || (streamerPreset === 'podcast_split' && podcastLayoutMode === 'stacked_split') ? 'split-mode' : ''} ${previewHighlight?.target === 'hook_zoom' ? 'is-spotlighted-zoom' : ''} ${previewHighlight?.target === 'shield' ? 'is-spotlighted-shield' : ''}`}>
                     <div className="wireframe-content-inner">
                       {/* HTML5 or YouTube Player slot - ALWAYS STABLY MOUNTED */}
                       {videoUrl && (videoUrl.endsWith('.mp4') || videoUrl.endsWith('.webm') || videoUrl.endsWith('.mov') || videoUrl.endsWith('.mkv') || videoUrl.includes('/api/video') || videoUrl.startsWith('blob:') || videoId?.startsWith('upload_') || videoId?.startsWith('gdrive_')) ? (
@@ -6627,7 +6773,7 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                 {/* Title Overlay with Real-time Up/Down Position & Scaled Font */}
                 {titlePosition !== 'none' && (
                   <div
-                    className="wireframe-title-overlay"
+                    className={`wireframe-title-overlay ${previewHighlight?.target === 'title' ? 'is-spotlighted' : ''}`}
                     style={{
                       top: `${safeTitleY}%`,
                       zIndex: 22,
@@ -6680,7 +6826,7 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
 
                   return (
                     <div
-                      className={`wireframe-caption-overlay style-${captionStyle}${subtitlePositionMode === 'center' ? ' mode-center' : ''}`}
+                      className={`wireframe-caption-overlay style-${captionStyle}${subtitlePositionMode === 'center' ? ' mode-center' : ''} ${previewHighlight?.target === 'caption' ? 'is-spotlighted' : ''}`}
                       style={{
                         ...(subtitlePositionMode === 'center'
                           ? {
@@ -7501,6 +7647,425 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* v3.8 AI Recommendation Diff & Impact Inspector Modal */}
+      {isDiffInspectorOpen && recommendation && createPortal(
+        <div
+          className={`diff-inspector-overlay ${previewHighlight ? 'has-active-spotlight' : ''}`}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setIsDiffInspectorOpen(false);
+          }}
+        >
+          <div className="diff-inspector-card">
+            {/* Modal Header */}
+            <div className="diff-inspector-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                <span style={{ fontSize: '1.4rem' }}>{recommendation.archetype_icon}</span>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '0.98rem', color: '#f8fafc', fontWeight: 800 }}>
+                    {t.studio.smartRecModalTitle}
+                  </h3>
+                  <div style={{ fontSize: '0.72rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '2px' }}>
+                    <span style={{ color: '#818cf8', fontWeight: 700 }}>{recommendation.archetype_name}</span>
+                    <span>•</span>
+                    <span style={{ color: '#34d399', fontWeight: 700 }}>
+                      🔥 {recommendation.viral_scores?.overall_score || 95}% {t.studio.smartRecOverall}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsDiffInspectorOpen(false)}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.08)',
+                  border: 'none',
+                  color: '#94a3b8',
+                  borderRadius: '8px',
+                  width: '32px',
+                  height: '32px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  fontSize: '1rem'
+                }}
+                title={t.studio.smartRecCancelBtn}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="diff-inspector-body">
+              {/* Strategic Reasoning Banner */}
+              <div style={{
+                padding: '0.75rem 1rem',
+                borderRadius: '10px',
+                background: 'rgba(99, 102, 241, 0.1)',
+                border: '1px solid rgba(99, 102, 241, 0.25)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.3rem'
+              }}>
+                <div style={{ fontSize: '0.7rem', color: '#a5b4fc', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  🎯 {t.studio.smartRecStrategy}
+                </div>
+                <div style={{ fontSize: '0.78rem', color: '#e2e8f0', lineHeight: 1.45 }}>
+                  "{recommendation.reasoning}"
+                </div>
+                {recommendation.growth_tip && (
+                  <div style={{ fontSize: '0.72rem', color: '#6ee7b7', marginTop: '2px', lineHeight: 1.4 }}>
+                    💡 <strong>Tips:</strong> {recommendation.growth_tip}
+                  </div>
+                )}
+              </div>
+
+              {/* Informative Guidance Notice */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '0.45rem 0.8rem',
+                background: 'rgba(56, 189, 248, 0.08)',
+                border: '1px solid rgba(56, 189, 248, 0.2)',
+                borderRadius: '8px',
+                fontSize: '0.73rem',
+                color: '#7dd3fc',
+                flexWrap: 'wrap',
+                gap: '0.4rem'
+              }}>
+                <span>{t.studio.smartRecHighlightNotice}</span>
+                <span style={{ fontSize: '0.7rem', color: '#38bdf8', fontWeight: 700 }}>⏱️ 3 Detik Auto Dismiss</span>
+              </div>
+
+              {/* Side-by-side comparison table */}
+              <div className="diff-table-container">
+                <table className="diff-table">
+                  <thead>
+                    <tr>
+                      <th style={{ width: '22%' }}>{t.studio.smartRecColFeature}</th>
+                      <th style={{ width: '20%' }}>{t.studio.smartRecColCurrent}</th>
+                      <th style={{ width: '22%' }}>{t.studio.smartRecColRecommended}</th>
+                      <th style={{ width: '24%' }}>{t.studio.smartRecColImpact}</th>
+                      <th style={{ width: '12%', textAlign: 'center' }}>{t.studio.smartRecColAction}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {/* 1. Subtitle Style & Font */}
+                    <tr>
+                      <td>
+                        <strong style={{ color: '#f8fafc' }}>Gaya Subtitle & Font</strong>
+                        <div style={{ fontSize: '0.68rem', color: '#94a3b8' }}>Tipografi & keterbacaan</div>
+                      </td>
+                      <td>
+                        <span style={{ color: '#cbd5e1' }}>{captionStyle.toUpperCase().replace('_', ' ')}</span>
+                        <div style={{ fontSize: '0.68rem', color: '#64748b' }}>{captionFont} ({fontSize})</div>
+                      </td>
+                      <td>
+                        <span style={{ color: '#38bdf8', fontWeight: 700 }}>
+                          {recommendation.settings.caption_style.toUpperCase().replace('_', ' ')}
+                        </span>
+                        <div style={{ fontSize: '0.68rem', color: '#818cf8', fontWeight: 600 }}>
+                          {recommendation.settings.caption_font} ({recommendation.settings.font_size})
+                        </div>
+                      </td>
+                      <td style={{ color: '#94a3b8', fontSize: '0.72rem' }}>
+                        {recommendation.param_impacts?.caption_style || '+24% keterbacaan instan di layar ponsel saat scroll cepat'}
+                      </td>
+                      <td style={{ textAlign: 'center' }}>
+                        <button
+                          type="button"
+                          onClick={() => triggerPreviewHighlight('caption', `Subtitle: ${recommendation.settings.caption_style}`, recommendation.param_impacts?.caption_style || '+24% Keterbacaan Instan')}
+                          style={{
+                            padding: '3px 8px',
+                            background: 'rgba(56, 189, 248, 0.15)',
+                            border: '1px solid rgba(56, 189, 248, 0.4)',
+                            borderRadius: '6px',
+                            color: '#38bdf8',
+                            fontSize: '0.7rem',
+                            fontWeight: 700,
+                            cursor: 'pointer'
+                          }}
+                        >
+                          {t.studio.smartRecHighlightAction}
+                        </button>
+                      </td>
+                    </tr>
+
+                    {/* 2. Keyword Accent Mode */}
+                    <tr>
+                      <td>
+                        <strong style={{ color: '#f8fafc' }}>Aksen Kata Kunci & Emoji</strong>
+                        <div style={{ fontSize: '0.68rem', color: '#94a3b8' }}>Emosional visual markers</div>
+                      </td>
+                      <td>
+                        <span style={{ color: '#cbd5e1' }}>
+                          {keywordAccentMode === 'accent_and_emoji' ? 'Aksen & Emoji' : keywordAccentMode === 'accent_only' ? 'Aksen Saja' : 'Nonaktif'}
+                        </span>
+                      </td>
+                      <td>
+                        <span style={{ color: '#38bdf8', fontWeight: 700 }}>
+                          {recommendation.settings.keyword_accent_mode === 'accent_and_emoji' ? 'Aksen & Emoji' : recommendation.settings.keyword_accent_mode === 'accent_only' ? 'Aksen Saja' : 'Nonaktif'}
+                        </span>
+                      </td>
+                      <td style={{ color: '#94a3b8', fontSize: '0.72rem' }}>
+                        {recommendation.param_impacts?.keyword_accent_mode || 'Menyorot emosi dan angka kunci (+30% retensi interaksi)'}
+                      </td>
+                      <td style={{ textAlign: 'center' }}>
+                        <button
+                          type="button"
+                          onClick={() => triggerPreviewHighlight('caption', `Aksen Kata Kunci: ${recommendation.settings.keyword_accent_mode}`, recommendation.param_impacts?.keyword_accent_mode || 'Aksen Kata Kunci')}
+                          style={{
+                            padding: '3px 8px',
+                            background: 'rgba(56, 189, 248, 0.15)',
+                            border: '1px solid rgba(56, 189, 248, 0.4)',
+                            borderRadius: '6px',
+                            color: '#38bdf8',
+                            fontSize: '0.7rem',
+                            fontWeight: 700,
+                            cursor: 'pointer'
+                          }}
+                        >
+                          {t.studio.smartRecHighlightAction}
+                        </button>
+                      </td>
+                    </tr>
+
+                    {/* 3. Hook Punch-In Zoom */}
+                    <tr>
+                      <td>
+                        <strong style={{ color: '#f8fafc' }}>Hook Punch-In Zoom</strong>
+                        <div style={{ fontSize: '0.68rem', color: '#94a3b8' }}>3-Second Pattern Interrupt</div>
+                      </td>
+                      <td>
+                        <span style={{ color: hookZoomEnabled ? '#4ade80' : '#64748b' }}>
+                          {hookZoomEnabled ? 'Aktif (1.15x di 3s)' : 'Nonaktif'}
+                        </span>
+                      </td>
+                      <td>
+                        <span style={{ color: recommendation.settings.hook_zoom_enabled ? '#38bdf8' : '#94a3b8', fontWeight: 700 }}>
+                          {recommendation.settings.hook_zoom_enabled ? 'Aktif (1.15x di 3s)' : 'Nonaktif'}
+                        </span>
+                      </td>
+                      <td style={{ color: '#94a3b8', fontSize: '0.72rem' }}>
+                        {recommendation.param_impacts?.hook_zoom_enabled || 'Pattern interruption di detik 0 sampai 3 memotong bounce rate'}
+                      </td>
+                      <td style={{ textAlign: 'center' }}>
+                        <button
+                          type="button"
+                          onClick={() => triggerPreviewHighlight('hook_zoom', 'Hook Punch-In Zoom (1.15x)', recommendation.param_impacts?.hook_zoom_enabled || 'Pattern Interruption 0-3s')}
+                          style={{
+                            padding: '3px 8px',
+                            background: 'rgba(245, 158, 11, 0.15)',
+                            border: '1px solid rgba(245, 158, 11, 0.4)',
+                            borderRadius: '6px',
+                            color: '#fbbf24',
+                            fontSize: '0.7rem',
+                            fontWeight: 700,
+                            cursor: 'pointer'
+                          }}
+                        >
+                          {t.studio.smartRecHighlightAction}
+                        </button>
+                      </td>
+                    </tr>
+
+                    {/* 4. Background Music (BGM) & Auto-Ducking */}
+                    <tr>
+                      <td>
+                        <strong style={{ color: '#f8fafc' }}>BGM & Auto-Ducking</strong>
+                        <div style={{ fontSize: '0.68rem', color: '#94a3b8' }}>Audio mood & kejernihan vokal</div>
+                      </td>
+                      <td>
+                        <span style={{ color: '#cbd5e1' }}>
+                          {bgmPreset !== 'none' ? `${bgmPreset} (${bgmVolume}%)` : 'Nonaktif'}
+                        </span>
+                        <div style={{ fontSize: '0.68rem', color: '#64748b' }}>
+                          {smartDuckingEnabled ? 'Auto-Ducking On' : 'Tanpa Ducking'}
+                        </div>
+                      </td>
+                      <td>
+                        <span style={{ color: '#38bdf8', fontWeight: 700 }}>
+                          {recommendation.settings.bgm_preset} ({recommendation.settings.bgm_volume}%)
+                        </span>
+                        <div style={{ fontSize: '0.68rem', color: '#818cf8', fontWeight: 600 }}>
+                          {recommendation.settings.auto_ducking ? 'Auto-Ducking On' : 'Tanpa Ducking'}
+                        </div>
+                      </td>
+                      <td style={{ color: '#94a3b8', fontSize: '0.72rem' }}>
+                        {recommendation.param_impacts?.bgm_preset || 'Membangun atmosfer emosional penonton sesuai jenis konten'}
+                      </td>
+                      <td style={{ textAlign: 'center' }}>
+                        <button
+                          type="button"
+                          onClick={() => triggerPreviewHighlight('audio', `BGM: ${recommendation.settings.bgm_preset} + Auto-Ducking`, recommendation.param_impacts?.bgm_preset || 'Audio Mood & Balance')}
+                          style={{
+                            padding: '3px 8px',
+                            background: 'rgba(56, 189, 248, 0.15)',
+                            border: '1px solid rgba(56, 189, 248, 0.4)',
+                            borderRadius: '6px',
+                            color: '#38bdf8',
+                            fontSize: '0.7rem',
+                            fontWeight: 700,
+                            cursor: 'pointer'
+                          }}
+                        >
+                          {t.studio.smartRecHighlightAction}
+                        </button>
+                      </td>
+                    </tr>
+
+                    {/* 5. Anti-Content ID Shield & Micro Pacing */}
+                    <tr>
+                      <td>
+                        <strong style={{ color: '#f8fafc' }}>Anti-Content ID Shield</strong>
+                        <div style={{ fontSize: '0.68rem', color: '#94a3b8' }}>Micro Pacing & Vokal DSP</div>
+                      </td>
+                      <td>
+                        <span style={{ color: '#cbd5e1' }}>
+                          {speedRampRatio.toFixed(2)}x {vocalIsolationMode !== 'off' ? `+ ${vocalIsolationMode}` : ''}
+                        </span>
+                      </td>
+                      <td>
+                        <span style={{ color: '#10b981', fontWeight: 700 }}>
+                          {(recommendation.settings.speed_ramp_ratio || 1.03).toFixed(2)}x
+                        </span>
+                        <div style={{ fontSize: '0.68rem', color: '#34d399', fontWeight: 600 }}>
+                          {recommendation.settings.vocal_isolation_mode === 'center_vocal_extract' ? 'Vokal Bersih (DSP)' : 'Normal'}
+                        </div>
+                      </td>
+                      <td style={{ color: '#94a3b8', fontSize: '0.72rem' }}>
+                        {recommendation.param_impacts?.speed_ramp_ratio || 'Anti-Content ID YouTube & pemadatan tempo klip tanpa distorsi vokal'}
+                      </td>
+                      <td style={{ textAlign: 'center' }}>
+                        <button
+                          type="button"
+                          onClick={() => triggerPreviewHighlight('shield', `Shield: ${(recommendation.settings.speed_ramp_ratio || 1.03).toFixed(2)}x Micro Pacing + Vokal DSP`, recommendation.param_impacts?.speed_ramp_ratio || 'Bypass Deteksi Hak Cipta YouTube')}
+                          style={{
+                            padding: '3px 8px',
+                            background: 'rgba(16, 185, 129, 0.15)',
+                            border: '1px solid rgba(16, 185, 129, 0.4)',
+                            borderRadius: '6px',
+                            color: '#34d399',
+                            fontSize: '0.7rem',
+                            fontWeight: 700,
+                            cursor: 'pointer'
+                          }}
+                        >
+                          {t.studio.smartRecHighlightAction}
+                        </button>
+                      </td>
+                    </tr>
+
+                    {/* 6. Smart Camera Tracking / Framing */}
+                    <tr>
+                      <td>
+                        <strong style={{ color: '#f8fafc' }}>Framing Kamera 9:16</strong>
+                        <div style={{ fontSize: '0.68rem', color: '#94a3b8' }}>Face focus & kanvas vertikal</div>
+                      </td>
+                      <td>
+                        <span style={{ color: '#cbd5e1' }}>
+                          {cameraTrackingMode === 'fit_balanced' ? 'Fit Balanced (1.25x)' : cameraTrackingMode === 'fit_close_up' ? 'Fit Close-Up (1.45x)' : 'Center Crop'}
+                        </span>
+                      </td>
+                      <td>
+                        <span style={{ color: '#38bdf8', fontWeight: 700 }}>
+                          {recommendation.settings.camera_tracking_mode === 'fit_balanced' ? 'Fit Balanced (1.25x)' : recommendation.settings.camera_tracking_mode === 'fit_close_up' ? 'Fit Close-Up (1.45x)' : 'Center Crop'}
+                        </span>
+                      </td>
+                      <td style={{ color: '#94a3b8', fontSize: '0.72rem' }}>
+                        {recommendation.param_impacts?.camera_tracking_mode || 'Wajah pembicara otomatis terpusat dinamis di kanvas vertikal 9:16'}
+                      </td>
+                      <td style={{ textAlign: 'center' }}>
+                        <button
+                          type="button"
+                          onClick={() => triggerPreviewHighlight('layout', `Framing Kamera: ${recommendation.settings.camera_tracking_mode || 'Fit Balanced'}`, recommendation.param_impacts?.camera_tracking_mode || 'Wajah Terpusat di 9:16')}
+                          style={{
+                            padding: '3px 8px',
+                            background: 'rgba(56, 189, 248, 0.15)',
+                            border: '1px solid rgba(56, 189, 248, 0.4)',
+                            borderRadius: '6px',
+                            color: '#38bdf8',
+                            fontSize: '0.7rem',
+                            fontWeight: 700,
+                            cursor: 'pointer'
+                          }}
+                        >
+                          {t.studio.smartRecHighlightAction}
+                        </button>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Modal Footer (Confirmation Gate) */}
+            <div className="diff-inspector-footer">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setIsDiffInspectorOpen(false)}
+                  style={{
+                    padding: '0.6rem 0.95rem',
+                    background: 'rgba(255, 255, 255, 0.06)',
+                    border: '1px solid rgba(255, 255, 255, 0.12)',
+                    borderRadius: '8px',
+                    color: '#94a3b8',
+                    fontWeight: 600,
+                    fontSize: '0.78rem',
+                    cursor: 'pointer'
+                  }}
+                >
+                  {t.studio.smartRecCancelBtn}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleRegenerateRecommendation}
+                  style={{
+                    padding: '0.6rem 0.95rem',
+                    background: 'rgba(245, 158, 11, 0.15)',
+                    border: '1px solid rgba(245, 158, 11, 0.4)',
+                    borderRadius: '8px',
+                    color: '#fbbf24',
+                    fontWeight: 700,
+                    fontSize: '0.78rem',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.4rem'
+                  }}
+                >
+                  {t.studio.smartRecRegenerateBtn}
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => handleApplyRecommendation(recommendation)}
+                style={{
+                  padding: '0.6rem 1.4rem',
+                  background: 'linear-gradient(135deg, #059669, #10b981)',
+                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                  borderRadius: '8px',
+                  color: '#ffffff',
+                  fontWeight: 800,
+                  fontSize: '0.82rem',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  boxShadow: '0 4px 14px rgba(16, 185, 129, 0.35)'
+                }}
+              >
+                {t.studio.smartRecConfirmBtn}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
     </section>
   );

@@ -28,6 +28,9 @@ class RecommendedSettingsPayload(BaseModel):
     podcast_divider_style: str = "clean_white"
     title_position: str = "top"
     title_duration: str = "first_3s"
+    speed_ramp_ratio: float = 1.03
+    vocal_isolation_mode: str = "off"
+    camera_tracking_mode: str = "off"
 
 
 class ViralScores(BaseModel):
@@ -54,3 +57,4 @@ class ClipSettingsRecommendationResponse(BaseModel):
     growth_tip: str
     viral_scores: ViralScores
     settings: RecommendedSettingsPayload
+    param_impacts: Optional[Dict[str, str]] = None

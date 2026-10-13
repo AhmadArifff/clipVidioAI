@@ -5269,3 +5269,255 @@ label[for="manual-subtitle-file"]:hover {
   font-size: 0.74rem;
   color: var(--text-secondary, #94a3b8);
 }
+
+/* =========================================================================
+   v3.8 Visual Config Diff & Preview Spotlight (3-Second Auto Dismiss)
+   ========================================================================= */
+
+@keyframes spotlightBannerSlideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-12px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes spotlightCountdown {
+  from {
+    width: 100%;
+  }
+  to {
+    width: 0%;
+  }
+}
+
+@keyframes spotlightPulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.025);
+    opacity: 0.85;
+  }
+}
+
+.preview-spotlight-banner {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  right: 10px;
+  z-index: 45;
+  background: rgba(15, 23, 42, 0.94);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(56, 189, 248, 0.45);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.75), 0 0 18px rgba(56, 189, 248, 0.25);
+  border-radius: 10px;
+  padding: 0.55rem 0.75rem;
+  animation: spotlightBannerSlideDown 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: auto;
+  overflow: hidden;
+}
+
+.spotlight-badge-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #38bdf8;
+  margin-bottom: 0.2rem;
+}
+
+.spotlight-timer-text {
+  font-size: 0.65rem;
+  background: rgba(56, 189, 248, 0.2);
+  color: #7dd3fc;
+  border-radius: 999px;
+  padding: 1px 6px;
+  font-weight: 800;
+}
+
+.spotlight-badge-impact {
+  font-size: 0.68rem;
+  color: #e2e8f0;
+  line-height: 1.35;
+  margin-bottom: 0.4rem;
+}
+
+.spotlight-progress-track {
+  width: 100%;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.spotlight-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #38bdf8, #818cf8, #a855f7);
+  animation: spotlightCountdown 3s linear forwards;
+}
+
+.wireframe-caption-overlay.is-spotlighted {
+  outline: 2px dashed #00f0ff !important;
+  outline-offset: 4px;
+  box-shadow: 0 0 20px rgba(0, 240, 255, 0.75);
+  border-radius: 6px;
+  animation: spotlightPulse 1s infinite ease-in-out;
+}
+
+.wireframe-title-overlay.is-spotlighted {
+  outline: 2px dashed #fbbf24 !important;
+  outline-offset: 4px;
+  box-shadow: 0 0 20px rgba(251, 191, 36, 0.75);
+  border-radius: 6px;
+  animation: spotlightPulse 1s infinite ease-in-out;
+}
+
+.wireframe-content-box.is-spotlighted-zoom {
+  outline: 2px dashed #f59e0b !important;
+  box-shadow: 0 0 24px rgba(245, 158, 11, 0.6);
+  animation: spotlightPulse 1s infinite ease-in-out;
+}
+
+.wireframe-content-box.is-spotlighted-shield {
+  outline: 2px dashed #10b981 !important;
+  box-shadow: 0 0 24px rgba(16, 185, 129, 0.6);
+  animation: spotlightPulse 1s infinite ease-in-out;
+}
+
+/* Modal Overlay & Card for Diff Inspector */
+.diff-inspector-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(3, 7, 18, 0.78);
+  backdrop-filter: blur(8px);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+  animation: spotlightBannerSlideDown 0.22s ease-out;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* When spotlight is triggered, seamlessly shift overlay on desktop so the phone preview on right is 100% visible */
+@media (min-width: 1200px) {
+  .diff-inspector-overlay.has-active-spotlight {
+    background: transparent !important;
+    backdrop-filter: none !important;
+    pointer-events: none;
+    justify-content: flex-start !important;
+    padding-left: 2rem !important;
+  }
+  .diff-inspector-overlay.has-active-spotlight .diff-inspector-card {
+    pointer-events: auto;
+    max-width: 580px !important;
+    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.95), 0 0 30px rgba(56, 189, 248, 0.45) !important;
+    border-color: rgba(56, 189, 248, 0.6) !important;
+  }
+}
+
+@media (max-width: 1199px) {
+  .diff-inspector-overlay.has-active-spotlight {
+    background: transparent !important;
+    backdrop-filter: none !important;
+    opacity: 0.15 !important;
+    pointer-events: none;
+  }
+}
+
+.studio-preview-pane.has-active-spotlight {
+  z-index: 10000 !important;
+  position: relative;
+}
+
+.diff-inspector-card {
+  width: 100%;
+  max-width: 820px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(145deg, rgba(15, 23, 42, 0.98), rgba(9, 14, 28, 0.99));
+  border: 1px solid rgba(99, 102, 241, 0.35);
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.85), 0 0 30px rgba(99, 102, 241, 0.2);
+  border-radius: 16px;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.diff-inspector-header {
+  padding: 1.1rem 1.4rem;
+  background: rgba(30, 41, 59, 0.5);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.diff-inspector-body {
+  padding: 1.2rem 1.4rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.diff-table-container {
+  width: 100%;
+  overflow-x: auto;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(15, 23, 42, 0.6);
+}
+
+.diff-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+  text-align: left;
+}
+
+.diff-table th {
+  background: rgba(30, 41, 59, 0.8);
+  color: #94a3b8;
+  padding: 0.7rem 0.9rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 0.68rem;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.diff-table td {
+  padding: 0.65rem 0.9rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  color: #cbd5e1;
+  vertical-align: middle;
+}
+
+.diff-table tr:last-child td {
+  border-bottom: none;
+}
+
+.diff-table tr:hover td {
+  background: rgba(99, 102, 241, 0.06);
+}
+
+.diff-inspector-footer {
+  padding: 1rem 1.4rem;
+  background: rgba(15, 23, 42, 0.9);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+

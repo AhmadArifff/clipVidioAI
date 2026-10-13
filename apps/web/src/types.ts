@@ -68,6 +68,9 @@ export interface ViralArchetypeProfile {
     podcast_divider_style: PodcastDividerStyle;
     title_position: TitlePosition;
     title_duration: TitleDurationOption;
+    speed_ramp_ratio?: number;
+    vocal_isolation_mode?: VocalIsolationMode;
+    camera_tracking_mode?: CameraTrackingMode;
   };
 }
 
@@ -98,7 +101,11 @@ export interface ClipSettingsRecommendation {
     podcast_divider_style: PodcastDividerStyle;
     title_position: TitlePosition;
     title_duration: TitleDurationOption;
+    speed_ramp_ratio?: number;
+    vocal_isolation_mode?: VocalIsolationMode;
+    camera_tracking_mode?: CameraTrackingMode;
   };
+  param_impacts?: Record<string, string>;
 }
 
 export interface AnalyzeResponse {
