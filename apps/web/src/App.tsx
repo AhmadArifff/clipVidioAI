@@ -20,6 +20,24 @@ declare global {
   }
 }
 
+function extractErrorMessage(errJson: any, fallback = 'Failed to execute request'): string {
+  if (!errJson) return fallback;
+  if (typeof errJson.detail === 'string') return errJson.detail;
+  if (Array.isArray(errJson.detail)) {
+    return errJson.detail
+      .map((item: any) => {
+        if (typeof item === 'string') return item;
+        const loc = Array.isArray(item.loc) ? item.loc.filter((p: any) => p !== 'body').join('.') : '';
+        const msg = item.msg || item.message || JSON.stringify(item);
+        return loc ? `${loc}: ${msg}` : msg;
+      })
+      .join('\n');
+  }
+  if (typeof errJson.message === 'string') return errJson.message;
+  if (typeof errJson === 'string') return errJson;
+  return fallback;
+}
+
 export default function App() {
   const { t } = useLanguage();
   const [url, setUrl] = useState('');
@@ -369,7 +387,7 @@ export default function App() {
             });
             if (!rawReq.ok) {
               const err = await rawReq.json().catch(() => ({}));
-              throw new Error(err.detail || 'Failed to request raw clip stream');
+              throw new Error(extractErrorMessage(err, 'Failed to request raw clip stream'));
             }
             const rawData = await rawReq.json();
             const jobId = rawData.job_id;
@@ -547,7 +565,7 @@ export default function App() {
             podcast_guest_cx: settings.podcastGuestCx !== undefined ? settings.podcastGuestCx : null,
             // v3.6 Smart Camera Tracking & Comedy Expression FX
             camera_tracking_mode: settings.cameraTrackingMode || 'off',
-            tracking_smoothness: settings.trackingSmoothness !== undefined ? settings.trackingSmoothness : 5,
+            tracking_smoothness: settings.trackingSmoothness !== undefined ? settings.trackingSmoothness : 0.15,
             comedy_effect_preset: settings.comedyEffectPreset || 'none',
             comedy_effect_start_time: settings.comedyEffectStartTime !== undefined ? settings.comedyEffectStartTime : null,
             comedy_effect_duration: settings.comedyEffectDuration !== undefined ? settings.comedyEffectDuration : 1.5,
@@ -562,7 +580,7 @@ export default function App() {
 
       if (!resp.ok) {
         const errJson = await resp.json().catch(() => ({}));
-        throw new Error(errJson.detail || 'Failed to start batch render job');
+        throw new Error(extractErrorMessage(errJson, 'Failed to start batch render job'));
       }
 
       const data = await resp.json();
@@ -636,7 +654,7 @@ export default function App() {
 
       if (!resp.ok) {
         const errJson = await resp.json().catch(() => ({}));
-        throw new Error(errJson.detail || 'Failed to retry rendering');
+        throw new Error(extractErrorMessage(errJson, 'Failed to retry rendering'));
       }
 
       // Reconnect SSE to track retry progress
@@ -1433,7 +1451,7 @@ export default function App() {
           });
           if (!upRes.ok) {
             const errJson = await upRes.json().catch(() => ({}));
-            throw new Error(errJson.detail || 'Failed to upload video audio');
+            throw new Error(extractErrorMessage(errJson, 'Failed to upload video audio'));
           }
           const upData = await upRes.json();
           currentVideoInfo = {

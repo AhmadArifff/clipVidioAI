@@ -1,7 +1,9 @@
-from typing import List, Optional, Dict, Any
-from pydantic import BaseModel
+from typing import List, Optional, Dict, Any, Union
+from pydantic import BaseModel, ConfigDict
 
 class RenderSettingsModel(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
     aspect_ratio: str = "9:16"
     background_style: str = "black"
     # Custom Background Configuration
@@ -10,12 +12,12 @@ class RenderSettingsModel(BaseModel):
     background_file_path: Optional[str] = None   # Server file path for custom uploaded or preset media
     foreground_scale: Optional[float] = 100.0    # 40.0% to 100.0% of canvas width
     foreground_position_y: Optional[float] = 50.0 # 0% to 100% vertical center
-    foreground_border_radius: Optional[int] = 0  # 0 to 48 px corner radius
+    foreground_border_radius: Optional[Union[int, float]] = 0  # 0 to 48 px corner radius
     foreground_shadow: Optional[bool] = False    # Drop shadow under foreground video
     enable_face_tracking: bool = True
     # v3.6 Smart Camera Tracking (CapCut Style) & Fit to Canvas
     camera_tracking_mode: Optional[str] = "fit_balanced"       # "fit_balanced" | "fit_close_up" | "dynamic_pan_only" | "static_center"
-    tracking_smoothness: Optional[int] = 5                     # 1 (responsive) to 10 (ultra-smooth gimbal)
+    tracking_smoothness: Optional[Union[float, int]] = 0.15    # 0.05 (cinematic smooth) to 0.45 (rapid), or 1-10 scale
     # v3.6 Comedy Expression FX (PWK Style)
     comedy_effect_preset: Optional[str] = "none"               # "none" | "pwk_snap_zoom" | "pwk_red_blush" | "pwk_funny_fisheye"
     comedy_effect_start_time: Optional[float] = None           # Second in clip when effect triggers (None = auto)
@@ -40,8 +42,8 @@ class RenderSettingsModel(BaseModel):
     title_font: Optional[str] = "Outfit"
     font_size: str = "medium"
     title_font_size: Optional[str] = "medium"
-    font_size_px: Optional[int] = None
-    title_font_size_px: Optional[int] = None
+    font_size_px: Optional[Union[int, float]] = None
+    title_font_size_px: Optional[Union[int, float]] = None
     text_case: str = "uppercase"
     title_text_case: Optional[str] = "uppercase"
     title_y_percent: Optional[float] = None
@@ -71,7 +73,7 @@ class RenderSettingsModel(BaseModel):
     watermark_y: Optional[float] = 8.0
     hardware_accel: Optional[str] = "auto"
     # Subtitle Audio Timing Calibration & Language
-    subtitle_offset_ms: Optional[int] = 0        # Timing shift in ms (-1000ms to +1000ms)
+    subtitle_offset_ms: Optional[Union[int, float]] = 0        # Timing shift in ms (-1000ms to +1000ms)
     subtitle_language: Optional[str] = "id"      # Subtitle language "id" | "en"
     # Multi-Segment Merged Highlight Video
     render_mode: Optional[str] = "separate"  # "separate" | "merged"
@@ -88,6 +90,7 @@ class RenderSettingsModel(BaseModel):
     vocal_isolation_mode: Optional[str] = "center_vocal_extract" # "off" | "center_vocal_extract" | "voice_clarity_bandpass"
 
 class RenderBatchRequest(BaseModel):
+    model_config = ConfigDict(extra="ignore")
     video_url: str
     video_id: str
     clips: List[Dict[str, Any]]
@@ -96,5 +99,6 @@ class RenderBatchRequest(BaseModel):
     cookies: Optional[str] = None
 
 class RetryBatchRequest(BaseModel):
+    model_config = ConfigDict(extra="ignore")
     clip_indices: Optional[List[int]] = None
     cookies: Optional[str] = None

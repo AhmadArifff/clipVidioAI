@@ -131,9 +131,9 @@
       "tech_critic_approval": true
     },
     {
-      "id": "M15_AI_RECOMMENDATION_DIFF_AND_PREVIEW_HIGHLIGHT",
-      "title": "Visual Config Diff & Impact Inspector: Side-by-side Configuration Comparison, Algorithmic Impact Explanations, Interactive 3-Second Preview Spotlight with Auto-Dismiss Countdown, and Confirmation Gate (Apply vs Regenerate)",
-      "prd_sections": ["Seksi 19: AI Recommendation Diff & 3-Second Live Preview Spotlight (v3.8.0)"],
+      "id": "M15_UNIFIED_GUIDED_WALKTHROUGH_AND_PREVIEW_SPOTLIGHT",
+      "title": "Unified Guided Walkthrough Flow: Eliminasi Modal Diff Terpisah, Tur Interaktif 9 Langkah Berurutan (Kanvas hingga Judul Hook), Self-Applying Control Selection, Callout Dampak Algoritma, Live Preview Spotlight 3 Detik dengan Tombol Sorot Ulang, dan Gerbang Konfirmasi Akhir",
+      "prd_sections": ["Seksi 19: Unified AI Recommendation Guided Walkthrough & 3-Second Live Preview Spotlight (v3.8.0)"],
       "owner_role": "frontend-engineer",
       "status": "VERIFIED_PASS",
       "verified_at": "2026-10-14",
@@ -150,5 +150,5 @@
     "C5: Reviewer Independence (No Self-Review): Setiap deliverable wajib divalidasi oleh QA / Tech-Critic independen sebelum status dipromosikan ke VERIFIED_PASS"
   ],
   "open_questions": [],
-  "last_updated": "2026-10-14T06:46:00Z"
+  "last_updated": "2026-10-14T07:50:00Z"
 }

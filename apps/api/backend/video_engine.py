@@ -2996,7 +2996,10 @@ def extract_face_trajectory(
         if not raw_samples:
             return default_trajectory
 
-        alpha = max(0.05, min(0.50, float(smoothing_alpha)))
+        raw_alpha = float(smoothing_alpha or 0.15)
+        if raw_alpha > 1.0:
+            raw_alpha = raw_alpha / 10.0
+        alpha = max(0.05, min(0.50, raw_alpha))
         smoothed: List[Dict[str, float]] = []
 
         curr_cx = raw_samples[0]["cx"]

@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { createPortal } from 'react-dom';
 import { useLanguage } from '../locales';
 import { resilientFetch } from '../utils/api';
 import type {
@@ -665,6 +664,182 @@ function getSavedStudioPreferences(): Partial<StudioPreferences> {
   }
 }
 
+export interface WalkthroughStepItem {
+  stepIndex: number;
+  cardId: string;
+  title: string;
+  icon: string;
+  highlightTarget: 'caption' | 'hook_zoom' | 'shield' | 'audio' | 'layout' | 'title';
+  highlightLabel: string;
+  appliedValueDisplay: string;
+  useDescription: string;
+  impactDescription: string;
+  applyAction: (rec: ClipSettingsRecommendation) => void;
+}
+
+export const WalkthroughCardCallout: React.FC<{
+  step: WalkthroughStepItem;
+  totalSteps: number;
+  onNext: () => void;
+  onPrev?: () => void;
+  onReHighlight: () => void;
+  onFinish: () => void;
+  onRegenerate?: () => void;
+  onSkip: () => void;
+  isLast: boolean;
+  t: any;
+}> = ({ step, totalSteps, onNext, onPrev, onReHighlight, onFinish, onRegenerate, onSkip, isLast, t }) => {
+  return (
+    <div className="walkthrough-callout-panel" onClick={(e) => e.stopPropagation()}>
+      <div className="walkthrough-callout-header">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+          <span className="walkthrough-step-badge">
+            {t.studio.walkthroughStepBadge(step.stepIndex + 1, totalSteps)}
+          </span>
+          <h4 className="walkthrough-callout-title">
+            <span>{step.icon}</span>
+            <span>{step.title}</span>
+          </h4>
+        </div>
+        <span className="walkthrough-auto-badge">
+          {t.studio.walkthroughAutoAppliedBadge}
+        </span>
+      </div>
+
+      <div className="walkthrough-info-grid">
+        <div className="walkthrough-info-item">
+          <span className="walkthrough-info-label">⚙️ {step.appliedValueDisplay}</span>
+        </div>
+        <div className="walkthrough-info-item">
+          <span className="walkthrough-info-label">💡 {t.studio.walkthroughUseLabel}</span>
+          <span className="walkthrough-info-desc">{step.useDescription}</span>
+        </div>
+        <div className="walkthrough-info-item" style={{ background: 'rgba(99, 102, 241, 0.12)', borderColor: 'rgba(99, 102, 241, 0.3)' }}>
+          <span className="walkthrough-info-label" style={{ color: '#818cf8' }}>🚀 {t.studio.walkthroughImpactLabel}</span>
+          <span className="walkthrough-info-desc" style={{ color: '#c7d2fe', fontWeight: 600 }}>{step.impactDescription}</span>
+        </div>
+      </div>
+
+      <div className="walkthrough-callout-footer">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            onClick={onReHighlight}
+            style={{
+              padding: '0.45rem 0.8rem',
+              background: 'rgba(56, 189, 248, 0.18)',
+              border: '1px solid rgba(56, 189, 248, 0.45)',
+              borderRadius: '6px',
+              color: '#38bdf8',
+              fontSize: '0.74rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.35rem'
+            }}
+          >
+            {t.studio.walkthroughReHighlightBtn}
+          </button>
+          {onPrev && (
+            <button
+              type="button"
+              onClick={onPrev}
+              style={{
+                padding: '0.45rem 0.75rem',
+                background: 'rgba(255, 255, 255, 0.08)',
+                border: '1px solid rgba(255, 255, 255, 0.15)',
+                borderRadius: '6px',
+                color: '#cbd5e1',
+                fontSize: '0.74rem',
+                cursor: 'pointer'
+              }}
+            >
+              {t.studio.walkthroughPrevBtn}
+            </button>
+          )}
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
+          {isLast ? (
+            <>
+              {onRegenerate && (
+                <button
+                  type="button"
+                  onClick={onRegenerate}
+                  style={{
+                    padding: '0.5rem 0.85rem',
+                    background: 'rgba(245, 158, 11, 0.2)',
+                    border: '1px solid rgba(245, 158, 11, 0.45)',
+                    borderRadius: '6px',
+                    color: '#fbbf24',
+                    fontSize: '0.76rem',
+                    fontWeight: 700,
+                    cursor: 'pointer'
+                  }}
+                >
+                  {t.studio.smartRecRegenerateBtn}
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={onFinish}
+                style={{
+                  padding: '0.5rem 1.1rem',
+                  background: 'linear-gradient(135deg, #059669, #10b981)',
+                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                  borderRadius: '6px',
+                  color: '#ffffff',
+                  fontSize: '0.78rem',
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 10px rgba(16, 185, 129, 0.4)'
+                }}
+              >
+                {t.studio.walkthroughFinishBtn}
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={onSkip}
+                style={{
+                  padding: '0.45rem 0.65rem',
+                  background: 'transparent',
+                  border: 'none',
+                  color: '#94a3b8',
+                  fontSize: '0.72rem',
+                  cursor: 'pointer'
+                }}
+              >
+                {t.studio.walkthroughSkipBtn}
+              </button>
+              <button
+                type="button"
+                onClick={onNext}
+                style={{
+                  padding: '0.5rem 0.95rem',
+                  background: 'linear-gradient(135deg, #4f46e5, #6366f1)',
+                  border: '1px solid rgba(255, 255, 255, 0.18)',
+                  borderRadius: '6px',
+                  color: '#ffffff',
+                  fontSize: '0.76rem',
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 10px rgba(99, 102, 241, 0.35)'
+                }}
+              >
+                {t.studio.walkthroughNextBtn}
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
   videoUrl,
   videoId,
@@ -788,8 +963,8 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
   const [recommendation, setRecommendation] = useState<ClipSettingsRecommendation | null>(null);
   const [activeArchetypeId, setActiveArchetypeId] = useState<ViralArchetypeKey | null>(null);
   const [recAppliedToast, setRecAppliedToast] = useState<boolean>(false);
-  // v3.8 AI Recommendation Diff & 3-Second Preview Spotlight state
-  const [isDiffInspectorOpen, setIsDiffInspectorOpen] = useState<boolean>(false);
+  // v3.8 AI Guided Walkthrough Flow & 3-Second Preview Spotlight state
+  const [walkthroughStep, setWalkthroughStep] = useState<number | null>(null);
   const [previewHighlight, setPreviewHighlight] = useState<{
     target: 'caption' | 'hook_zoom' | 'shield' | 'audio' | 'layout' | 'title' | 'general';
     label: string;
@@ -1061,7 +1236,7 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
       setCopyDeck(null);
       return;
     }
-    if (currentPreviewClip.copy_deck) {
+    if (currentPreviewClip.copy_deck && Array.isArray(currentPreviewClip.copy_deck.hashtags)) {
       setCopyDeck(currentPreviewClip.copy_deck);
       return;
     }
@@ -1199,7 +1374,8 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
   const triggerPreviewHighlight = (
     target: 'caption' | 'hook_zoom' | 'shield' | 'audio' | 'layout' | 'title' | 'general',
     label: string,
-    impact: string
+    impact: string,
+    scrollPreview = false
   ) => {
     if (highlightTimerRef.current) {
       window.clearTimeout(highlightTimerRef.current);
@@ -1211,7 +1387,7 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
       impact,
       activeUntil: Date.now() + 3000,
     });
-    if (phoneContainerRef.current) {
+    if (scrollPreview && phoneContainerRef.current) {
       phoneContainerRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
     highlightTimerRef.current = window.setTimeout(() => {
@@ -1247,7 +1423,250 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
     if (s.camera_tracking_mode) setCameraTrackingMode(s.camera_tracking_mode);
 
     setActiveArchetypeId(target.archetype_id);
-    setIsDiffInspectorOpen(false);
+    setRecAppliedToast(true);
+    setTimeout(() => {
+      setRecAppliedToast(false);
+    }, 2500);
+  };
+
+  const getWalkthroughSteps = (rec: ClipSettingsRecommendation): WalkthroughStepItem[] => {
+    const s = rec.settings;
+    const isEn = subtitleLanguage === 'en';
+
+    return [
+      // 1. Kanvas & Rasio Aspek
+      {
+        stepIndex: 0,
+        cardId: 'card-canvas-aspect-ratio',
+        title: isEn ? 'Canvas & Aspect Ratio' : 'Kanvas & Rasio Aspek',
+        icon: '📐',
+        highlightTarget: 'layout',
+        highlightLabel: isEn ? 'Aspect Ratio: 9:16 (Full Portrait)' : 'Rasio Aspek: 9:16 (Vertikal Penuh)',
+        appliedValueDisplay: (s as any).aspect_ratio || '9:16',
+        useDescription: isEn
+          ? 'Sets full-screen 9:16 (1080x1920) vertical canvas tailored for TikTok, IG Reels, and YouTube Shorts.'
+          : 'Mengatur kanvas vertikal penuh 9:16 (1080x1920) yang merupakan format standar TikTok, Reels, dan Shorts.',
+        impactDescription: isEn
+          ? 'Eliminates black bars and occupies 100% of mobile screen real estate, increasing feed impressions by +40%.'
+          : 'Menghilangkan bilah hitam dan memenuhi 100% layar HP, mendongkrak Hook Rate dan impresi feed hingga +40%.',
+        applyAction: (r) => {
+          handleSelectAspectRatio(((r.settings as any).aspect_ratio as AspectRatioOption) || '9:16');
+        }
+      },
+      // 2. Kustomisasi Latar Belakang & Tata Letak
+      {
+        stepIndex: 1,
+        cardId: 'card-background-customizer',
+        title: isEn ? 'Background & Layout Engine' : 'Kustomisasi Latar Belakang & Tata Letak',
+        icon: '🎨',
+        highlightTarget: 'layout',
+        highlightLabel: isEn ? 'Background: Smart Aesthetic Blur' : 'Latar Belakang: Gaussian Blur Estetik',
+        appliedValueDisplay: (s as any).background_type === 'black'
+          ? (isEn ? 'Classic Black Letterbox' : 'Hitam Klasik')
+          : (isEn ? 'Aesthetic Gaussian Blur' : 'Gaussian Blur Estetik'),
+        useDescription: isEn
+          ? 'Fills top and bottom negative space of widescreen clips with aesthetic layered blur and soft drop shadow.'
+          : 'Mengisi ruang kosong atas dan bawah video horizontal dengan efek blur bertingkat dan bayangan halus.',
+        impactDescription: isEn
+          ? 'Creates a cohesive cinematic studio aesthetic that prevents early drop-offs caused by harsh letterboxing.'
+          : 'Menciptakan estetika studio profesional yang mencegah drop-off penonton di detik awal akibat potongan kasar.',
+        applyAction: (r) => {
+          const bType = (r.settings as any).background_type || 'blur';
+          setBackgroundType(bType);
+          setBackgroundStyle(bType === 'blur' ? 'blurred' : 'black');
+        }
+      },
+      // 3. Framing Kamera & Pelacakan Wajah
+      {
+        stepIndex: 2,
+        cardId: 'card-camera-framing',
+        title: isEn ? 'Camera Framing & Face Tracking' : 'Framing Kamera & Pelacakan Wajah',
+        icon: '🎥',
+        highlightTarget: 'layout',
+        highlightLabel: isEn ? `Framing: ${s.camera_tracking_mode || 'Fit Balanced 1.25x'}` : `Framing: ${s.camera_tracking_mode || 'Fit Balanced 1.25x'}`,
+        appliedValueDisplay: s.camera_tracking_mode || 'Fit Balanced 1.25x',
+        useDescription: isEn
+          ? 'Dynamically locks the speaker face at the visual golden ratio point so expressions remain prominent.'
+          : 'Mengunci posisi wajah narator utama di titik fokus tengah frame vertikal agar ekspresi terlihat jelas.',
+        impactDescription: isEn
+          ? 'Maintains direct psychological eye-contact with the viewer, lifting Average View Duration (AVD) by +25%.'
+          : 'Menjaga kontak mata emosional penonton dengan pembicara, mendongkrak Average View Duration (AVD) sebesar +25%.',
+        applyAction: (r) => {
+          setEnableFaceTracking(true);
+          if (r.settings.camera_tracking_mode) {
+            setCameraTrackingMode(r.settings.camera_tracking_mode);
+          }
+        }
+      },
+      // 4. Gaya Subtitle & Tipografi Font
+      {
+        stepIndex: 3,
+        cardId: 'card-subtitle-styling',
+        title: isEn ? 'Subtitle Preset & Typography' : 'Gaya Subtitle & Tipografi Font',
+        icon: '🔤',
+        highlightTarget: 'caption',
+        highlightLabel: isEn ? `Subtitle: ${s.caption_style || 'Viral Pop'}` : `Subtitle: ${s.caption_style || 'Viral Pop'}`,
+        appliedValueDisplay: `${s.caption_style || 'Viral Pop'} (${s.caption_font || 'Montserrat'})`,
+        useDescription: isEn
+          ? 'Renders high-contrast, strictly 1-line karaoke captions with bold outlines and modern typography.'
+          : 'Menampilkan subtitle dinamis 1 baris dengan border kontras tinggi dan font tebal yang mudah dibaca.',
+        impactDescription: isEn
+          ? 'Over 70% of social media users browse videos on mute. Ultra-legible typography ensures your message lands instantly.'
+          : 'Lebih dari 70% penonton medsos menonton tanpa menyalakan suara. Subtitle kontras tinggi memastikan pesan tersampaikan.',
+        applyAction: (r) => {
+          const capStyle = (r.settings.caption_style || 'viral_pop') as CaptionStyle;
+          setCaptionStyle(capStyle);
+          setLastActiveCaptionStyle(capStyle);
+          if (r.settings.caption_font) {
+            setCaptionFont(r.settings.caption_font as CaptionFont);
+          }
+        }
+      },
+      // 5. Aksen Kata Kunci & Emoji Emosional
+      {
+        stepIndex: 4,
+        cardId: 'card-keyword-accent',
+        title: isEn ? 'Keyword Accent & Viral Emoji' : 'Aksen Kata Kunci & Emoji Emosional',
+        icon: '⚡',
+        highlightTarget: 'caption',
+        highlightLabel: isEn ? `Accent: ${s.keyword_accent_mode || 'Color + Auto-Emoji'}` : `Aksen: ${s.keyword_accent_mode || 'Warna + Auto-Emoji'}`,
+        appliedValueDisplay: s.keyword_accent_mode || 'accent_and_emoji',
+        useDescription: isEn
+          ? 'Highlights high-retention trigger words with vibrant hues and attaches contextual animated emojis.'
+          : 'Mewarnai kata-kata pemikat (cuan, rahasia, penting) serta memunculkan auto-emoji ekspresif ala Alex Hormozi.',
+        impactDescription: isEn
+          ? 'Provides rhythmic micro-stimulations that break cognitive monotony and prevent viewers from scrolling away.'
+          : 'Memberikan rangsangan visual berkala yang memecah kebosanan mata penonton dan mencegah swipe-away.',
+        applyAction: (r) => {
+          setKeywordAccentMode(r.settings.keyword_accent_mode || 'accent_and_emoji');
+        }
+      },
+      // 6. Hook Punch-In Zoom (Detik 0-3)
+      {
+        stepIndex: 5,
+        cardId: 'card-hook-zoom',
+        title: isEn ? 'Hook Punch-In Zoom (0-3s)' : 'Hook Punch-In Zoom (Detik 0-3)',
+        icon: '🔍',
+        highlightTarget: 'hook_zoom',
+        highlightLabel: isEn ? 'Hook Zoom: 1.14x Pattern Interrupt' : 'Hook Zoom: 1.14x Pattern Interrupt',
+        appliedValueDisplay: s.hook_zoom_enabled !== false ? 'Aktif (1.14x Zoom In)' : 'Nonaktif',
+        useDescription: isEn
+          ? 'Instantly crops 1.14x closer during the initial 3 seconds to generate an energetic visual punch-in.'
+          : 'Memberikan efek pembesaran instan 1.14x pada 3 detik pertama video sebagai teknik pemecah pola (pattern interrupt).',
+        impactDescription: isEn
+          ? 'Seizes viewer curiosity within the first critical 1.5 seconds, elevating overall Hook Rate by +38%.'
+          : 'Menangkap rasa ingin tahu penonton dalam 1.5 detik pertama yang krusial, mendongkrak Hook Rate hingga +38%.',
+        applyAction: (r) => {
+          setHookZoomEnabled(r.settings.hook_zoom_enabled ?? true);
+        }
+      },
+      // 7. Musik Latar (BGM) & Auto-Ducking
+      {
+        stepIndex: 6,
+        cardId: 'card-bgm-ducking',
+        title: isEn ? 'Smart BGM & Dynamic Auto-Ducking' : 'Musik Latar (BGM) & Auto-Ducking',
+        icon: '🎵',
+        highlightTarget: 'audio',
+        highlightLabel: isEn ? `BGM: ${s.bgm_preset || 'Upbeat'} + Auto-Ducking` : `BGM: ${s.bgm_preset || 'Upbeat'} + Auto-Ducking`,
+        appliedValueDisplay: `${s.bgm_preset || 'Upbeat Corporate'} + Auto-Ducking (-14 LUFS)`,
+        useDescription: isEn
+          ? 'Pairs curated royalty-free soundtrack with intelligent auto-ducking that softens music whenever narration is active.'
+          : 'Memadukan musik latar bebas royalti dengan auto-ducking cerdas yang otomatis mengecilkan musik saat ada narasi.',
+        impactDescription: isEn
+          ? 'Maintains infectious tempo and emotional resonance while guaranteeing speech intelligibility remains pristine.'
+          : 'Membangun ritme dan emosi klip tanpa menenggelamkan artikulasi kata-kata narator.',
+        applyAction: (r) => {
+          setBgmPreset(r.settings.bgm_preset || 'upbeat_corporate');
+          setBgmEnabled(true);
+          setSmartDuckingEnabled(true);
+        }
+      },
+      // 8. Anti-Content ID Shield & Micro Pacing
+      {
+        stepIndex: 7,
+        cardId: 'card-anti-content-id',
+        title: isEn ? 'Anti-Content ID Shield & Micro Pacing' : 'Anti-Content ID Shield & Micro Pacing',
+        icon: '🛡️',
+        highlightTarget: 'shield',
+        highlightLabel: isEn ? `Shield: ${(s.speed_ramp_ratio || 1.03).toFixed(2)}x Speed + Vocal DSP` : `Shield: ${(s.speed_ramp_ratio || 1.03).toFixed(2)}x Tempo + Vokal DSP`,
+        appliedValueDisplay: `${(s.speed_ramp_ratio || 1.03).toFixed(2)}x Tempo + Isolasi Vokal DSP`,
+        useDescription: isEn
+          ? 'Accelerates video tempo to 1.03x with pitch preservation and suppresses background noise with vocal isolation.'
+          : 'Mempercepat tempo klip 1.03x secara alami dengan nada suara terjaga dan membersihkan gangguan noise vokal.',
+        impactDescription: isEn
+          ? 'Eliminates micro dead-air pauses and alters digital audiovisual fingerprints to minimize copyright strikes.'
+          : 'Memangkas jeda hening mikro, menaikkan tempo penonton, dan merestrukturisasi sidik jari digital video.',
+        applyAction: (r) => {
+          setSpeedRampRatio(r.settings.speed_ramp_ratio || 1.03);
+          setVocalIsolationMode((r.settings.vocal_isolation_mode as VocalIsolationMode) || 'voice_clarity_bandpass');
+        }
+      },
+      // 9. Teks Judul / Hook Klip Terpilih
+      {
+        stepIndex: 8,
+        cardId: 'card-title-hook-banner',
+        title: isEn ? 'Title Hook & Headline Banner' : 'Teks Judul / Hook Klip Terpilih',
+        icon: '🏷️',
+        highlightTarget: 'title',
+        highlightLabel: isEn ? 'Hook Title Banner: Active' : 'Banner Judul Hook: Terpasang',
+        appliedValueDisplay: currentCustomTitle || currentPreviewClip?.title_suggestion || currentPreviewClip?.title || 'Judul Hook Terpasang',
+        useDescription: isEn
+          ? 'Displays curiosity-inducing headline banner at the top of the video to prime viewer expectations immediately.'
+          : 'Menampilkan headline banner pemikat di bagian atas video untuk memandu ekspektasi penonton sejak detik pertama.',
+        impactDescription: isEn
+          ? 'Crucial click-through and swipe-stop driver that confirms video topic in under 2 seconds.'
+          : 'Faktor penentu yang menghentikan scroll jari penonton dan mengonfirmasi topik video dalam hitungan detik.',
+        applyAction: () => {
+          setTitlePosition('auto');
+        }
+      }
+    ];
+  };
+
+  const executeWalkthroughStep = (stepIndex: number, recToUse?: ClipSettingsRecommendation | null) => {
+    const rec = recToUse || recommendation;
+    if (!rec) return;
+
+    if (stepIndex < 0 || stepIndex > 8) {
+      setWalkthroughStep(null);
+      return;
+    }
+
+    const steps = getWalkthroughSteps(rec);
+    const step = steps[stepIndex];
+    if (!step) return;
+
+    // Apply the step setting
+    step.applyAction(rec);
+
+    // Update state
+    setWalkthroughStep(stepIndex);
+
+    // Trigger 3-second live preview highlight
+    triggerPreviewHighlight(step.highlightTarget, step.highlightLabel, step.impactDescription, false);
+
+    // Smooth scroll to control card
+    setTimeout(() => {
+      const el = document.getElementById(step.cardId);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 50);
+  };
+
+  const handleStartWalkthrough = (recToUse?: ClipSettingsRecommendation | null) => {
+    const rec = recToUse || recommendation;
+    if (!rec) return;
+
+    // Apply full recommendation in background for consistency
+    handleApplyRecommendation(rec);
+
+    // Start guided walkthrough at Step 1 (index 0)
+    executeWalkthroughStep(0, rec);
+  };
+
+  const handleFinishWalkthrough = () => {
+    setWalkthroughStep(null);
     setRecAppliedToast(true);
     setTimeout(() => {
       setRecAppliedToast(false);
@@ -2927,57 +3346,29 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                   </div>
                 </div>
 
-                {/* Action Buttons: Inspect Diff vs 1-Click Apply */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.45rem', marginTop: '0.2rem' }}>
+                {/* 1-Click Apply AI Recommendation with Step-by-Step Guided Walkthrough */}
+                <div style={{ marginTop: '0.4rem' }}>
                   <button
                     type="button"
-                    onClick={() => {
-                      setIsDiffInspectorOpen(true);
-                      if (phoneContainerRef.current) {
-                        phoneContainerRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                      }
-                    }}
+                    onClick={() => handleStartWalkthrough(recommendation)}
                     style={{
-                      padding: '0.65rem 0.75rem',
-                      background: 'rgba(99, 102, 241, 0.18)',
-                      border: '1px solid rgba(99, 102, 241, 0.45)',
-                      borderRadius: '8px',
-                      color: '#c7d2fe',
-                      fontWeight: 700,
-                      fontSize: '0.76rem',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '0.35rem',
-                      transition: 'all 0.18s ease',
-                      boxShadow: '0 2px 6px rgba(0, 0, 0, 0.2)'
-                    }}
-                    title={t.studio.smartRecInspectBtn}
-                  >
-                    <span>🔍</span> {t.studio.smartRecInspectBtn}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleApplyRecommendation(recommendation)}
-                    style={{
-                      padding: '0.65rem 0.75rem',
+                      width: '100%',
+                      padding: '0.75rem 1rem',
                       background: recAppliedToast
                         ? 'linear-gradient(135deg, #059669, #10b981)'
-                        : 'linear-gradient(135deg, #4f46e5, #4338ca)',
-                      border: '1px solid rgba(255, 255, 255, 0.12)',
+                        : 'linear-gradient(135deg, #4f46e5, #6366f1)',
+                      border: '1px solid rgba(255, 255, 255, 0.18)',
                       borderRadius: '8px',
                       color: '#ffffff',
-                      fontWeight: 700,
-                      fontSize: '0.76rem',
+                      fontWeight: 800,
+                      fontSize: '0.84rem',
                       cursor: 'pointer',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      gap: '0.35rem',
+                      gap: '0.5rem',
                       transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.25)'
+                      boxShadow: '0 4px 14px rgba(99, 102, 241, 0.35)'
                     }}
                   >
                     {recAppliedToast ? t.studio.smartRecAppliedToast : t.studio.smartRecApplyBtn}
@@ -3025,11 +3416,27 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
           </div>
 
           {/* 1. Canvas & Inner Aspect Ratio */}
-          <div className="studio-card-group">
+          <div
+            id="card-canvas-aspect-ratio"
+            className={`studio-card-group ${walkthroughStep === 0 ? 'is-walkthrough-focused' : ''}`}
+          >
             <div className="group-header">
               <span className="group-title">{t.studio.canvasTitle}</span>
               <span className="group-badge">{t.studio.canvasBadge}</span>
             </div>
+
+            {walkthroughStep === 0 && recommendation && (
+              <WalkthroughCardCallout
+                step={getWalkthroughSteps(recommendation)[0]}
+                totalSteps={9}
+                onNext={() => executeWalkthroughStep(1)}
+                onReHighlight={() => triggerPreviewHighlight('layout', 'Rasio Aspek: 9:16 (Vertikal Penuh)', getWalkthroughSteps(recommendation)[0].impactDescription, false)}
+                onFinish={handleFinishWalkthrough}
+                onSkip={handleFinishWalkthrough}
+                isLast={false}
+                t={t}
+              />
+            )}
 
             <div className="aspect-options-grid">
               <button
@@ -3084,7 +3491,24 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
             </div>
 
             {/* Background Customizer & Layout Engine */}
-            <div style={{ marginTop: '1rem', marginBottom: '1rem' }}>
+            <div
+              id="card-background-customizer"
+              className={walkthroughStep === 1 ? 'is-walkthrough-focused' : ''}
+              style={{ marginTop: '1rem', marginBottom: '1rem', borderRadius: '10px' }}
+            >
+              {walkthroughStep === 1 && recommendation && (
+                <WalkthroughCardCallout
+                  step={getWalkthroughSteps(recommendation)[1]}
+                  totalSteps={9}
+                  onNext={() => executeWalkthroughStep(2)}
+                  onPrev={() => executeWalkthroughStep(0)}
+                  onReHighlight={() => triggerPreviewHighlight('layout', 'Latar Belakang: Gaussian Blur Estetik', getWalkthroughSteps(recommendation)[1].impactDescription, false)}
+                  onFinish={handleFinishWalkthrough}
+                  onSkip={handleFinishWalkthrough}
+                  isLast={false}
+                  t={t}
+                />
+              )}
               <BackgroundCustomizer
                 aspectRatio={aspectRatio}
                 onAspectRatioChange={handleSelectAspectRatio}
@@ -3109,7 +3533,24 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
             </div>
 
             {/* AI Active Speaker & Object Centering */}
-            <div style={{ marginTop: '0.85rem' }}>
+            <div
+              id="card-camera-framing"
+              className={walkthroughStep === 2 ? 'is-walkthrough-focused' : ''}
+              style={{ marginTop: '0.85rem', borderRadius: '8px' }}
+            >
+              {walkthroughStep === 2 && recommendation && (
+                <WalkthroughCardCallout
+                  step={getWalkthroughSteps(recommendation)[2]}
+                  totalSteps={9}
+                  onNext={() => executeWalkthroughStep(3)}
+                  onPrev={() => executeWalkthroughStep(1)}
+                  onReHighlight={() => triggerPreviewHighlight('layout', `Framing Kamera: ${recommendation.settings.camera_tracking_mode || 'Fit Balanced 1.25x'}`, getWalkthroughSteps(recommendation)[2].impactDescription, false)}
+                  onFinish={handleFinishWalkthrough}
+                  onSkip={handleFinishWalkthrough}
+                  isLast={false}
+                  t={t}
+                />
+              )}
               <div className="studio-checkbox-row" style={{ display: 'flex', alignItems: 'flex-start', gap: '0.45rem', fontSize: '0.78rem' }}>
                 <input
                   type="checkbox"
@@ -3468,13 +3909,31 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
           </div>
 
           {/* 4. Title / Hook Banner */}
-          <div className="studio-card-group">
+          <div
+            id="card-title-hook-banner"
+            className={`studio-card-group ${walkthroughStep === 8 ? 'is-walkthrough-focused' : ''}`}
+          >
             <div className="group-header">
               <span className="group-title">{t.studio.titleBannerTitle}</span>
               <span className="group-badge">
                 {t.studio.customYBadge(safeTitleY)}
               </span>
             </div>
+
+            {walkthroughStep === 8 && recommendation && (
+              <WalkthroughCardCallout
+                step={getWalkthroughSteps(recommendation)[8]}
+                totalSteps={9}
+                onNext={handleFinishWalkthrough}
+                onPrev={() => executeWalkthroughStep(7)}
+                onReHighlight={() => triggerPreviewHighlight('title', 'Banner Judul Hook: Terpasang', getWalkthroughSteps(recommendation)[8].impactDescription, false)}
+                onFinish={handleFinishWalkthrough}
+                onRegenerate={handleRegenerateRecommendation}
+                onSkip={handleFinishWalkthrough}
+                isLast={true}
+                t={t}
+              />
+            )}
 
             {/* Visibility Selector */}
             <div className="title-inputs-row" style={{ alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.65rem' }}>
@@ -4090,11 +4549,11 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
               <div style={{ background: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '6px', padding: '0.75rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.55rem' }}>
                   <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                    {copyDeck.hashtags.length} Algorithmic Tags
+                    {(copyDeck.hashtags || []).length} Algorithmic Tags
                   </span>
                   <button
                     type="button"
-                    onClick={() => handleCopyText(copyDeck.hashtags_formatted, 'all_hashtags')}
+                    onClick={() => handleCopyText(copyDeck.hashtags_formatted || '', 'all_hashtags')}
                     className="pill-btn active"
                     style={{ fontSize: '0.72rem', padding: '0.2rem 0.6rem' }}
                   >
@@ -4102,7 +4561,7 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                   </button>
                 </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
-                  {copyDeck.hashtags.map((tag, i) => (
+                  {(copyDeck.hashtags || []).map((tag, i) => (
                     <span
                       key={i}
                       onClick={() => handleCopyText(tag, `tag-${i}`)}
@@ -4127,11 +4586,28 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
           </div>
 
           {/* 5. Subtitle Style & Font */}
-          <div className="studio-card-group">
+          <div
+            id="card-subtitle-styling"
+            className={`studio-card-group ${walkthroughStep === 3 ? 'is-walkthrough-focused' : ''}`}
+          >
             <div className="group-header">
               <span className="group-title">{t.studio.subtitlesTitle}</span>
               <span className="group-badge success-badge">{t.studio.strictlyOneLine}</span>
             </div>
+
+            {walkthroughStep === 3 && recommendation && (
+              <WalkthroughCardCallout
+                step={getWalkthroughSteps(recommendation)[3]}
+                totalSteps={9}
+                onNext={() => executeWalkthroughStep(4)}
+                onPrev={() => executeWalkthroughStep(2)}
+                onReHighlight={() => triggerPreviewHighlight('caption', `Subtitle: ${recommendation.settings.caption_style || 'Viral Pop'}`, getWalkthroughSteps(recommendation)[3].impactDescription, false)}
+                onFinish={handleFinishWalkthrough}
+                onSkip={handleFinishWalkthrough}
+                isLast={false}
+                t={t}
+              />
+            )}
 
             {/* Subtitle Visibility Selector */}
             <div className="title-inputs-row" style={{ alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.65rem' }}>
@@ -4745,7 +5221,24 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                 </div>
 
                 {/* v3.1 Subtitle Keyword Emoji Accent & Viral Styling */}
-                <div className="studio-sub-toggle" style={{ marginTop: '0.9rem', flexDirection: 'column', alignItems: 'stretch', padding: '0.75rem 0.85rem', borderRadius: '8px', background: 'linear-gradient(145deg, rgba(239, 68, 68, 0.08), rgba(245, 158, 11, 0.05))', border: '1px solid rgba(245, 158, 11, 0.28)' }}>
+                <div
+                  id="card-keyword-accent"
+                  className={`studio-sub-toggle ${walkthroughStep === 4 ? 'is-walkthrough-focused' : ''}`}
+                  style={{ marginTop: '0.9rem', flexDirection: 'column', alignItems: 'stretch', padding: '0.75rem 0.85rem', borderRadius: '8px', background: 'linear-gradient(145deg, rgba(239, 68, 68, 0.08), rgba(245, 158, 11, 0.05))', border: '1px solid rgba(245, 158, 11, 0.28)' }}
+                >
+                  {walkthroughStep === 4 && recommendation && (
+                    <WalkthroughCardCallout
+                      step={getWalkthroughSteps(recommendation)[4]}
+                      totalSteps={9}
+                      onNext={() => executeWalkthroughStep(5)}
+                      onPrev={() => executeWalkthroughStep(3)}
+                      onReHighlight={() => triggerPreviewHighlight('caption', `Aksen Kata Kunci: ${recommendation.settings.keyword_accent_mode}`, getWalkthroughSteps(recommendation)[4].impactDescription, false)}
+                      onFinish={handleFinishWalkthrough}
+                      onSkip={handleFinishWalkthrough}
+                      isLast={false}
+                      t={t}
+                    />
+                  )}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem', flexWrap: 'wrap', gap: '0.4rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
                       <span className="sub-toggle-label" style={{ margin: 0, fontWeight: 700, color: '#f59e0b' }}>
@@ -4794,7 +5287,10 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
           </div>
 
           {/* 6. Smart Audio BGM Compositing & Hook Punch Zoom (v3.2) */}
-          <div className="studio-card-group">
+          <div
+            id="card-bgm-ducking"
+            className={`studio-card-group ${walkthroughStep === 6 ? 'is-walkthrough-focused' : ''}`}
+          >
             <div className="group-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
                 <span className="group-title">🎵 {t.studio.audioBgmTitle || 'Smart BGM & Audio Compositing'}</span>
@@ -4806,6 +5302,20 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                 {(bgmEnabled && bgmPreset !== 'none') ? t.studio.bgmActiveBadge : t.studio.bgmOptionalBadge}
               </span>
             </div>
+
+            {walkthroughStep === 6 && recommendation && (
+              <WalkthroughCardCallout
+                step={getWalkthroughSteps(recommendation)[6]}
+                totalSteps={9}
+                onNext={() => executeWalkthroughStep(7)}
+                onPrev={() => executeWalkthroughStep(5)}
+                onReHighlight={() => triggerPreviewHighlight('audio', `BGM: ${recommendation.settings.bgm_preset || 'Upbeat'} + Auto-Ducking`, getWalkthroughSteps(recommendation)[6].impactDescription, false)}
+                onFinish={handleFinishWalkthrough}
+                onSkip={handleFinishWalkthrough}
+                isLast={false}
+                t={t}
+              />
+            )}
 
             <p style={{ fontSize: '0.74rem', color: 'var(--text-muted)', margin: '0.4rem 0 0.8rem 0', lineHeight: 1.4 }}>
               {t.studio.audioBgmDesc || 'Pilih musik latar bebas royalti dengan auto-ducking cerdas dan broadcast mastering (-14 LUFS).'}
@@ -5053,7 +5563,24 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
             )}
 
             {/* 3-Second Hook Punch-In Zoom Toggle */}
-            <div style={{ marginTop: '0.85rem', padding: '0.75rem', borderRadius: '8px', background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
+            <div
+              id="card-hook-zoom"
+              className={walkthroughStep === 5 ? 'is-walkthrough-focused' : ''}
+              style={{ marginTop: '0.85rem', padding: '0.75rem', borderRadius: '8px', background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.06)' }}
+            >
+              {walkthroughStep === 5 && recommendation && (
+                <WalkthroughCardCallout
+                  step={getWalkthroughSteps(recommendation)[5]}
+                  totalSteps={9}
+                  onNext={() => executeWalkthroughStep(6)}
+                  onPrev={() => executeWalkthroughStep(4)}
+                  onReHighlight={() => triggerPreviewHighlight('hook_zoom', 'Hook Zoom: 1.14x Pattern Interrupt', getWalkthroughSteps(recommendation)[5].impactDescription, false)}
+                  onFinish={handleFinishWalkthrough}
+                  onSkip={handleFinishWalkthrough}
+                  isLast={false}
+                  t={t}
+                />
+              )}
               <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.65rem', cursor: 'pointer' }}>
                 <input
                   type="checkbox"
@@ -5768,8 +6295,10 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
           </div>
 
           {/* 8.5 Anti-Content ID Shield & Micro Pacing */}
+          {/* 8.5 Anti-Content ID Shield & Micro Pacing */}
           <div
-            className="studio-card-group"
+            id="card-anti-content-id"
+            className={`studio-card-group ${walkthroughStep === 7 ? 'is-walkthrough-focused' : ''}`}
             style={{
               background: (speedRampRatio !== 1.0 || vocalIsolationMode !== 'off')
                 ? 'linear-gradient(145deg, rgba(30, 27, 75, 0.45), rgba(15, 23, 42, 0.65))'
@@ -5825,6 +6354,20 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                   : '❌ Shield Nonaktif'}
               </span>
             </div>
+
+            {walkthroughStep === 7 && recommendation && (
+              <WalkthroughCardCallout
+                step={getWalkthroughSteps(recommendation)[7]}
+                totalSteps={9}
+                onNext={() => executeWalkthroughStep(8)}
+                onPrev={() => executeWalkthroughStep(6)}
+                onReHighlight={() => triggerPreviewHighlight('shield', `Shield: ${(recommendation.settings.speed_ramp_ratio || 1.03).toFixed(2)}x Tempo + Vokal DSP`, getWalkthroughSteps(recommendation)[7].impactDescription, false)}
+                onFinish={handleFinishWalkthrough}
+                onSkip={handleFinishWalkthrough}
+                isLast={false}
+                t={t}
+              />
+            )}
 
             <p style={{ fontSize: '0.74rem', color: 'var(--text-muted)', margin: '0 0 0.95rem 0', lineHeight: 1.45 }}>
               Melindungi video klip dari deteksi otomatis YouTube Content ID (Audio & Visual Fingerprinting) dan memaksimalkan retensi algoritma Shorts (APV &gt; 100%) lewat micro-pacing dan isolasi vokal DSP.
@@ -7649,424 +8192,7 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
         </div>
       )}
 
-      {/* v3.8 AI Recommendation Diff & Impact Inspector Modal */}
-      {isDiffInspectorOpen && recommendation && createPortal(
-        <div
-          className={`diff-inspector-overlay ${previewHighlight ? 'has-active-spotlight' : ''}`}
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setIsDiffInspectorOpen(false);
-          }}
-        >
-          <div className="diff-inspector-card">
-            {/* Modal Header */}
-            <div className="diff-inspector-header">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-                <span style={{ fontSize: '1.4rem' }}>{recommendation.archetype_icon}</span>
-                <div>
-                  <h3 style={{ margin: 0, fontSize: '0.98rem', color: '#f8fafc', fontWeight: 800 }}>
-                    {t.studio.smartRecModalTitle}
-                  </h3>
-                  <div style={{ fontSize: '0.72rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '2px' }}>
-                    <span style={{ color: '#818cf8', fontWeight: 700 }}>{recommendation.archetype_name}</span>
-                    <span>•</span>
-                    <span style={{ color: '#34d399', fontWeight: 700 }}>
-                      🔥 {recommendation.viral_scores?.overall_score || 95}% {t.studio.smartRecOverall}
-                    </span>
-                  </div>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsDiffInspectorOpen(false)}
-                style={{
-                  background: 'rgba(255, 255, 255, 0.08)',
-                  border: 'none',
-                  color: '#94a3b8',
-                  borderRadius: '8px',
-                  width: '32px',
-                  height: '32px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer',
-                  fontSize: '1rem'
-                }}
-                title={t.studio.smartRecCancelBtn}
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* Modal Body */}
-            <div className="diff-inspector-body">
-              {/* Strategic Reasoning Banner */}
-              <div style={{
-                padding: '0.75rem 1rem',
-                borderRadius: '10px',
-                background: 'rgba(99, 102, 241, 0.1)',
-                border: '1px solid rgba(99, 102, 241, 0.25)',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '0.3rem'
-              }}>
-                <div style={{ fontSize: '0.7rem', color: '#a5b4fc', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                  🎯 {t.studio.smartRecStrategy}
-                </div>
-                <div style={{ fontSize: '0.78rem', color: '#e2e8f0', lineHeight: 1.45 }}>
-                  "{recommendation.reasoning}"
-                </div>
-                {recommendation.growth_tip && (
-                  <div style={{ fontSize: '0.72rem', color: '#6ee7b7', marginTop: '2px', lineHeight: 1.4 }}>
-                    💡 <strong>Tips:</strong> {recommendation.growth_tip}
-                  </div>
-                )}
-              </div>
-
-              {/* Informative Guidance Notice */}
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '0.45rem 0.8rem',
-                background: 'rgba(56, 189, 248, 0.08)',
-                border: '1px solid rgba(56, 189, 248, 0.2)',
-                borderRadius: '8px',
-                fontSize: '0.73rem',
-                color: '#7dd3fc',
-                flexWrap: 'wrap',
-                gap: '0.4rem'
-              }}>
-                <span>{t.studio.smartRecHighlightNotice}</span>
-                <span style={{ fontSize: '0.7rem', color: '#38bdf8', fontWeight: 700 }}>⏱️ 3 Detik Auto Dismiss</span>
-              </div>
-
-              {/* Side-by-side comparison table */}
-              <div className="diff-table-container">
-                <table className="diff-table">
-                  <thead>
-                    <tr>
-                      <th style={{ width: '22%' }}>{t.studio.smartRecColFeature}</th>
-                      <th style={{ width: '20%' }}>{t.studio.smartRecColCurrent}</th>
-                      <th style={{ width: '22%' }}>{t.studio.smartRecColRecommended}</th>
-                      <th style={{ width: '24%' }}>{t.studio.smartRecColImpact}</th>
-                      <th style={{ width: '12%', textAlign: 'center' }}>{t.studio.smartRecColAction}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {/* 1. Subtitle Style & Font */}
-                    <tr>
-                      <td>
-                        <strong style={{ color: '#f8fafc' }}>Gaya Subtitle & Font</strong>
-                        <div style={{ fontSize: '0.68rem', color: '#94a3b8' }}>Tipografi & keterbacaan</div>
-                      </td>
-                      <td>
-                        <span style={{ color: '#cbd5e1' }}>{captionStyle.toUpperCase().replace('_', ' ')}</span>
-                        <div style={{ fontSize: '0.68rem', color: '#64748b' }}>{captionFont} ({fontSize})</div>
-                      </td>
-                      <td>
-                        <span style={{ color: '#38bdf8', fontWeight: 700 }}>
-                          {recommendation.settings.caption_style.toUpperCase().replace('_', ' ')}
-                        </span>
-                        <div style={{ fontSize: '0.68rem', color: '#818cf8', fontWeight: 600 }}>
-                          {recommendation.settings.caption_font} ({recommendation.settings.font_size})
-                        </div>
-                      </td>
-                      <td style={{ color: '#94a3b8', fontSize: '0.72rem' }}>
-                        {recommendation.param_impacts?.caption_style || '+24% keterbacaan instan di layar ponsel saat scroll cepat'}
-                      </td>
-                      <td style={{ textAlign: 'center' }}>
-                        <button
-                          type="button"
-                          onClick={() => triggerPreviewHighlight('caption', `Subtitle: ${recommendation.settings.caption_style}`, recommendation.param_impacts?.caption_style || '+24% Keterbacaan Instan')}
-                          style={{
-                            padding: '3px 8px',
-                            background: 'rgba(56, 189, 248, 0.15)',
-                            border: '1px solid rgba(56, 189, 248, 0.4)',
-                            borderRadius: '6px',
-                            color: '#38bdf8',
-                            fontSize: '0.7rem',
-                            fontWeight: 700,
-                            cursor: 'pointer'
-                          }}
-                        >
-                          {t.studio.smartRecHighlightAction}
-                        </button>
-                      </td>
-                    </tr>
-
-                    {/* 2. Keyword Accent Mode */}
-                    <tr>
-                      <td>
-                        <strong style={{ color: '#f8fafc' }}>Aksen Kata Kunci & Emoji</strong>
-                        <div style={{ fontSize: '0.68rem', color: '#94a3b8' }}>Emosional visual markers</div>
-                      </td>
-                      <td>
-                        <span style={{ color: '#cbd5e1' }}>
-                          {keywordAccentMode === 'accent_and_emoji' ? 'Aksen & Emoji' : keywordAccentMode === 'accent_only' ? 'Aksen Saja' : 'Nonaktif'}
-                        </span>
-                      </td>
-                      <td>
-                        <span style={{ color: '#38bdf8', fontWeight: 700 }}>
-                          {recommendation.settings.keyword_accent_mode === 'accent_and_emoji' ? 'Aksen & Emoji' : recommendation.settings.keyword_accent_mode === 'accent_only' ? 'Aksen Saja' : 'Nonaktif'}
-                        </span>
-                      </td>
-                      <td style={{ color: '#94a3b8', fontSize: '0.72rem' }}>
-                        {recommendation.param_impacts?.keyword_accent_mode || 'Menyorot emosi dan angka kunci (+30% retensi interaksi)'}
-                      </td>
-                      <td style={{ textAlign: 'center' }}>
-                        <button
-                          type="button"
-                          onClick={() => triggerPreviewHighlight('caption', `Aksen Kata Kunci: ${recommendation.settings.keyword_accent_mode}`, recommendation.param_impacts?.keyword_accent_mode || 'Aksen Kata Kunci')}
-                          style={{
-                            padding: '3px 8px',
-                            background: 'rgba(56, 189, 248, 0.15)',
-                            border: '1px solid rgba(56, 189, 248, 0.4)',
-                            borderRadius: '6px',
-                            color: '#38bdf8',
-                            fontSize: '0.7rem',
-                            fontWeight: 700,
-                            cursor: 'pointer'
-                          }}
-                        >
-                          {t.studio.smartRecHighlightAction}
-                        </button>
-                      </td>
-                    </tr>
-
-                    {/* 3. Hook Punch-In Zoom */}
-                    <tr>
-                      <td>
-                        <strong style={{ color: '#f8fafc' }}>Hook Punch-In Zoom</strong>
-                        <div style={{ fontSize: '0.68rem', color: '#94a3b8' }}>3-Second Pattern Interrupt</div>
-                      </td>
-                      <td>
-                        <span style={{ color: hookZoomEnabled ? '#4ade80' : '#64748b' }}>
-                          {hookZoomEnabled ? 'Aktif (1.15x di 3s)' : 'Nonaktif'}
-                        </span>
-                      </td>
-                      <td>
-                        <span style={{ color: recommendation.settings.hook_zoom_enabled ? '#38bdf8' : '#94a3b8', fontWeight: 700 }}>
-                          {recommendation.settings.hook_zoom_enabled ? 'Aktif (1.15x di 3s)' : 'Nonaktif'}
-                        </span>
-                      </td>
-                      <td style={{ color: '#94a3b8', fontSize: '0.72rem' }}>
-                        {recommendation.param_impacts?.hook_zoom_enabled || 'Pattern interruption di detik 0 sampai 3 memotong bounce rate'}
-                      </td>
-                      <td style={{ textAlign: 'center' }}>
-                        <button
-                          type="button"
-                          onClick={() => triggerPreviewHighlight('hook_zoom', 'Hook Punch-In Zoom (1.15x)', recommendation.param_impacts?.hook_zoom_enabled || 'Pattern Interruption 0-3s')}
-                          style={{
-                            padding: '3px 8px',
-                            background: 'rgba(245, 158, 11, 0.15)',
-                            border: '1px solid rgba(245, 158, 11, 0.4)',
-                            borderRadius: '6px',
-                            color: '#fbbf24',
-                            fontSize: '0.7rem',
-                            fontWeight: 700,
-                            cursor: 'pointer'
-                          }}
-                        >
-                          {t.studio.smartRecHighlightAction}
-                        </button>
-                      </td>
-                    </tr>
-
-                    {/* 4. Background Music (BGM) & Auto-Ducking */}
-                    <tr>
-                      <td>
-                        <strong style={{ color: '#f8fafc' }}>BGM & Auto-Ducking</strong>
-                        <div style={{ fontSize: '0.68rem', color: '#94a3b8' }}>Audio mood & kejernihan vokal</div>
-                      </td>
-                      <td>
-                        <span style={{ color: '#cbd5e1' }}>
-                          {bgmPreset !== 'none' ? `${bgmPreset} (${bgmVolume}%)` : 'Nonaktif'}
-                        </span>
-                        <div style={{ fontSize: '0.68rem', color: '#64748b' }}>
-                          {smartDuckingEnabled ? 'Auto-Ducking On' : 'Tanpa Ducking'}
-                        </div>
-                      </td>
-                      <td>
-                        <span style={{ color: '#38bdf8', fontWeight: 700 }}>
-                          {recommendation.settings.bgm_preset} ({recommendation.settings.bgm_volume}%)
-                        </span>
-                        <div style={{ fontSize: '0.68rem', color: '#818cf8', fontWeight: 600 }}>
-                          {recommendation.settings.auto_ducking ? 'Auto-Ducking On' : 'Tanpa Ducking'}
-                        </div>
-                      </td>
-                      <td style={{ color: '#94a3b8', fontSize: '0.72rem' }}>
-                        {recommendation.param_impacts?.bgm_preset || 'Membangun atmosfer emosional penonton sesuai jenis konten'}
-                      </td>
-                      <td style={{ textAlign: 'center' }}>
-                        <button
-                          type="button"
-                          onClick={() => triggerPreviewHighlight('audio', `BGM: ${recommendation.settings.bgm_preset} + Auto-Ducking`, recommendation.param_impacts?.bgm_preset || 'Audio Mood & Balance')}
-                          style={{
-                            padding: '3px 8px',
-                            background: 'rgba(56, 189, 248, 0.15)',
-                            border: '1px solid rgba(56, 189, 248, 0.4)',
-                            borderRadius: '6px',
-                            color: '#38bdf8',
-                            fontSize: '0.7rem',
-                            fontWeight: 700,
-                            cursor: 'pointer'
-                          }}
-                        >
-                          {t.studio.smartRecHighlightAction}
-                        </button>
-                      </td>
-                    </tr>
-
-                    {/* 5. Anti-Content ID Shield & Micro Pacing */}
-                    <tr>
-                      <td>
-                        <strong style={{ color: '#f8fafc' }}>Anti-Content ID Shield</strong>
-                        <div style={{ fontSize: '0.68rem', color: '#94a3b8' }}>Micro Pacing & Vokal DSP</div>
-                      </td>
-                      <td>
-                        <span style={{ color: '#cbd5e1' }}>
-                          {speedRampRatio.toFixed(2)}x {vocalIsolationMode !== 'off' ? `+ ${vocalIsolationMode}` : ''}
-                        </span>
-                      </td>
-                      <td>
-                        <span style={{ color: '#10b981', fontWeight: 700 }}>
-                          {(recommendation.settings.speed_ramp_ratio || 1.03).toFixed(2)}x
-                        </span>
-                        <div style={{ fontSize: '0.68rem', color: '#34d399', fontWeight: 600 }}>
-                          {recommendation.settings.vocal_isolation_mode === 'center_vocal_extract' ? 'Vokal Bersih (DSP)' : 'Normal'}
-                        </div>
-                      </td>
-                      <td style={{ color: '#94a3b8', fontSize: '0.72rem' }}>
-                        {recommendation.param_impacts?.speed_ramp_ratio || 'Anti-Content ID YouTube & pemadatan tempo klip tanpa distorsi vokal'}
-                      </td>
-                      <td style={{ textAlign: 'center' }}>
-                        <button
-                          type="button"
-                          onClick={() => triggerPreviewHighlight('shield', `Shield: ${(recommendation.settings.speed_ramp_ratio || 1.03).toFixed(2)}x Micro Pacing + Vokal DSP`, recommendation.param_impacts?.speed_ramp_ratio || 'Bypass Deteksi Hak Cipta YouTube')}
-                          style={{
-                            padding: '3px 8px',
-                            background: 'rgba(16, 185, 129, 0.15)',
-                            border: '1px solid rgba(16, 185, 129, 0.4)',
-                            borderRadius: '6px',
-                            color: '#34d399',
-                            fontSize: '0.7rem',
-                            fontWeight: 700,
-                            cursor: 'pointer'
-                          }}
-                        >
-                          {t.studio.smartRecHighlightAction}
-                        </button>
-                      </td>
-                    </tr>
-
-                    {/* 6. Smart Camera Tracking / Framing */}
-                    <tr>
-                      <td>
-                        <strong style={{ color: '#f8fafc' }}>Framing Kamera 9:16</strong>
-                        <div style={{ fontSize: '0.68rem', color: '#94a3b8' }}>Face focus & kanvas vertikal</div>
-                      </td>
-                      <td>
-                        <span style={{ color: '#cbd5e1' }}>
-                          {cameraTrackingMode === 'fit_balanced' ? 'Fit Balanced (1.25x)' : cameraTrackingMode === 'fit_close_up' ? 'Fit Close-Up (1.45x)' : 'Center Crop'}
-                        </span>
-                      </td>
-                      <td>
-                        <span style={{ color: '#38bdf8', fontWeight: 700 }}>
-                          {recommendation.settings.camera_tracking_mode === 'fit_balanced' ? 'Fit Balanced (1.25x)' : recommendation.settings.camera_tracking_mode === 'fit_close_up' ? 'Fit Close-Up (1.45x)' : 'Center Crop'}
-                        </span>
-                      </td>
-                      <td style={{ color: '#94a3b8', fontSize: '0.72rem' }}>
-                        {recommendation.param_impacts?.camera_tracking_mode || 'Wajah pembicara otomatis terpusat dinamis di kanvas vertikal 9:16'}
-                      </td>
-                      <td style={{ textAlign: 'center' }}>
-                        <button
-                          type="button"
-                          onClick={() => triggerPreviewHighlight('layout', `Framing Kamera: ${recommendation.settings.camera_tracking_mode || 'Fit Balanced'}`, recommendation.param_impacts?.camera_tracking_mode || 'Wajah Terpusat di 9:16')}
-                          style={{
-                            padding: '3px 8px',
-                            background: 'rgba(56, 189, 248, 0.15)',
-                            border: '1px solid rgba(56, 189, 248, 0.4)',
-                            borderRadius: '6px',
-                            color: '#38bdf8',
-                            fontSize: '0.7rem',
-                            fontWeight: 700,
-                            cursor: 'pointer'
-                          }}
-                        >
-                          {t.studio.smartRecHighlightAction}
-                        </button>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* Modal Footer (Confirmation Gate) */}
-            <div className="diff-inspector-footer">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <button
-                  type="button"
-                  onClick={() => setIsDiffInspectorOpen(false)}
-                  style={{
-                    padding: '0.6rem 0.95rem',
-                    background: 'rgba(255, 255, 255, 0.06)',
-                    border: '1px solid rgba(255, 255, 255, 0.12)',
-                    borderRadius: '8px',
-                    color: '#94a3b8',
-                    fontWeight: 600,
-                    fontSize: '0.78rem',
-                    cursor: 'pointer'
-                  }}
-                >
-                  {t.studio.smartRecCancelBtn}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleRegenerateRecommendation}
-                  style={{
-                    padding: '0.6rem 0.95rem',
-                    background: 'rgba(245, 158, 11, 0.15)',
-                    border: '1px solid rgba(245, 158, 11, 0.4)',
-                    borderRadius: '8px',
-                    color: '#fbbf24',
-                    fontWeight: 700,
-                    fontSize: '0.78rem',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.4rem'
-                  }}
-                >
-                  {t.studio.smartRecRegenerateBtn}
-                </button>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => handleApplyRecommendation(recommendation)}
-                style={{
-                  padding: '0.6rem 1.4rem',
-                  background: 'linear-gradient(135deg, #059669, #10b981)',
-                  border: '1px solid rgba(255, 255, 255, 0.2)',
-                  borderRadius: '8px',
-                  color: '#ffffff',
-                  fontWeight: 800,
-                  fontSize: '0.82rem',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                  boxShadow: '0 4px 14px rgba(16, 185, 129, 0.35)'
-                }}
-              >
-                {t.studio.smartRecConfirmBtn}
-              </button>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
+      {/* Guided Walkthrough Callout replaces diff modal */}
     </section>
   );
 };

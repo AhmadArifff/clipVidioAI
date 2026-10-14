@@ -129,6 +129,22 @@ async def add_security_headers(request: Request, call_next):
     return response
 
 
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    errors = exc.errors()
+    logger.error(f"[Validation Error 422] {request.method} {request.url.path}: {errors}")
+    error_messages = []
+    for err in errors:
+        loc = " -> ".join(str(p) for p in err.get("loc", []) if p != "body")
+        msg = err.get("msg", "Invalid value")
+        error_messages.append(f"{loc}: {msg}" if loc else msg)
+    summary_msg = "; ".join(error_messages) or "Validation error in request payload"
+    return JSONResponse(status_code=422, content={"detail": summary_msg, "errors": errors})
+
+
 # Include Modular Routers
 app.include_router(analyze_router)
 app.include_router(render_router)

@@ -304,7 +304,7 @@ export interface RenderSettings {
   podcastGuestCx?: number;
   // v3.6 Smart Camera Tracking (CapCut Style) & Fit to Canvas
   cameraTrackingMode?: CameraTrackingMode;
-  trackingSmoothness?: number; // 1 to 10
+  trackingSmoothness?: number; // 0.05 to 0.45 (lerp alpha factor) or 1 to 10 scale
   // v3.6 Comedy Expression FX (PWK Style)
   comedyEffectPreset?: ComedyEffectPreset;
   comedyEffectStartTime?: number; // seconds
