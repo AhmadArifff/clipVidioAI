@@ -37,6 +37,7 @@ import { BackgroundCustomizer } from './BackgroundCustomizer';
 interface ClipStudioSectionProps {
   videoUrl: string;
   videoId: string;
+  channelName?: string;
   allClips: ViralClip[];
   markedClips: ViralClip[];
   activeClip: ViralClip | null;
@@ -843,6 +844,7 @@ export const WalkthroughCardCallout: React.FC<{
 export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
   videoUrl,
   videoId,
+  channelName,
   allClips,
   markedClips,
   activeClip,
@@ -2508,6 +2510,22 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
     }
   };
 
+  const handleApplySourceChannel = (ch: string, format: 'handle' | 'source' | 'credit' | 'youtube' = 'handle') => {
+    const clean = ch.trim();
+    if (!clean) return;
+    setWatermarkEnabled(true);
+    setWatermarkType('text');
+    let text = `@${clean}`;
+    if (format === 'source') text = `Source: ${clean}`;
+    else if (format === 'credit') text = `Credit: @${clean}`;
+    else if (format === 'youtube') text = `YouTube: ${clean}`;
+    setWatermarkText(text);
+    setWatermarkOpacity(75);
+    setWatermarkSize(16);
+    setWatermarkX(88);
+    setWatermarkY(8);
+  };
+
   const handleSelectWatermarkType = (type: 'image' | 'text') => {
     setWatermarkType(type);
     const defaults = getDefaultWatermarkConfig(type);
@@ -2516,7 +2534,7 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
     setWatermarkX(defaults.x);
     setWatermarkY(defaults.y);
     if (type === 'text' && !watermarkText.trim()) {
-      setWatermarkText('@channel');
+      setWatermarkText(channelName ? `@${channelName}` : '@channel');
     }
   };
 
@@ -2527,7 +2545,7 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
     setWatermarkX(defaults.x);
     setWatermarkY(defaults.y);
     if (watermarkType === 'text' && !watermarkText.trim()) {
-      setWatermarkText('@channel');
+      setWatermarkText(channelName ? `@${channelName}` : '@channel');
     }
   };
 
@@ -5776,7 +5794,7 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
           {/* 8. Video Watermark Branding */}
           <div className="studio-card-group" style={!watermarkEnabled ? { padding: '1rem 1.4rem' } : undefined}>
             <div className="group-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: watermarkEnabled ? '0.85rem' : 0 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
                 <span className="group-title" style={{ margin: 0 }}>{t.studio.watermarkTitle}</span>
                 <label style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer', margin: 0 }}>
                   <input
@@ -5789,6 +5807,34 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                 <span className={`status-pill ${watermarkEnabled ? 'pill-active' : ''}`} style={{ fontSize: '0.68rem', padding: '0.15rem 0.5rem', fontWeight: 500 }}>
                   {watermarkEnabled ? t.studio.watermarkBadgeEnabled : t.studio.watermarkBadgeDisabled}
                 </span>
+
+                {channelName && (
+                  <button
+                    type="button"
+                    onClick={() => handleApplySourceChannel(channelName)}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                      padding: '0.2rem 0.65rem',
+                      borderRadius: '6px',
+                      background: watermarkEnabled && watermarkText.includes(channelName)
+                        ? 'rgba(239, 68, 68, 0.28)'
+                        : 'rgba(239, 68, 68, 0.12)',
+                      border: '1px solid rgba(239, 68, 68, 0.45)',
+                      color: '#fca5a5',
+                      fontSize: '0.72rem',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      boxShadow: watermarkEnabled && watermarkText.includes(channelName) ? '0 0 10px rgba(239, 68, 68, 0.25)' : 'none'
+                    }}
+                    title={t.studio.watermarkSourceChannelHint}
+                  >
+                    <span>📺</span>
+                    <span>{t.studio.watermarkSourceChannelBtn(channelName)}</span>
+                  </button>
+                )}
               </div>
             </div>
 
@@ -5878,7 +5924,7 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                     )}
                   </div>
                 ) : (
-                  <div className="watermark-text-wrap" style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                  <div className="watermark-text-wrap" style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
                     <input
                       type="text"
                       className="studio-title-input"
@@ -5887,6 +5933,36 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                       onChange={e => setWatermarkText(e.target.value)}
                       style={{ fontSize: '0.85rem', padding: '0.55rem 0.8rem' }}
                     />
+                    {channelName && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap', marginTop: '0.2rem' }}>
+                        <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{t.studio.watermarkSourceChannelBadge}:</span>
+                        {[
+                          { label: `@${channelName}`, fmt: 'handle' as const },
+                          { label: `Source: ${channelName}`, fmt: 'source' as const },
+                          { label: `Credit: @${channelName}`, fmt: 'credit' as const },
+                          { label: `YouTube: ${channelName}`, fmt: 'youtube' as const },
+                        ].map(item => (
+                          <button
+                            key={item.fmt}
+                            type="button"
+                            onClick={() => handleApplySourceChannel(channelName, item.fmt)}
+                            style={{
+                              padding: '0.2rem 0.5rem',
+                              fontSize: '0.7rem',
+                              borderRadius: '4px',
+                              background: watermarkText === item.label ? 'rgba(239, 68, 68, 0.3)' : 'rgba(255, 255, 255, 0.05)',
+                              color: watermarkText === item.label ? '#fca5a5' : 'var(--text-secondary)',
+                              border: `1px solid ${watermarkText === item.label ? 'rgba(239, 68, 68, 0.6)' : 'rgba(255, 255, 255, 0.1)'}`,
+                              cursor: 'pointer',
+                              fontWeight: watermarkText === item.label ? 700 : 500,
+                              transition: 'all 0.15s ease'
+                            }}
+                          >
+                            {item.label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
 

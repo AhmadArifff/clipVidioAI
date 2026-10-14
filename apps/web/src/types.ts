@@ -119,6 +119,7 @@ export interface AnalyzeResponse {
   model?: string;
   video_url?: string;
   source_type?: 'youtube' | 'upload' | 'gdrive';
+  channel?: string;
   subtitle_language?: string;
   token_optimized?: boolean;
   original_cues?: number;

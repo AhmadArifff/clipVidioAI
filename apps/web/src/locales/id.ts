@@ -733,6 +733,9 @@ export const id: Translations = {
     watermarkPresetBottomRight: "↘ Kanan Bawah",
     watermarkResetBtn: "↺ Reset Posisi & Ukuran",
     watermarkDragHint: "🎯 Atur posisi watermark dengan bebas menggunakan slider Horizontal (X) & Vertikal (Y) atau tombol preset",
+    watermarkSourceChannelBtn: (ch: string) => `Pasang Sumber: @${ch}`,
+    watermarkSourceChannelBadge: "Sumber YouTube",
+    watermarkSourceChannelHint: "Otomatis mengaktifkan watermark teks semi-transparan dengan atribusi nama channel sumber video.",
   },
   heatmap: {
     title: "Heatmap Retensi Penonton",

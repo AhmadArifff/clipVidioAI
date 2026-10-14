@@ -5045,6 +5045,7 @@ Transcript:
         <ClipStudioSection
           videoUrl={result.video_url || url}
           videoId={result.video_id}
+          channelName={result.channel}
           allClips={result.clips}
           markedClips={markedClipsList}
           activeClip={activeClip}

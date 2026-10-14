@@ -731,6 +731,9 @@ export const en = {
     watermarkPresetBottomRight: "↘ Bottom Right",
     watermarkResetBtn: "↺ Reset Position & Size",
     watermarkDragHint: "🎯 Adjust position freely using Horizontal (X) and Vertical (Y) sliders or quick presets",
+    watermarkSourceChannelBtn: (ch: string) => `Use Source: @${ch}`,
+    watermarkSourceChannelBadge: "YouTube Source",
+    watermarkSourceChannelHint: "Automatically enables semi-transparent text attribution with the source video channel name.",
   },
   heatmap: {
     title: "Audience Retention Heatmap",
