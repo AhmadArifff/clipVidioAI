@@ -50,6 +50,8 @@ interface ClipStudioSectionProps {
   onRetryClip?: (clipIndex?: number) => void;
   allowAppUpdates?: boolean;
   fullTranscript?: TranscriptLine[];
+  videoDuration?: number;
+  onUpdateClipBoundaries?: (updatedClip: ViralClip, oldClip: ViralClip) => void;
 }
 
 function getFriendlyErrorMessage(rawMsg: string): string {
@@ -857,11 +859,15 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
   onRetryClip,
   allowAppUpdates = false,
   fullTranscript = [],
+  videoDuration = 0,
+  onUpdateClipBoundaries,
 }) => {
   const { t } = useLanguage();
   // Directly reflect marked clips (supports selecting 0 clips)
   const [selectedClips, setSelectedClips] = useState<ViralClip[]>(markedClips);
   const [previewClipIndex, setPreviewClipIndex] = useState<number>(0);
+  const [nudgeToast, setNudgeToast] = useState<string | null>(null);
+  const originalBoundsRef = useRef<Map<string, { start: number; end: number }>>(new Map());
 
   const [aspectRatio, setAspectRatio] = useState<AspectRatioOption>(() => getSavedStudioPreferences().aspectRatio ?? DEFAULT_STUDIO_PREFS.aspectRatio);
   const [backgroundStyle, setBackgroundStyle] = useState<BackgroundStyle>(() => getSavedStudioPreferences().backgroundStyle ?? DEFAULT_STUDIO_PREFS.backgroundStyle);
@@ -2030,6 +2036,75 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
       directVideoRef.current.muted = !isMuted;
       setIsMuted(!isMuted);
     }
+  };
+
+  const handleNudgeClip = (target: 'start' | 'end', deltaSec: number) => {
+    if (!currentPreviewClip) return;
+    const clipKey = `${currentPreviewClip.start_time}_${currentPreviewClip.end_time}`;
+    if (!originalBoundsRef.current.has(clipKey)) {
+      originalBoundsRef.current.set(clipKey, {
+        start: currentPreviewClip.start_time,
+        end: currentPreviewClip.end_time,
+      });
+    }
+
+    const maxLimit = videoDuration > 0 ? videoDuration : 999999;
+    let newStart = currentPreviewClip.start_time;
+    let newEnd = currentPreviewClip.end_time;
+
+    if (target === 'start') {
+      newStart = Math.max(0, Math.min(newEnd - 5, +(newStart + deltaSec).toFixed(1)));
+    } else {
+      newEnd = Math.min(maxLimit, Math.max(newStart + 5, +(newEnd + deltaSec).toFixed(1)));
+    }
+
+    const newDur = Math.round(newEnd - newStart);
+    const updatedClip: ViralClip = {
+      ...currentPreviewClip,
+      start_time: newStart,
+      end_time: newEnd,
+    };
+
+    if (onUpdateClipBoundaries) {
+      onUpdateClipBoundaries(updatedClip, currentPreviewClip);
+    }
+
+    // Auto-seek to preview the adjusted boundary immediately
+    if (target === 'end' && deltaSec > 0) {
+      const seekTarget = Math.max(newStart, newEnd - 4);
+      handleSeek(seekTarget);
+      setNudgeToast(`🔥 Akhir klip ditambah +${deltaSec}s (Anti-Gantung)! Durasi: ${newDur}s`);
+    } else if (target === 'start' && deltaSec < 0) {
+      handleSeek(newStart);
+      setNudgeToast(`⏪ Awal klip dimajukan ${Math.abs(deltaSec)}s! Durasi: ${newDur}s`);
+    } else {
+      setNudgeToast(`⏱️ Durasi klip disesuaikan: ${newDur}s (${formatDuration(newStart)} - ${formatDuration(newEnd)})`);
+    }
+
+    setTimeout(() => setNudgeToast(null), 3000);
+  };
+
+  const handleResetClipBounds = () => {
+    if (!currentPreviewClip) return;
+    let orig = null;
+    for (const [_, v] of originalBoundsRef.current.entries()) {
+      if (Math.abs(currentPreviewClip.start_time - v.start) <= 30 && Math.abs(currentPreviewClip.end_time - v.end) <= 30) {
+        orig = v;
+        break;
+      }
+    }
+    if (!orig) return;
+    const updatedClip: ViralClip = {
+      ...currentPreviewClip,
+      start_time: orig.start,
+      end_time: orig.end,
+    };
+    if (onUpdateClipBoundaries) {
+      onUpdateClipBoundaries(updatedClip, currentPreviewClip);
+    }
+    handleSeek(orig.start);
+    setNudgeToast(`↺ Batas klip dikembalikan ke hasil AI asli (${Math.round(orig.end - orig.start)}s)`);
+    setTimeout(() => setNudgeToast(null), 3000);
   };
 
   const toggleClip = (clip: ViralClip) => {
@@ -7744,6 +7819,211 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                 </div>
               </div>
             </div>
+
+            {/* Fine-Tune Clip Boundaries / Anti-Gantung Controls */}
+            <div
+              className="studio-fine-tune-card"
+              style={{
+                background: 'rgba(15, 23, 42, 0.75)',
+                backdropFilter: 'blur(12px)',
+                border: '1px solid rgba(56, 189, 248, 0.25)',
+                borderRadius: '10px',
+                padding: '0.85rem 1rem',
+                marginTop: '0.75rem',
+                boxShadow: '0 4px 18px rgba(0, 0, 0, 0.25)',
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.65rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                  <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#f8fafc', letterSpacing: '-0.01em' }}>
+                    ✂️ Fine-Tune Durasi (Anti-Gantung)
+                  </span>
+                  <span
+                    className="badge"
+                    style={{
+                      fontSize: '0.62rem',
+                      background: 'rgba(16, 185, 129, 0.18)',
+                      color: '#10b981',
+                      border: '1px solid rgba(16, 185, 129, 0.35)',
+                      padding: '0.1rem 0.4rem',
+                      borderRadius: '4px',
+                      fontWeight: 600,
+                    }}
+                  >
+                    {Math.round(clipDuration)}s
+                  </span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <button
+                    type="button"
+                    onClick={handleResetClipBounds}
+                    style={{
+                      background: 'transparent',
+                      border: '1px solid rgba(255, 255, 255, 0.12)',
+                      borderRadius: '5px',
+                      color: 'var(--text-muted, #94a3b8)',
+                      fontSize: '0.68rem',
+                      padding: '0.18rem 0.5rem',
+                      cursor: 'pointer',
+                    }}
+                    title="Kembalikan rentang klip ke rekomendasi awal AI"
+                  >
+                    ↺ Reset Asli
+                  </button>
+                </div>
+              </div>
+
+              {/* Toast feedback jika ada perubahan */}
+              {nudgeToast && (
+                <div
+                  style={{
+                    background: 'rgba(16, 185, 129, 0.15)',
+                    border: '1px solid rgba(16, 185, 129, 0.4)',
+                    color: '#34d399',
+                    fontSize: '0.74rem',
+                    fontWeight: 600,
+                    padding: '0.3rem 0.6rem',
+                    borderRadius: '5px',
+                    marginBottom: '0.65rem',
+                    animation: 'fadeIn 0.2s ease',
+                  }}
+                >
+                  {nudgeToast}
+                </div>
+              )}
+
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))',
+                  gap: '0.65rem',
+                }}
+              >
+                {/* 1. Kontrol Awalan (Start Hook) */}
+                <div
+                  style={{
+                    background: 'rgba(30, 41, 59, 0.5)',
+                    border: '1px solid rgba(255, 255, 255, 0.06)',
+                    borderRadius: '8px',
+                    padding: '0.6rem 0.75rem',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+                    <span style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 600 }}>
+                      ⏮️ Awal: <strong style={{ color: '#e2e8f0' }}>{formatDuration(clipStart)}</strong>
+                    </span>
+                    <span style={{ fontSize: '0.65rem', color: '#64748b' }}>Maju / Mundur</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.3rem' }}>
+                    <button
+                      type="button"
+                      className="pill-btn"
+                      onClick={() => handleNudgeClip('start', -3)}
+                      title="Mundurkan start 3 detik (ambil kalimat premis lebih awal)"
+                      style={{ flex: 1, fontSize: '0.7rem', padding: '0.25rem 0.2rem' }}
+                    >
+                      ⏪ -3s
+                    </button>
+                    <button
+                      type="button"
+                      className="pill-btn"
+                      onClick={() => handleNudgeClip('start', -1)}
+                      title="Mundurkan start 1 detik"
+                      style={{ flex: 1, fontSize: '0.7rem', padding: '0.25rem 0.2rem' }}
+                    >
+                      -1s
+                    </button>
+                    <button
+                      type="button"
+                      className="pill-btn"
+                      onClick={() => handleNudgeClip('start', +1)}
+                      title="Majukan start 1 detik (potong jeda awal)"
+                      style={{ flex: 1, fontSize: '0.7rem', padding: '0.25rem 0.2rem' }}
+                    >
+                      +1s
+                    </button>
+                    <button
+                      type="button"
+                      className="pill-btn"
+                      onClick={() => handleNudgeClip('start', +3)}
+                      title="Majukan start 3 detik (langsung potong basa-basi awal)"
+                      style={{ flex: 1, fontSize: '0.7rem', padding: '0.25rem 0.2rem' }}
+                    >
+                      +3s ⏩
+                    </button>
+                  </div>
+                </div>
+
+                {/* 2. Kontrol Akhiran (End / Anti-Gantung) */}
+                <div
+                  style={{
+                    background: 'rgba(30, 41, 59, 0.5)',
+                    border: '1px solid rgba(56, 189, 248, 0.2)',
+                    borderRadius: '8px',
+                    padding: '0.6rem 0.75rem',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+                    <span style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 600 }}>
+                      ⏭️ Akhir: <strong style={{ color: '#e2e8f0' }}>{formatDuration(clipEnd)}</strong>
+                    </span>
+                    <span style={{ fontSize: '0.65rem', color: '#38bdf8', fontWeight: 600 }}>Tuntaskan Pembahasan</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.3rem' }}>
+                    <button
+                      type="button"
+                      className="pill-btn"
+                      onClick={() => handleNudgeClip('end', -3)}
+                      title="Kurangi 3 detik di akhir klip"
+                      style={{ flex: 1, fontSize: '0.7rem', padding: '0.25rem 0.2rem' }}
+                    >
+                      ⏪ -3s
+                    </button>
+                    <button
+                      type="button"
+                      className="pill-btn"
+                      onClick={() => handleNudgeClip('end', -1)}
+                      title="Kurangi 1 detik di akhir klip"
+                      style={{ flex: 1, fontSize: '0.7rem', padding: '0.25rem 0.2rem' }}
+                    >
+                      -1s
+                    </button>
+                    <button
+                      type="button"
+                      className="pill-btn"
+                      onClick={() => handleNudgeClip('end', +1)}
+                      title="Tambah 1 detik di akhir klip"
+                      style={{ flex: 1, fontSize: '0.7rem', padding: '0.25rem 0.2rem' }}
+                    >
+                      +1s
+                    </button>
+                    <button
+                      type="button"
+                      className="pill-btn active"
+                      onClick={() => handleNudgeClip('end', +3)}
+                      title="Tambah 3 detik di akhir klip agar pembahasan tidak menggantung!"
+                      style={{
+                        flex: 1.4,
+                        fontSize: '0.7rem',
+                        padding: '0.25rem 0.35rem',
+                        background: 'linear-gradient(135deg, #059669, #10b981)',
+                        border: '1px solid #34d399',
+                        color: '#ffffff',
+                        fontWeight: 700,
+                        boxShadow: '0 0 10px rgba(16, 185, 129, 0.4)',
+                      }}
+                    >
+                      🔥 +3s Anti-Gantung
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.55rem', fontSize: '0.68rem', color: 'var(--text-muted, #94a3b8)' }}>
+                <span>💡 <strong>Tips:</strong> Klik <code>+3s Anti-Gantung</code> untuk menuntaskan kalimat akhir yang terpotong. Preview akan seketika memutar 4 detik terakhir klip.</span>
+              </div>
+            </div>
+
             {/* Studio Render History & Specs Card (under player controls so it won't be empty) */}
             <div className="studio-render-history-card">
               <div className="history-card-header">

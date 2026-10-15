@@ -1902,6 +1902,35 @@ export default function App() {
     }
   };
 
+  const handleUpdateClipBoundaries = (updatedClip: ViralClip, oldClip: ViralClip) => {
+    if (!result || !result.clips) return;
+    setResult(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        clips: prev.clips.map(c =>
+          (c.start_time === oldClip.start_time && c.end_time === oldClip.end_time)
+            ? updatedClip
+            : c
+        )
+      };
+    });
+
+    const oldKey = `${oldClip.start_time}_${oldClip.end_time}`;
+    const newKey = `${updatedClip.start_time}_${updatedClip.end_time}`;
+    setMarkedClips(prev => {
+      if (!prev[oldKey]) return prev;
+      const next = { ...prev };
+      delete next[oldKey];
+      next[newKey] = true;
+      return next;
+    });
+
+    if (activeClip && activeClip.start_time === oldClip.start_time && activeClip.end_time === oldClip.end_time) {
+      setActiveClip(updatedClip);
+    }
+  };
+
   const handleDownloadRawClip = async (clip: ViralClip, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     if (!result || !result.video_id) return;
@@ -5064,6 +5093,8 @@ Transcript:
           }}
           onRetryClip={handleRetryBatchClip}
           allowAppUpdates={allowAppUpdates}
+          videoDuration={result.duration || 0}
+          onUpdateClipBoundaries={handleUpdateClipBoundaries}
         />
       )}
 
