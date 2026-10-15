@@ -958,7 +958,7 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
   // v3.4 AI Social Copywriting Pack state
   const [copyDeck, setCopyDeck] = useState<SocialCopyDeck | null>(null);
   const [isGeneratingCopy, setIsGeneratingCopy] = useState<boolean>(false);
-  const [activeCopyTab, setActiveCopyTab] = useState<'hooks' | 'captions' | 'hashtags'>('hooks');
+  const [activeCopyTab, setActiveCopyTab] = useState<'hooks' | 'captions' | 'pinned' | 'hashtags'>('hooks');
   const [copiedToastKey, setCopiedToastKey] = useState<string | null>(null);
 
   // v3.5 AI Smart Clip Settings Recommendation state
@@ -4076,6 +4076,14 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                   <div className="toggle-pill-group">
                     <button
                       type="button"
+                      className={`pill-btn ${titleDuration === '3s' ? 'active' : ''}`}
+                      onClick={() => setTitleDuration('3s')}
+                      title="Hook 3 Detik Awal untuk menaikkan Stayed to Watch ke 70-80%+"
+                    >
+                      {t.studio.duration3s || "🔥 3s Hook"}
+                    </button>
+                    <button
+                      type="button"
                       className={`pill-btn ${titleDuration === 'entire' ? 'active' : ''}`}
                       onClick={() => setTitleDuration('entire')}
                     >
@@ -4411,6 +4419,14 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
               </button>
               <button
                 type="button"
+                className={`pill-btn ${activeCopyTab === 'pinned' ? 'active' : ''}`}
+                onClick={() => setActiveCopyTab('pinned')}
+                style={{ fontSize: '0.76rem', padding: '0.25rem 0.65rem', flex: 1 }}
+              >
+                {t.studio.copyDeckTabPinned || "📌 Pinned"}
+              </button>
+              <button
+                type="button"
                 className={`pill-btn ${activeCopyTab === 'hashtags' ? 'active' : ''}`}
                 onClick={() => setActiveCopyTab('hashtags')}
                 style={{ fontSize: '0.76rem', padding: '0.25rem 0.65rem', flex: 1 }}
@@ -4558,6 +4574,38 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                   <p style={{ fontSize: '0.78rem', color: '#e2e8f0', margin: 0, whiteSpace: 'pre-line', lineHeight: 1.45 }}>
                     {copyDeck.captions.youtube_shorts}
                   </p>
+                </div>
+              </div>
+            )}
+
+            {/* Content for TAB: PINNED COMMENT */}
+            {activeCopyTab === 'pinned' && copyDeck && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+                <div style={{ background: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '6px', padding: '0.75rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.45rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                      <span style={{ fontSize: '0.74rem', fontWeight: 600, color: '#38bdf8' }}>
+                        💬 Komentar Sematan Pemicu Diskusi
+                      </span>
+                      <span className="badge" style={{ fontSize: '0.62rem', background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8' }}>
+                        Tingkatkan Interaksi
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleCopyText(copyDeck.pinned_comment || 'Kalian setuju nggak sama poin ini? Tulis pendapat kalian di bawah ya! 👇', 'pinned_comment')}
+                      className="pill-btn"
+                      style={{ fontSize: '0.68rem', padding: '0.15rem 0.45rem' }}
+                    >
+                      {copiedToastKey === 'pinned_comment' ? '✓ Disalin!' : '📋 Salin Komentar'}
+                    </button>
+                  </div>
+                  <p style={{ fontSize: '0.8rem', color: '#f8fafc', margin: 0, whiteSpace: 'pre-line', lineHeight: 1.45, fontWeight: 500 }}>
+                    "{copyDeck.pinned_comment || 'Kalian setuju nggak sama poin ini? Tulis pendapat kalian di bawah ya! 👇'}"
+                  </p>
+                  <div style={{ marginTop: '0.6rem', fontSize: '0.72rem', color: 'var(--text-muted, #94a3b8)', lineHeight: 1.4 }}>
+                    💡 <strong>Tips Retensi Algoritma:</strong> Sematkan (Pin) komentar ini di video Shorts Anda sesaat setelah publish. Penonton yang berhenti mengetik balasan akan memutar ulang video di latar belakang (mendorong APVD tembus &gt;100%) serta menaikkan sinyal keterlibatan audiens ke YouTube!
+                  </div>
                 </div>
               </div>
             )}

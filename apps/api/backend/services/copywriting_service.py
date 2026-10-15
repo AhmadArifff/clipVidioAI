@@ -81,6 +81,10 @@ def generate_heuristic_copy_deck(
             f"Pembahasan mendalam dan insight penting seputar {core_subject}.\n"
             f"Tonton terus untuk tips dan strategi lengkapnya! #shorts #viral #edukasi"
         )
+        pinned_comment = (
+            f"Kalian di posisi ini setuju nggak sama pendapat di video ini? "
+            f"Atau ada pandangan lain? Tulis alasan kalian di bawah ya! 👇"
+        )
         hashtags = list(DEFAULT_ID_HASHTAGS)
         # Add niche topic hashtag if clean
         clean_tag = f"#{re.sub(r'[^a-zA-Z0-9]', '', core_subject.lower())}"
@@ -100,6 +104,10 @@ def generate_heuristic_copy_deck(
             f"Key takeaways and actionable insights about {core_subject}.\n"
             f"Subscribe for more daily breakdowns and practical advice! #shorts #viral #learn"
         )
+        pinned_comment = (
+            f"Do you agree with this take or do you see it differently? "
+            f"Drop your thoughts and reasons below! 👇"
+        )
         hashtags = list(DEFAULT_EN_HASHTAGS)
         clean_tag = f"#{re.sub(r'[^a-zA-Z0-9]', '', core_subject.lower())}"
         if len(clean_tag) > 2 and clean_tag not in hashtags:
@@ -116,6 +124,7 @@ def generate_heuristic_copy_deck(
             "tiktok_reels": tiktok_reels,
             "youtube_shorts": youtube_shorts,
         },
+        "pinned_comment": pinned_comment,
         "hashtags": hashtags_slice,
         "hashtags_formatted": " ".join(hashtags_slice),
     }
@@ -153,6 +162,7 @@ def generate_ai_copy_deck(
         f'    "tiktok_reels": "<1-2 sentences punchy caption with hook, emojis, and clear Call to Action (e.g. Komen di bawah!)>",\n'
         f'    "youtube_shorts": "<Informative description summarizing key takeaway with clean spacing>"\n'
         f'  }},\n'
+        f'  "pinned_comment": "<Engaging conversation-starter question or debate poll to pin at the top of comments>",\n'
         f'  "hashtags": ["#tag1", "#tag2", "#tag3", ... 12 to 15 relevant niche and trending tags]\n'
         f"}}\n"
     )
@@ -183,6 +193,10 @@ def generate_ai_copy_deck(
                     ht = parsed.get("hook_titles", {})
                     cp = parsed.get("captions", {})
                     htags = parsed.get("hashtags", [])
+                    pinned_c = parsed.get("pinned_comment") or (
+                        "Kalian setuju nggak sama poin ini? Tulis pendapat kalian di bawah ya! 👇"
+                        if is_id else "Do you agree with this take? Drop your thoughts below! 👇"
+                    )
                     if isinstance(htags, list) and htags:
                         clean_tags = [f"#{t.lstrip('#')}" for t in htags if isinstance(t, str) and t.strip()]
                     else:
@@ -197,6 +211,7 @@ def generate_ai_copy_deck(
                             "tiktok_reels": cp.get("tiktok_reels") or "",
                             "youtube_shorts": cp.get("youtube_shorts") or "",
                         },
+                        "pinned_comment": pinned_c,
                         "hashtags": clean_tags[:15],
                         "hashtags_formatted": " ".join(clean_tags[:15]),
                     }
@@ -224,6 +239,10 @@ def generate_ai_copy_deck(
                 ht = parsed.get("hook_titles", {})
                 cp = parsed.get("captions", {})
                 htags = parsed.get("hashtags", [])
+                pinned_c = parsed.get("pinned_comment") or (
+                    "Kalian setuju nggak sama poin ini? Tulis pendapat kalian di bawah ya! 👇"
+                    if is_id else "Do you agree with this take? Drop your thoughts below! 👇"
+                )
                 if isinstance(htags, list) and htags:
                     clean_tags = [f"#{t.lstrip('#')}" for t in htags if isinstance(t, str) and t.strip()]
                 else:
@@ -238,6 +257,7 @@ def generate_ai_copy_deck(
                         "tiktok_reels": cp.get("tiktok_reels") or "",
                         "youtube_shorts": cp.get("youtube_shorts") or "",
                     },
+                    "pinned_comment": pinned_c,
                     "hashtags": clean_tags[:15],
                     "hashtags_formatted": " ".join(clean_tags[:15]),
                 }
@@ -267,6 +287,9 @@ def format_clip_metadata_text(clip: Dict[str, Any], copy_deck: Optional[Dict[str
 
     ht = copy_deck.get("hook_titles", {})
     cp = copy_deck.get("captions", {})
+    pinned_comment = copy_deck.get("pinned_comment") or (
+        "Kalian setuju nggak sama pendapat di video ini? Tulis pendapat kalian di bawah ya! 👇"
+    )
     hashtags_str = copy_deck.get("hashtags_formatted") or " ".join(copy_deck.get("hashtags", []))
 
     lines = [
@@ -285,6 +308,9 @@ def format_clip_metadata_text(clip: Dict[str, Any], copy_deck: Optional[Dict[str
         "",
         "[YOUTUBE SHORTS DESCRIPTION]",
         cp.get("youtube_shorts", "-"),
+        "",
+        "[PINNED COMMENT (PEMICU DISKUSI & INTERAKSI TINGGI)]",
+        pinned_comment,
         "",
         "[VIRAL HASHTAGS]",
         hashtags_str,

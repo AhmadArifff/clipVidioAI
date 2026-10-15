@@ -2200,7 +2200,9 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     # 3. Add Title Event with selectable visibility duration (5s, 10s, or entire clip)
     # If skip_title is True or title contains emojis, title is composited via PNG overlay with full color
     if formatted_title and title_position != "none" and not skip_title and not has_emoji(title_text):
-        if title_duration == "5s":
+        if title_duration in ["3s", "first_3s"]:
+            t_end_sec = min(3.0, duration_seconds)
+        elif title_duration == "5s":
             t_end_sec = min(5.0, duration_seconds)
         elif title_duration == "10s":
             t_end_sec = min(10.0, duration_seconds)
@@ -3872,7 +3874,10 @@ def render_clip_to_mp4(
         input_idx_counter += 1
         extra_input_args.extend(["-i", str(title_overlay_path)])
 
-        if title_duration == "5s":
+        if title_duration in ["3s", "first_3s"]:
+            t_end_sec = min(3.0, dur)
+            enable_expr = f":enable='between(t,0,{t_end_sec:.2f})'"
+        elif title_duration == "5s":
             t_end_sec = min(5.0, dur)
             enable_expr = f":enable='between(t,0,{t_end_sec:.2f})'"
         elif title_duration == "10s":
@@ -3936,29 +3941,6 @@ def render_clip_to_mp4(
 
     dur = max(1.0, float(clip_duration))
 
-    # Dynamic 3-Second Hook Punch-In Zoom (Pattern Interrupt for Maximum Retention)
-    if hook_zoom_enabled and dur >= 4.0:
-        if aspect_ratio == "16:9_landscape":
-            target_w, target_h = 1920, 1080
-        elif aspect_ratio == "1:1":
-            target_w, target_h = 1080, 1080
-        elif aspect_ratio == "4:3":
-            target_w, target_h = 1440, 1080
-        else:
-            target_w, target_h = 1080, 1920
-
-        zoom_w = int(round(target_w * 1.14 / 2.0)) * 2
-        zoom_h = int(round(target_h * 1.14 / 2.0)) * 2
-        fcx = face_box.get("cx", 0.5) if isinstance(face_box, dict) else 0.5
-        fcy = face_box.get("cy", 0.35) if isinstance(face_box, dict) else 0.35
-        crop_x = max(0, min(zoom_w - target_w, int(round(zoom_w * fcx - target_w / 2.0))))
-        crop_y = max(0, min(zoom_h - target_h, int(round(zoom_h * fcy - target_h / 2.0))))
-        filter_chains.append(
-            f"{out_video_map}split[v_base_zoom][v_top_pre];"
-            f"[v_top_pre]scale={zoom_w}:{zoom_h},crop={target_w}:{target_h}:{crop_x}:{crop_y},setsar=1,format=yuva420p,fade=t=out:st=2.5:d=0.5:alpha=1[v_zoom_layer];"
-            f"[v_base_zoom][v_zoom_layer]overlay=0:0:enable='lte(t,3.0)'[v_hook_zoomed]"
-        )
-        out_video_map = "[v_hook_zoomed]"
 
     # Anti-Content ID Micro Speed Ramping Video PTS Adjustment
     effective_speed = max(0.90, min(1.15, float(speed_ramp_ratio or 1.0)))

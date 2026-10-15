@@ -28,3 +28,4 @@ class SocialCopyDeck(BaseModel):
     captions: PlatformCaptions
     hashtags: List[str]
     hashtags_formatted: str
+    pinned_comment: Optional[str] = Field(default="", description="Provocative discussion question for pinned comment to boost engagement")

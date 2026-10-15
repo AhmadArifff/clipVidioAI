@@ -21,6 +21,7 @@ export interface SocialCopyDeck {
     tiktok_reels: string;
     youtube_shorts: string;
   };
+  pinned_comment?: string;
   hashtags: string[];
   hashtags_formatted: string;
 }
@@ -148,7 +149,7 @@ export type CaptionFont =
   | 'Arial Black'
   | (string & {});
 export type TitlePosition = 'auto' | 'safe_zone' | 'middle' | 'none';
-export type TitleDurationOption = 'entire' | '5s' | '10s';
+export type TitleDurationOption = 'entire' | '3s' | '5s' | '10s';
 export type SubtitlePositionMode = 'bottom' | 'center';
 export type StreamerPreset = 'none' | 'split_top_cam' | 'pip_corner' | 'podcast_split';
 export type PodcastLayoutMode = 'stacked_split' | 'left_focus' | 'right_focus';
