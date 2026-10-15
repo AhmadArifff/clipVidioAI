@@ -231,7 +231,7 @@ def fetch_video_metadata(url: str, custom_proxy: Optional[str] = None, cookies_c
             eff_cookies = temp_cookies or get_effective_cookies_path()
             if eff_cookies:
                 ydl_opts['cookiefile'] = str(eff_cookies)
-        ydl_opts['extractor_args'] = {'youtube': {'player_client': ['default', 'web_embedded', 'ios']}}
+        ydl_opts['extractor_args'] = {'youtube': {'player_client': ['android', 'web', 'web_embedded', 'ios']}}
 
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -506,7 +506,7 @@ def fetch_transcript_ytdlp(
         eff_cookies = temp_cookies or get_effective_cookies_path()
         if eff_cookies:
             ydl_opts['cookiefile'] = str(eff_cookies)
-        ydl_opts['extractor_args'] = {'youtube': {'player_client': ['default', 'web_embedded', 'ios']}}
+        ydl_opts['extractor_args'] = {'youtube': {'player_client': ['android', 'web', 'web_embedded', 'ios']}}
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -858,7 +858,7 @@ def download_youtube_audio_for_whisper(
         eff_cookies = temp_cookies or get_effective_cookies_path()
         if eff_cookies:
             ydl_opts['cookiefile'] = str(eff_cookies)
-        ydl_opts['extractor_args'] = {'youtube': {'player_client': ['default', 'web_embedded', 'ios']}}
+        ydl_opts['extractor_args'] = {'youtube': {'player_client': ['android', 'web', 'web_embedded', 'ios']}}
 
         if on_progress:
             on_progress("Downloading Audio", "Downloading audio stream from YouTube for Whisper AI...", 30)

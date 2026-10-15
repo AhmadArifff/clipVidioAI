@@ -398,10 +398,11 @@ def get_yt_dlp_base_cmd(
     elif shutil.which("node"):
         cmd.extend(["--js-runtimes", "node"])
 
-    # Prevent 'The page needs to be reloaded. Please try again later.'
-    # by allowing yt-dlp to fall back from default/tv_downgraded to web_embedded and ios client APIs.
+    # Prevent 'The page needs to be reloaded' and bot verification blocks (HTTP 429)
+    # by allowing yt-dlp to prioritize android (which reliably bypasses bot detection in guest mode)
+    # followed by web, web_embedded, and ios.
     cmd.extend([
-        "--extractor-args", "youtube:player_client=default,web_embedded,ios",
+        "--extractor-args", "youtube:player_client=android,web,web_embedded,ios",
         "--force-ipv4"
     ])
 
@@ -3996,7 +3997,17 @@ def render_clip_to_mp4(
             orig_voice_tag = "[v_orig_boosted]"
         else:
             orig_voice_tag = "[0:a:0]"
-        audio_inputs_to_mix.append(orig_voice_tag)
+
+        # Check if BGM and Smart Auto-Ducking are active:
+        # If active, the voice stream must be split via asplit=2 so one branch triggers sidechain compression
+        # and the other branch is fed to amix for the final speech track (FFmpeg filter pads can only be consumed once).
+        if bgm_enabled and bgm_path and os.path.exists(bgm_path) and smart_ducking_enabled and orig_voice_tag:
+            filter_chains.append(f"{orig_voice_tag}asplit=2[v_voice_mix][v_voice_sidechain]")
+            audio_inputs_to_mix.append("[v_voice_mix]")
+            orig_voice_sidechain_tag = "[v_voice_sidechain]"
+        else:
+            audio_inputs_to_mix.append(orig_voice_tag)
+            orig_voice_sidechain_tag = None
 
     # BGM input with start offset & looping
     if bgm_enabled and bgm_path and os.path.exists(bgm_path):
@@ -4015,9 +4026,9 @@ def render_clip_to_mp4(
         bgm_stream_tag = "[bgm_proc]"
 
         # Smart Dynamic Auto-Ducking: Duck BGM under voice whenever dialogue audio is present
-        if orig_voice_tag and smart_ducking_enabled:
+        if orig_voice_sidechain_tag:
             filter_chains.append(
-                f"{bgm_stream_tag}{orig_voice_tag}sidechaincompress=threshold=0.08:ratio=3.5:attack=50:release=350[bgm_ducked]"
+                f"{bgm_stream_tag}{orig_voice_sidechain_tag}sidechaincompress=threshold=0.08:ratio=3.5:attack=50:release=350[bgm_ducked]"
             )
             bgm_stream_tag = "[bgm_ducked]"
 
