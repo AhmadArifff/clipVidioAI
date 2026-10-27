@@ -88,6 +88,14 @@ class RenderSettingsModel(BaseModel):
     # v3.7 Anti-Content ID Shield & Viral Algorithm Booster
     speed_ramp_ratio: Optional[float] = 1.03           # Micro-speed ramping (1.00 = off, 1.02 to 1.06)
     vocal_isolation_mode: Optional[str] = "center_vocal_extract" # "off" | "center_vocal_extract" | "voice_clarity_bandpass"
+    # Custom Creator Reaction Cam PIP Overlay (Anti-Copyright Transformative Fair Use)
+    reaction_cam_enabled: Optional[bool] = False
+    reaction_cam_file_path: Optional[str] = None
+    reaction_cam_position: Optional[str] = "bottom_right" # "bottom_right" | "bottom_left" | "top_right" | "top_left"
+    reaction_cam_size: Optional[float] = 24.0             # 15.0% to 45.0% of canvas width
+    reaction_cam_shape: Optional[str] = "circle"          # "circle" | "rounded_rect"
+    reaction_cam_border_color: Optional[str] = "white"    # "white" | "gold" | "cyan" | "none"
+    reaction_cam_mute_audio: Optional[bool] = True        # Default True to preserve original dialogue
 
 class RenderBatchRequest(BaseModel):
     model_config = ConfigDict(extra="ignore")

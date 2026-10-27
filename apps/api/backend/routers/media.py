@@ -366,6 +366,48 @@ def get_watermark_file(file_name: str):
     return FileResponse(file_path, media_type=media_type, filename=clean_name)
 
 
+@router.post("/api/reaction-cam/upload")
+async def upload_reaction_cam(file: UploadFile = File(...)):
+    """Uploads a creator reaction webcam video for Picture-in-Picture (PIP) overlay."""
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="No video file provided")
+    ext = os.path.splitext(file.filename)[1].lower()
+    allowed = [".mp4", ".mov", ".webm", ".mkv", ".m4v"]
+    if ext not in allowed:
+        raise HTTPException(status_code=400, detail=f"Unsupported video format. Allowed: {', '.join(allowed)}")
+
+    clean_name = re.sub(r'[^a-zA-Z0-9_.-]', '_', file.filename)
+    unique_name = f"rc_{uuid.uuid4().hex[:8]}_{clean_name}"
+    save_path = UPLOADS_DIR / unique_name
+
+    try:
+        # Max 500 MB for reaction video overlay
+        bytes_written = await _save_uploaded_file_chunked(file, save_path, 500 * 1024 * 1024)
+        return {
+            "success": True,
+            "filename": file.filename,
+            "saved_name": unique_name,
+            "file_path": str(save_path),
+            "url": f"/api/reaction-cam/{unique_name}",
+            "size_bytes": bytes_written
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to upload reaction cam video: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/api/reaction-cam/{file_name}")
+def get_reaction_cam_file(file_name: str):
+    clean_name = os.path.basename(file_name)
+    file_path = UPLOADS_DIR / clean_name
+    if not file_path.exists() or not _is_safe_path(file_path):
+        raise HTTPException(status_code=404, detail="Reaction cam file not found")
+    media_type = "video/mp4" if clean_name.endswith(".mp4") else "video/webm" if clean_name.endswith(".webm") else "video/quicktime"
+    return FileResponse(file_path, media_type=media_type, filename=clean_name)
+
+
 @router.get("/api/clip-frame")
 async def get_clip_frame(video_id: str, timestamp: float = 0.0, video_url: Optional[str] = None):
     """

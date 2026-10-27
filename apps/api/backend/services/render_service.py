@@ -280,7 +280,14 @@ async def render_single_batch_clip(
             comedy_effect_duration=float(getattr(settings, "comedy_effect_duration", 1.2) or 1.2),
             comedy_sfx_enabled=bool(getattr(settings, "comedy_sfx_enabled", True)),
             speed_ramp_ratio=float(getattr(settings, "speed_ramp_ratio", 1.0) or 1.0),
-            vocal_isolation_mode=getattr(settings, "vocal_isolation_mode", "off") or "off"
+            vocal_isolation_mode=getattr(settings, "vocal_isolation_mode", "off") or "off",
+            reaction_cam_enabled=bool(getattr(settings, "reaction_cam_enabled", False)),
+            reaction_cam_file_path=getattr(settings, "reaction_cam_file_path", None),
+            reaction_cam_position=getattr(settings, "reaction_cam_position", "bottom_right") or "bottom_right",
+            reaction_cam_size=float(getattr(settings, "reaction_cam_size", 24.0) or 24.0),
+            reaction_cam_shape=getattr(settings, "reaction_cam_shape", "circle") or "circle",
+            reaction_cam_border_color=getattr(settings, "reaction_cam_border_color", "white") or "white",
+            reaction_cam_mute_audio=bool(getattr(settings, "reaction_cam_mute_audio", True))
         )
 
         if not os.path.exists(out_path) or not is_valid_mp4(out_path):
@@ -655,7 +662,14 @@ async def render_merged_batch_clips(
             comedy_effect_duration=float(getattr(settings, "comedy_effect_duration", 1.2) or 1.2),
             comedy_sfx_enabled=bool(getattr(settings, "comedy_sfx_enabled", True)),
             speed_ramp_ratio=float(getattr(settings, "speed_ramp_ratio", 1.0) or 1.0),
-            vocal_isolation_mode=getattr(settings, "vocal_isolation_mode", "off") or "off"
+            vocal_isolation_mode=getattr(settings, "vocal_isolation_mode", "off") or "off",
+            reaction_cam_enabled=bool(getattr(settings, "reaction_cam_enabled", False)),
+            reaction_cam_file_path=getattr(settings, "reaction_cam_file_path", None),
+            reaction_cam_position=getattr(settings, "reaction_cam_position", "bottom_right") or "bottom_right",
+            reaction_cam_size=float(getattr(settings, "reaction_cam_size", 24.0) or 24.0),
+            reaction_cam_shape=getattr(settings, "reaction_cam_shape", "circle") or "circle",
+            reaction_cam_border_color=getattr(settings, "reaction_cam_border_color", "white") or "white",
+            reaction_cam_mute_audio=bool(getattr(settings, "reaction_cam_mute_audio", True))
         )
 
         if not os.path.exists(out_path) or not is_valid_mp4(out_path):

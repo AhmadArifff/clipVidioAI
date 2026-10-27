@@ -31,6 +31,9 @@ import type {
   CameraTrackingMode,
   ComedyEffectPreset,
   VocalIsolationMode,
+  ReactionCamPosition,
+  ReactionCamShape,
+  ReactionCamBorderColor,
 } from '../types';
 import { BackgroundCustomizer } from './BackgroundCustomizer';
 
@@ -594,6 +597,11 @@ export interface StudioPreferences {
   comedySfxEnabled?: boolean;
   speedRampRatio?: number;
   vocalIsolationMode?: VocalIsolationMode;
+  reactionCamPosition?: ReactionCamPosition;
+  reactionCamSize?: number;
+  reactionCamShape?: ReactionCamShape;
+  reactionCamBorderColor?: ReactionCamBorderColor;
+  reactionCamMuteAudio?: boolean;
 }
 
 export const DEFAULT_STUDIO_PREFS: Required<StudioPreferences> = {
@@ -654,6 +662,11 @@ export const DEFAULT_STUDIO_PREFS: Required<StudioPreferences> = {
   comedySfxEnabled: true,
   speedRampRatio: 1.03,
   vocalIsolationMode: 'center_vocal_extract',
+  reactionCamPosition: 'bottom_right',
+  reactionCamSize: 24,
+  reactionCamShape: 'circle',
+  reactionCamBorderColor: 'white',
+  reactionCamMuteAudio: true,
 };
 
 function getSavedStudioPreferences(): Partial<StudioPreferences> {
@@ -1019,6 +1032,18 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
   const [isUploadingWatermark, setIsUploadingWatermark] = useState<boolean>(false);
   const [isWatermarkDragging, setIsWatermarkDragging] = useState<boolean>(false);
   const phoneContainerRef = useRef<HTMLDivElement | null>(null);
+
+  // Creator Reaction Cam PIP Overlay states
+  const [reactionCamEnabled, setReactionCamEnabled] = useState<boolean>(false);
+  const [reactionCamFileName, setReactionCamFileName] = useState<string>('');
+  const [reactionCamFilePath, setReactionCamFilePath] = useState<string>('');
+  const [reactionCamUrl, setReactionCamUrl] = useState<string>('');
+  const [reactionCamPosition, setReactionCamPosition] = useState<ReactionCamPosition>(() => getSavedStudioPreferences().reactionCamPosition ?? DEFAULT_STUDIO_PREFS.reactionCamPosition);
+  const [reactionCamSize, setReactionCamSize] = useState<number>(() => getSavedStudioPreferences().reactionCamSize ?? DEFAULT_STUDIO_PREFS.reactionCamSize);
+  const [reactionCamShape, setReactionCamShape] = useState<ReactionCamShape>(() => getSavedStudioPreferences().reactionCamShape ?? DEFAULT_STUDIO_PREFS.reactionCamShape);
+  const [reactionCamBorderColor, setReactionCamBorderColor] = useState<ReactionCamBorderColor>(() => getSavedStudioPreferences().reactionCamBorderColor ?? DEFAULT_STUDIO_PREFS.reactionCamBorderColor);
+  const [reactionCamMuteAudio, setReactionCamMuteAudio] = useState<boolean>(() => getSavedStudioPreferences().reactionCamMuteAudio ?? DEFAULT_STUDIO_PREFS.reactionCamMuteAudio);
+  const [isUploadingReactionCam, setIsUploadingReactionCam] = useState<boolean>(false);
 
   // Hardware acceleration / Video Encoder state
   const [hardwareAccel, setHardwareAccel] = useState<HardwareAccelOption>(() => getSavedStudioPreferences().hardwareAccel ?? DEFAULT_STUDIO_PREFS.hardwareAccel);
@@ -2650,6 +2675,51 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
     setWatermarkImageUrl('');
   };
 
+  // Creator Reaction Cam PIP Overlay handlers
+  const uploadReactionCamFile = async (file: File) => {
+    if (!file) return;
+    setIsUploadingReactionCam(true);
+    try {
+      const localUrl = URL.createObjectURL(file);
+      setReactionCamUrl(localUrl);
+      setReactionCamFileName(file.name);
+
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch('/api/reaction-cam/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || 'Failed to upload reaction cam video');
+      }
+      const data = await res.json();
+      setReactionCamFilePath(data.file_path);
+      setReactionCamFileName(data.filename || file.name);
+      setReactionCamUrl(data.url || localUrl);
+      setReactionCamEnabled(true);
+    } catch (err: any) {
+      console.error('Reaction cam upload error:', err);
+      alert(err.message || 'Failed to upload reaction video. Please use MP4, MOV, or WEBM.');
+    } finally {
+      setIsUploadingReactionCam(false);
+    }
+  };
+
+  const handleReactionCamUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) uploadReactionCamFile(file);
+    e.target.value = '';
+  };
+
+  const handleRemoveReactionCam = () => {
+    setReactionCamEnabled(false);
+    setReactionCamFileName('');
+    setReactionCamFilePath('');
+    setReactionCamUrl('');
+  };
+
   const getDefaultWatermarkConfig = (type: 'image' | 'text') => {
     if (type === 'image') {
       return {
@@ -3061,6 +3131,11 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
       comedySfxEnabled,
       speedRampRatio,
       vocalIsolationMode,
+      reactionCamPosition,
+      reactionCamSize,
+      reactionCamShape,
+      reactionCamBorderColor,
+      reactionCamMuteAudio,
     };
     try {
       localStorage.setItem(STUDIO_PREFS_KEY, JSON.stringify(prefs));
@@ -3125,6 +3200,11 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
     comedySfxEnabled,
     speedRampRatio,
     vocalIsolationMode,
+    reactionCamPosition,
+    reactionCamSize,
+    reactionCamShape,
+    reactionCamBorderColor,
+    reactionCamMuteAudio,
   ]);
 
   const handleResetToDefaults = () => {
@@ -3186,6 +3266,11 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
     setComedySfxEnabled(DEFAULT_STUDIO_PREFS.comedySfxEnabled);
     setSpeedRampRatio(DEFAULT_STUDIO_PREFS.speedRampRatio);
     setVocalIsolationMode(DEFAULT_STUDIO_PREFS.vocalIsolationMode);
+    setReactionCamPosition(DEFAULT_STUDIO_PREFS.reactionCamPosition);
+    setReactionCamSize(DEFAULT_STUDIO_PREFS.reactionCamSize);
+    setReactionCamShape(DEFAULT_STUDIO_PREFS.reactionCamShape);
+    setReactionCamBorderColor(DEFAULT_STUDIO_PREFS.reactionCamBorderColor);
+    setReactionCamMuteAudio(DEFAULT_STUDIO_PREFS.reactionCamMuteAudio);
     handleResetTitlePosition();
     handleResetSubtitlePosition();
     try {
@@ -3297,6 +3382,16 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
       // v3.7 Anti-Content ID Shield & Viral Algorithm Booster
       speedRampRatio,
       vocalIsolationMode,
+      // Custom Creator Reaction Cam PIP Overlay
+      reactionCamEnabled: reactionCamEnabled && !!reactionCamFilePath,
+      reactionCamFilePath,
+      reactionCamUrl,
+      reactionCamFileName,
+      reactionCamPosition,
+      reactionCamSize,
+      reactionCamShape,
+      reactionCamBorderColor,
+      reactionCamMuteAudio,
     });
   };
 
@@ -6340,7 +6435,354 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
             )}
           </div>
 
-          {/* 8. Ultra-Quality Master Engine (v3.0) */}
+          {/* 9. Creator Reaction Cam PIP Overlay (Personal Branding & Copyright Shield) */}
+          <div className="studio-card-group" style={{
+            border: reactionCamEnabled ? '1px solid rgba(244, 63, 94, 0.45)' : '1px solid rgba(255, 255, 255, 0.08)',
+            background: reactionCamEnabled
+              ? 'linear-gradient(145deg, rgba(30, 15, 25, 0.75), rgba(15, 23, 42, 0.85))'
+              : undefined,
+            padding: !reactionCamEnabled ? '1rem 1.4rem' : undefined,
+            transition: 'all 0.25s ease'
+          }}>
+            <div className="group-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: reactionCamEnabled ? '0.85rem' : 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+                <span className="group-title" style={{ margin: 0, color: reactionCamEnabled ? '#fb7185' : undefined }}>
+                  {t.studio.reactionCamTitle}
+                </span>
+                <label style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer', margin: 0 }}>
+                  <input
+                    type="checkbox"
+                    checked={reactionCamEnabled}
+                    onChange={e => {
+                      const checked = e.target.checked;
+                      setReactionCamEnabled(checked);
+                    }}
+                    style={{ accentColor: '#f43f5e', width: '15px', height: '15px', cursor: 'pointer', margin: 0 }}
+                  />
+                </label>
+                <span className={`status-pill ${reactionCamEnabled ? 'pill-active' : ''}`} style={{
+                  fontSize: '0.68rem',
+                  padding: '0.15rem 0.5rem',
+                  fontWeight: 600,
+                  background: reactionCamEnabled ? 'rgba(244, 63, 94, 0.2)' : undefined,
+                  color: reactionCamEnabled ? '#fda4af' : undefined,
+                  border: reactionCamEnabled ? '1px solid rgba(244, 63, 94, 0.4)' : undefined,
+                }}>
+                  {reactionCamEnabled ? t.studio.reactionCamBadgeEnabled : t.studio.reactionCamBadgeDisabled}
+                </span>
+
+                <span style={{
+                  fontSize: '0.68rem',
+                  fontWeight: 700,
+                  padding: '0.15rem 0.55rem',
+                  borderRadius: '4px',
+                  background: 'rgba(16, 185, 129, 0.15)',
+                  color: '#34d399',
+                  border: '1px solid rgba(16, 185, 129, 0.35)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.25rem'
+                }}>
+                  🛡️ {t.studio.reactionCamFairUseBadge}
+                </span>
+              </div>
+            </div>
+
+            <p style={{ fontSize: '0.74rem', color: 'var(--text-muted)', margin: '0 0 0.85rem 0', lineHeight: 1.45 }}>
+              {t.studio.reactionCamDesc}
+            </p>
+
+            {reactionCamEnabled && (
+              <div className="group-content" style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                {/* Video Upload Dropzone / File Picker */}
+                <div style={{
+                  border: '1px dashed rgba(244, 63, 94, 0.4)',
+                  borderRadius: '8px',
+                  padding: '0.85rem',
+                  background: 'rgba(0, 0, 0, 0.25)',
+                  textAlign: 'center'
+                }}>
+                  <input
+                    type="file"
+                    id="reaction-cam-file-input"
+                    accept="video/mp4,video/quicktime,video/webm,video/x-matroska"
+                    style={{ display: 'none' }}
+                    onChange={handleReactionCamUpload}
+                  />
+
+                  {reactionCamFileName ? (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', textAlign: 'left' }}>
+                        <span style={{ fontSize: '1.4rem' }}>🎥</span>
+                        <div>
+                          <div style={{ fontSize: '0.82rem', fontWeight: 600, color: '#f1f5f9' }}>
+                            {reactionCamFileName}
+                          </div>
+                          <div style={{ fontSize: '0.7rem', color: '#34d399' }}>
+                            ✓ Video siap dirender sebagai Reaction Cam PIP
+                          </div>
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', gap: '0.4rem' }}>
+                        <button
+                          type="button"
+                          onClick={() => document.getElementById('reaction-cam-file-input')?.click()}
+                          disabled={isUploadingReactionCam}
+                          style={{
+                            padding: '0.3rem 0.65rem',
+                            fontSize: '0.72rem',
+                            borderRadius: '6px',
+                            background: 'rgba(255, 255, 255, 0.08)',
+                            color: '#e2e8f0',
+                            border: '1px solid rgba(255, 255, 255, 0.15)',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          {t.studio.reactionCamChangeBtn}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleRemoveReactionCam}
+                          style={{
+                            padding: '0.3rem 0.65rem',
+                            fontSize: '0.72rem',
+                            borderRadius: '6px',
+                            background: 'rgba(239, 68, 68, 0.15)',
+                            color: '#f87171',
+                            border: '1px solid rgba(239, 68, 68, 0.3)',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          {t.studio.reactionCamRemoveBtn}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <button
+                        type="button"
+                        onClick={() => document.getElementById('reaction-cam-file-input')?.click()}
+                        disabled={isUploadingReactionCam}
+                        style={{
+                          background: 'linear-gradient(135deg, #f43f5e, #e11d48)',
+                          color: '#ffffff',
+                          border: 'none',
+                          padding: '0.5rem 1.1rem',
+                          borderRadius: '7px',
+                          fontSize: '0.82rem',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.45rem',
+                          boxShadow: '0 4px 12px rgba(244, 63, 94, 0.35)'
+                        }}
+                      >
+                        {isUploadingReactionCam ? (
+                          <><span>⏳</span><span>Mengupload video reaksi...</span></>
+                        ) : (
+                          <><span>📤</span><span>{t.studio.reactionCamUploadBtn}</span></>
+                        )}
+                      </button>
+                      <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', margin: '0.4rem 0 0 0' }}>
+                        {t.studio.reactionCamUploadHint}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Grid Setting Controls */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '0.75rem' }}>
+                  {/* 1. Posisi Sudut */}
+                  <div className="control-item" style={{ background: 'rgba(255, 255, 255, 0.02)', padding: '0.65rem', borderRadius: '8px', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
+                    <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.45rem' }}>
+                      {t.studio.reactionCamPositionLabel}
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.35rem' }}>
+                      {[
+                        { pos: 'bottom_right' as ReactionCamPosition, label: t.studio.reactionCamPosBottomRight },
+                        { pos: 'bottom_left' as ReactionCamPosition, label: t.studio.reactionCamPosBottomLeft },
+                        { pos: 'top_right' as ReactionCamPosition, label: t.studio.reactionCamPosTopRight },
+                        { pos: 'top_left' as ReactionCamPosition, label: t.studio.reactionCamPosTopLeft },
+                      ].map(item => (
+                        <button
+                          key={item.pos}
+                          type="button"
+                          onClick={() => setReactionCamPosition(item.pos)}
+                          style={{
+                            padding: '0.35rem 0.45rem',
+                            fontSize: '0.72rem',
+                            borderRadius: '6px',
+                            background: reactionCamPosition === item.pos ? 'rgba(244, 63, 94, 0.3)' : 'rgba(255, 255, 255, 0.04)',
+                            color: reactionCamPosition === item.pos ? '#fda4af' : 'var(--text-secondary)',
+                            border: reactionCamPosition === item.pos ? '1px solid rgba(244, 63, 94, 0.55)' : '1px solid rgba(255, 255, 255, 0.08)',
+                            cursor: 'pointer',
+                            fontWeight: reactionCamPosition === item.pos ? 600 : 400,
+                            transition: 'all 0.15s ease'
+                          }}
+                        >
+                          {item.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 2. Bentuk (Shape) */}
+                  <div className="control-item" style={{ background: 'rgba(255, 255, 255, 0.02)', padding: '0.65rem', borderRadius: '8px', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
+                    <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.45rem' }}>
+                      {t.studio.reactionCamShapeLabel}
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.35rem' }}>
+                      {[
+                        { shape: 'circle' as ReactionCamShape, label: t.studio.reactionCamShapeCircle, icon: '⚪' },
+                        { shape: 'rounded_rect' as ReactionCamShape, label: t.studio.reactionCamShapeRounded, icon: '🔲' },
+                      ].map(item => (
+                        <button
+                          key={item.shape}
+                          type="button"
+                          onClick={() => setReactionCamShape(item.shape)}
+                          style={{
+                            padding: '0.35rem 0.45rem',
+                            fontSize: '0.72rem',
+                            borderRadius: '6px',
+                            background: reactionCamShape === item.shape ? 'rgba(244, 63, 94, 0.3)' : 'rgba(255, 255, 255, 0.04)',
+                            color: reactionCamShape === item.shape ? '#fda4af' : 'var(--text-secondary)',
+                            border: reactionCamShape === item.shape ? '1px solid rgba(244, 63, 94, 0.55)' : '1px solid rgba(255, 255, 255, 0.08)',
+                            cursor: 'pointer',
+                            fontWeight: reactionCamShape === item.shape ? 600 : 400,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '0.3rem',
+                            transition: 'all 0.15s ease'
+                          }}
+                        >
+                          <span>{item.icon}</span>
+                          <span>{item.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 3. Border Color */}
+                  <div className="control-item" style={{ background: 'rgba(255, 255, 255, 0.02)', padding: '0.65rem', borderRadius: '8px', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
+                    <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.45rem' }}>
+                      {t.studio.reactionCamBorderColorLabel}
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.35rem' }}>
+                      {[
+                        { color: 'white' as ReactionCamBorderColor, label: t.studio.reactionCamBorderWhite, preview: '#ffffff' },
+                        { color: 'gold' as ReactionCamBorderColor, label: t.studio.reactionCamBorderGold, preview: '#fbbf24' },
+                        { color: 'cyan' as ReactionCamBorderColor, label: t.studio.reactionCamBorderCyan, preview: '#22d3ee' },
+                        { color: 'none' as ReactionCamBorderColor, label: t.studio.reactionCamBorderNone, preview: 'transparent' },
+                      ].map(item => (
+                        <button
+                          key={item.color}
+                          type="button"
+                          onClick={() => setReactionCamBorderColor(item.color)}
+                          style={{
+                            padding: '0.3rem 0.4rem',
+                            fontSize: '0.7rem',
+                            borderRadius: '6px',
+                            background: reactionCamBorderColor === item.color ? 'rgba(244, 63, 94, 0.3)' : 'rgba(255, 255, 255, 0.04)',
+                            color: reactionCamBorderColor === item.color ? '#fda4af' : 'var(--text-secondary)',
+                            border: reactionCamBorderColor === item.color ? '1px solid rgba(244, 63, 94, 0.55)' : '1px solid rgba(255, 255, 255, 0.08)',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '0.35rem'
+                          }}
+                        >
+                          <span style={{
+                            width: '10px',
+                            height: '10px',
+                            borderRadius: '50%',
+                            background: item.preview,
+                            border: item.color === 'none' ? '1px dashed #64748b' : '1px solid rgba(0,0,0,0.4)',
+                            display: 'inline-block'
+                          }}></span>
+                          <span>{item.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 4. Audio Mute Toggle */}
+                  <div className="control-item" style={{ background: 'rgba(255, 255, 255, 0.02)', padding: '0.65rem', borderRadius: '8px', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
+                    <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.45rem' }}>
+                      Audio Reaksi
+                    </div>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.74rem', color: '#e2e8f0' }}>
+                      <input
+                        type="checkbox"
+                        checked={reactionCamMuteAudio}
+                        onChange={e => setReactionCamMuteAudio(e.target.checked)}
+                        style={{ accentColor: '#f43f5e', width: '15px', height: '15px', cursor: 'pointer' }}
+                      />
+                      <span>{t.studio.reactionCamMuteAudioLabel}</span>
+                    </label>
+                    <p style={{ fontSize: '0.68rem', color: 'var(--text-muted)', margin: '0.35rem 0 0 0', lineHeight: 1.35 }}>
+                      {t.studio.reactionCamMuteAudioHint}
+                    </p>
+                  </div>
+                </div>
+
+                {/* 5. Size Slider */}
+                <div className="slider-control-item" style={{ background: 'rgba(255, 255, 255, 0.02)', padding: '0.65rem 0.85rem', borderRadius: '8px', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
+                  <div className="slider-label-row">
+                    <span className="slider-label" style={{ fontSize: '0.76rem', fontWeight: 600 }}>
+                      {t.studio.reactionCamSizeLabel}
+                    </span>
+                    <div className="slider-input-badge-wrap">
+                      <input
+                        type="number"
+                        className="slider-number-input"
+                        min={15}
+                        max={40}
+                        value={reactionCamSize}
+                        onChange={e => setReactionCamSize(Math.max(15, Math.min(40, Number(e.target.value) || 24)))}
+                      />
+                      <span className="slider-input-unit">%</span>
+                    </div>
+                  </div>
+                  <input
+                    type="range"
+                    className="studio-slider"
+                    min="15"
+                    max="40"
+                    step="1"
+                    value={reactionCamSize}
+                    onChange={e => setReactionCamSize(Number(e.target.value))}
+                    style={{ accentColor: '#f43f5e' }}
+                  />
+                  <div style={{ display: 'flex', gap: '0.35rem', marginTop: '0.35rem' }}>
+                    {[18, 24, 30, 35].map(sz => (
+                      <button
+                        key={sz}
+                        type="button"
+                        onClick={() => setReactionCamSize(sz)}
+                        style={{
+                          padding: '0.15rem 0.45rem',
+                          fontSize: '0.7rem',
+                          borderRadius: '4px',
+                          background: reactionCamSize === sz ? 'rgba(244, 63, 94, 0.35)' : 'rgba(255, 255, 255, 0.04)',
+                          color: reactionCamSize === sz ? '#fda4af' : 'var(--text-muted)',
+                          border: reactionCamSize === sz ? '1px solid rgba(244, 63, 94, 0.5)' : '1px solid rgba(255, 255, 255, 0.08)',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        {sz}%
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* 10. Ultra-Quality Master Engine (v3.0) */}
           <div className="studio-card-group" style={{ border: '1px solid rgba(56, 189, 248, 0.28)', background: 'linear-gradient(145deg, rgba(15, 23, 42, 0.75), rgba(8, 14, 28, 0.85))' }}>
             <div className="group-header" style={{ marginBottom: '0.45rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -7817,6 +8259,69 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                         {watermarkText}
                       </span>
                     ) : null}
+                  </div>
+                )}
+
+                {/* Creator Reaction Cam PIP Overlay in Live Phone Preview */}
+                {reactionCamEnabled && reactionCamUrl && (
+                  <div
+                    className="reaction-cam-pip-preview"
+                    style={{
+                      position: 'absolute',
+                      zIndex: 25,
+                      width: `${reactionCamSize}%`,
+                      aspectRatio: '1 / 1',
+                      borderRadius: reactionCamShape === 'circle' ? '50%' : '14px',
+                      overflow: 'hidden',
+                      boxShadow: '0 4px 20px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(255, 255, 255, 0.15)',
+                      border: reactionCamBorderColor === 'white'
+                        ? '2px solid #ffffff'
+                        : reactionCamBorderColor === 'gold'
+                        ? '2px solid #fbbf24'
+                        : reactionCamBorderColor === 'cyan'
+                        ? '2px solid #22d3ee'
+                        : 'none',
+                      ...(reactionCamPosition === 'bottom_right'
+                        ? { bottom: '12%', right: '5%' }
+                        : reactionCamPosition === 'bottom_left'
+                        ? { bottom: '12%', left: '5%' }
+                        : reactionCamPosition === 'top_right'
+                        ? { top: '8%', right: '5%' }
+                        : { top: '8%', left: '5%' }),
+                      pointerEvents: 'none',
+                      transition: 'all 0.2s ease-out',
+                    }}
+                  >
+                    <video
+                      src={reactionCamUrl}
+                      autoPlay
+                      loop
+                      muted
+                      playsInline
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover',
+                      }}
+                    />
+                    <div
+                      style={{
+                        position: 'absolute',
+                        bottom: '4px',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        fontSize: '8px',
+                        fontWeight: 800,
+                        color: '#ffffff',
+                        background: 'rgba(0, 0, 0, 0.65)',
+                        padding: '1px 5px',
+                        borderRadius: '4px',
+                        letterSpacing: '0.04em',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      YOU
+                    </div>
                   </div>
                 )}
               </div>

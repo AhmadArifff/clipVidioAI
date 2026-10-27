@@ -573,6 +573,14 @@ export default function App() {
             // v3.7 Anti-Content ID Shield & Viral Algorithm Booster
             speed_ramp_ratio: settings.speedRampRatio !== undefined ? settings.speedRampRatio : 1.03,
             vocal_isolation_mode: settings.vocalIsolationMode || 'center_vocal_extract',
+            // Custom Creator Reaction Cam PIP Overlay
+            reaction_cam_enabled: Boolean(settings.reactionCamEnabled && settings.reactionCamFilePath),
+            reaction_cam_file_path: settings.reactionCamFilePath || null,
+            reaction_cam_position: settings.reactionCamPosition || 'bottom_right',
+            reaction_cam_size: settings.reactionCamSize !== undefined ? settings.reactionCamSize : 24,
+            reaction_cam_shape: settings.reactionCamShape || 'circle',
+            reaction_cam_border_color: settings.reactionCamBorderColor || 'white',
+            reaction_cam_mute_audio: settings.reactionCamMuteAudio !== undefined ? settings.reactionCamMuteAudio : true,
           },
           transcript: result.transcript,
         }),

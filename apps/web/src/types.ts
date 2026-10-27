@@ -162,6 +162,9 @@ export type KeywordAccentMode = 'off' | 'accent_only' | 'accent_and_emoji';
 export type CameraTrackingMode = 'off' | 'fit_balanced' | 'fit_close_up' | 'dynamic_pan_only' | 'static_center';
 export type ComedyEffectPreset = 'none' | 'pwk_snap_zoom' | 'pwk_red_blush' | 'pwk_funny_fisheye';
 export type VocalIsolationMode = 'off' | 'center_vocal_extract' | 'voice_clarity_bandpass';
+export type ReactionCamPosition = 'bottom_right' | 'bottom_left' | 'top_right' | 'top_left';
+export type ReactionCamShape = 'circle' | 'rounded_rect';
+export type ReactionCamBorderColor = 'white' | 'gold' | 'cyan' | 'neon_purple' | 'none';
 
 export interface FontItem {
   name: string;
@@ -315,6 +318,16 @@ export interface RenderSettings {
   // v3.7 Anti-Content ID Shield & Viral Algorithm Booster
   speedRampRatio?: number; // 1.00 to 1.08
   vocalIsolationMode?: VocalIsolationMode;
+  // Custom Creator Reaction Cam PIP Overlay (Anti-Copyright Personal Branding)
+  reactionCamEnabled?: boolean;
+  reactionCamFilePath?: string;
+  reactionCamUrl?: string;
+  reactionCamFileName?: string;
+  reactionCamPosition?: ReactionCamPosition;
+  reactionCamSize?: number; // 15 to 40%
+  reactionCamShape?: ReactionCamShape;
+  reactionCamBorderColor?: ReactionCamBorderColor;
+  reactionCamMuteAudio?: boolean;
 }
 
 export interface RenderClipStatus {

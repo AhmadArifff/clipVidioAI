@@ -3699,7 +3699,15 @@ def render_clip_to_mp4(
     comedy_sfx_enabled: bool = True,
     # v3.7 Anti-Content ID Shield & Viral Algorithm Booster
     speed_ramp_ratio: float = 1.0,
-    vocal_isolation_mode: str = "off"
+    vocal_isolation_mode: str = "off",
+    # Custom Creator Reaction Cam PIP Overlay (Anti-Copyright Transformative Fair Use)
+    reaction_cam_enabled: bool = False,
+    reaction_cam_file_path: Optional[str] = None,
+    reaction_cam_position: str = "bottom_right",
+    reaction_cam_size: float = 24.0,
+    reaction_cam_shape: str = "circle",
+    reaction_cam_border_color: str = "white",
+    reaction_cam_mute_audio: bool = True
 ) -> str:
     """
     Renders the final short-form video with layout, aspect ratio, custom backgrounds,
@@ -3931,6 +3939,66 @@ def render_clip_to_mp4(
             )
             filter_chains.append(drawtext_cmd)
             out_video_map = "[v_watermarked]"
+
+    # 2.5 Apply Custom Creator Reaction Cam PIP Overlay (Anti-Copyright Transformative Fair Use)
+    if reaction_cam_enabled and reaction_cam_file_path and os.path.exists(reaction_cam_file_path):
+        rc_idx = input_idx_counter
+        input_idx_counter += 1
+        # Loop reaction video indefinitely so it matches any clip duration
+        extra_input_args.extend(["-stream_loop", "-1", "-i", str(reaction_cam_file_path)])
+
+        canvas_w = 1920 if aspect_ratio == "16:9_landscape" else 1080
+        rc_size_pct = max(12.0, min(50.0, float(reaction_cam_size or 24.0)))
+        rc_dim = int(round(canvas_w * (rc_size_pct / 100.0) / 2.0)) * 2
+
+        # Border color mapping
+        border_hex_map = {
+            "white": "white",
+            "gold": "#F59E0B",
+            "cyan": "#06B6D4",
+            "none": "none"
+        }
+        b_color = border_hex_map.get((reaction_cam_border_color or "white").lower(), "white")
+
+        # Safe margins so reaction cam doesn't collide with native TikTok/Reels UI buttons or Top Titles
+        m_x = 36
+        m_y_bottom = 220 if aspect_ratio != "16:9_landscape" else 48
+        m_y_top = 220 if aspect_ratio != "16:9_landscape" else 48
+
+        pos = (reaction_cam_position or "bottom_right").lower().strip()
+        if pos == "bottom_left":
+            rc_x_expr = f"{m_x}"
+            rc_y_expr = f"main_h-overlay_h-{m_y_bottom}"
+        elif pos == "top_right":
+            rc_x_expr = f"main_w-overlay_w-{m_x}"
+            rc_y_expr = f"{m_y_top}"
+        elif pos == "top_left":
+            rc_x_expr = f"{m_x}"
+            rc_y_expr = f"{m_y_top}"
+        else:  # bottom_right (default)
+            rc_x_expr = f"main_w-overlay_w-{m_x}"
+            rc_y_expr = f"main_h-overlay_h-{m_y_bottom}"
+
+        shape = (reaction_cam_shape or "circle").lower().strip()
+        if shape == "circle":
+            radius = rc_dim // 2
+            rc_prep = (
+                f"[{rc_idx}:v]scale={rc_dim}:{rc_dim}:force_original_aspect_ratio=increase,crop={rc_dim}:{rc_dim},"
+                f"format=yuva420p,geq='r=r(X,Y):g=g(X,Y):b=b(X,Y):a=if(lte(hypot(X-{radius},Y-{radius}),{radius}),255,0)'[rc_proc]"
+            )
+        else:
+            border_filter = f",drawbox=x=0:y=0:w={rc_dim}:h={rc_dim}:color={b_color}@0.9:t=4" if b_color != "none" else ""
+            rc_prep = f"[{rc_idx}:v]scale={rc_dim}:{rc_dim}:force_original_aspect_ratio=increase,crop={rc_dim}:{rc_dim}{border_filter}[rc_proc]"
+
+        filter_chains.append(rc_prep)
+        overlay_cmd = f"{out_video_map}[rc_proc]overlay=x='{rc_x_expr}':y='{rc_y_expr}'[v_reaction]"
+        filter_chains.append(overlay_cmd)
+        out_video_map = "[v_reaction]"
+
+        # Optional audio mixing from reaction cam
+        if not reaction_cam_mute_audio:
+            filter_chains.append(f"[{rc_idx}:a]volume=0.85[rc_audio]")
+            audio_inputs_to_mix.append("[rc_audio]")
 
     # Visual Micro-Sharpening & Color Vibrancy Polish (BT.709-optimized)
     if video_polish_enabled:
