@@ -1,18 +1,22 @@
-# Basis Pengetahuan & Riwayat Kasus Bug (.agents/knowledge/)
+# Basis Pengetahuan & Memori Teknis ClipVidio AI (`.agents/knowledge/`)
 
-Direktori ini berfungsi sebagai **pusat memori & basis pengetahuan (*Knowledge Bank*)** untuk mencatat riwayat kendala teknis, bug antarmuka/logika yang pernah diselesaikan, dan solusi arsitektur baku pada proyek `adminShuttleV3`.
-
----
-
-## Indeks Kasus:
-* **[bug-cases.md](./bug-cases.md)**: Riwayat lengkap kendala teknis, akar masalah, dan solusi fix yang telah teruji (seperti kasus softdelete OTA, alignment tabel closing report, cross-database settlement view, dll).
+Direktori ini adalah pusat pengetahuan teknis (**Single Source of Truth**) untuk proyek **ClipVidio AI** (`Clipper-Vidio-YT`). Seluruh AI Agent wajib merujuk berkas-berkas di sini sebelum memodifikasi alur render, FFmpeg filtergraph, AI analyzer, maupun komponen Studio UI.
 
 ---
 
-## Standar Penambahan Kasus Baru:
-Setiap kali AI Agent atau pengembang berhasil menyelesaikan bug atau perbaikan fitur, tambahkan entri baru ke `bug-cases.md` dengan format:
+## Indeks Dokumen Pengetahuan
+
+1. **[cross-feature-disambiguation.md](./cross-feature-disambiguation.md)**: **[CRITICAL]** Kamus Anti-Halusinasi pemisah 6 keluarga fitur kembar (Single vs Merged vs Client WASM, PIP Sumber vs Reaction Cam, ASS Title vs PNG Emoji Title, `ClipStudioSection` vs `ClipStudioModal`, dll.).
+2. **[bug-cases.md](./bug-cases.md)**: Riwayat kasus bug produksi nyata di ClipVidio AI beserta akar masalah dan pola pencegahannya.
+3. **[domain-reference/README.md](./domain-reference/README.md)**: 4 dokumen arsitektur mendalam (Ingestion & AI Pipeline, FFmpeg Filtergraph, WYSIWYG Preview Sync, dan 5-Point RenderSettings Contract).
+4. **[hub-and-spoke-sync.md](./hub-and-spoke-sync.md)**: Protokol sinkronisasi Master Hub (`agentic AI`) dengan proyek spoke.
+
+---
+
+## Standar Penambahan Kasus Bug Baru
+Setiap kali menyelesaikan bug produksi di `bug-cases.md`, gunakan struktur 5 blok:
 1. **Kasus #**: Judul deskriptif bug.
-2. **Konteks & Gejala (Symptom)**: Masalah yang dialami pengguna.
-3. **Akar Masalah (Root Cause)**: Analisis teknis penyebab kegagalan.
-4. **Solusi yang Diterapkan (Fix Applied)**: File yang diubah dan kode kunci perbaikan.
-5. **Pelajaran untuk Pengembangan Masa Depan (Key Takeaway)**: Panduan pencegahan.
+2. **Kategori**: Backend / FFmpeg Filtergraph / Audio DSP / AI Router / Frontend Studio / Media Upload.
+3. **Gejala (Symptom)**: Error atau anomali visual/audio yang muncul.
+4. **Akar Masalah (Root Cause)**: Penyebab teknis persis di kode.
+5. **Solusi & Pelajaran (Fix & Takeaway)**: Berkas yang diubah dan aturan pencegahan permanen.

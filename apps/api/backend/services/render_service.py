@@ -18,7 +18,9 @@ from backend.config import (
     EXPORTS_DIR,
     TEMP_DIR,
     download_clip_segment,
+    extract_cover_thumbnail,
     generate_ass_file,
+    generate_srt_file,
     has_emoji,
     is_valid_mp4,
     logger,
@@ -27,6 +29,8 @@ from backend.config import (
     transcribe_clip_words,
 )
 from backend.schemas.render import RenderBatchRequest, RenderSettingsModel
+from backend.services.silence_cutter_service import apply_silence_cut
+from backend.services.video_qa_service import audit_rendered_video
 
 RENDER_BATCHES: Dict[str, Dict[str, Any]] = {}
 BATCH_REQUESTS: Dict[str, RenderBatchRequest] = {}
@@ -78,7 +82,9 @@ async def render_single_batch_clip(
     clip_status["error"] = None
 
     raw_path = None
+    silenced_raw_path = None
     ass_path = None
+    srt_path = None
     title_overlay_path = None
 
     def on_dl_progress(p: Dict[str, Any]):
@@ -175,16 +181,39 @@ async def render_single_batch_clip(
                 logger.warning(f"Could not render color emoji title overlay: {ex}")
                 skip_ass_title = False
 
+        silence_mode = (getattr(settings, "silence_cut_mode", "off") or "off").lower().strip()
+        need_words = (settings.caption_style != "none") or (silence_mode in ("natural", "snappy"))
+        words = []
+        if need_words:
+            words = await asyncio.to_thread(
+                transcribe_clip_words,
+                raw_path,
+                transcript,
+                start_t,
+                end_t
+            )
+
+        # 2.5 Optional Auto-Trim Dead Air (Smart Silence Jumpcut + Word Re-Timing)
+        effective_raw_path = raw_path
+        if silence_mode in ("natural", "snappy"):
+            clip_status["progress_percent"] = 52
+            candidate_silenced = str(TEMP_DIR / f"{batch_id}_clip_{idx}_silenced.mp4")
+            cut_res = await asyncio.to_thread(
+                apply_silence_cut,
+                video_path=raw_path,
+                output_path=candidate_silenced,
+                words=words,
+                duration=duration_sec,
+                mode=silence_mode,
+            )
+            if cut_res.get("applied"):
+                silenced_raw_path = cut_res["video_path"]
+                effective_raw_path = silenced_raw_path
+                words = cut_res["words"]
+                duration_sec = max(1.0, float(cut_res["duration"]))
+                clip_status["silence_removed_sec"] = float(cut_res.get("removed_sec") or 0.0)
+
         if settings.caption_style != "none" or (display_title and settings.title_position != "none" and not skip_ass_title):
-            words = []
-            if settings.caption_style != "none":
-                words = await asyncio.to_thread(
-                    transcribe_clip_words,
-                    raw_path,
-                    transcript,
-                    start_t,
-                    end_t
-                )
             ass_filename = f"{batch_id}_clip_{idx}.ass"
             ass_path = str(TEMP_DIR / ass_filename)
             await asyncio.to_thread(
@@ -215,6 +244,21 @@ async def render_single_batch_clip(
                 keyword_accent_mode=settings.keyword_accent_mode or "accent_and_emoji"
             )
 
+        # Generate sidecar .srt file for SEO indexing in ZIP package
+        if words:
+            try:
+                srt_candidate = str(EXPORTS_DIR / f"clip_{idx+1}_{batch_id}.srt")
+                srt_path = await asyncio.to_thread(
+                    generate_srt_file,
+                    words=words,
+                    output_srt_path=srt_candidate,
+                    text_case=settings.text_case or "capitalize",
+                    subtitle_offset_ms=settings.subtitle_offset_ms or 0,
+                    speed_ratio=float(getattr(settings, "speed_ramp_ratio", 1.0) or 1.0),
+                )
+            except Exception as srt_err:
+                logger.warning(f"Sidecar SRT generation skipped: {srt_err}")
+
         # 3. Render Final Vertical MP4
         clip_status["status"] = "rendering"
         clip_status["progress_percent"] = 70
@@ -227,7 +271,7 @@ async def render_single_batch_clip(
 
         await asyncio.to_thread(
             render_clip_to_mp4,
-            video_path=raw_path,
+            video_path=effective_raw_path,
             output_mp4_path=out_path,
             aspect_ratio=settings.aspect_ratio,
             background_style=settings.background_style,
@@ -293,6 +337,25 @@ async def render_single_batch_clip(
         if not os.path.exists(out_path) or not is_valid_mp4(out_path):
             raise RuntimeError("Rendered MP4 file is incomplete or missing. Please retry rendering.")
 
+        # 4. Extract Cover Thumbnail & Run Automated Post-Render QA Gate
+        clip_status["progress_percent"] = 92
+        try:
+            cover_candidate = str(EXPORTS_DIR / f"clip_{idx+1}_{batch_id}_cover.jpg")
+            extracted_cover = await asyncio.to_thread(extract_cover_thumbnail, out_path, cover_candidate, 3.0)
+            if extracted_cover:
+                clip_status["cover_path"] = extracted_cover
+        except Exception as cov_err:
+            logger.warning(f"Cover thumbnail skipped for clip {idx}: {cov_err}")
+
+        if srt_path and os.path.exists(srt_path):
+            clip_status["srt_path"] = srt_path
+
+        try:
+            qa_report = await asyncio.to_thread(audit_rendered_video, out_path, True)
+            clip_status["qa_report"] = qa_report
+        except Exception as qa_err:
+            logger.warning(f"Post-render QA skipped for clip {idx}: {qa_err}")
+
         clip_status["status"] = "completed"
         clip_status["progress_percent"] = 100
         clip_status["download_url"] = f"/api/download-rendered/{out_filename}"
@@ -316,6 +379,12 @@ async def render_single_batch_clip(
         if raw_path and os.path.exists(raw_path):
             try:
                 os.unlink(raw_path)
+            except Exception:
+                pass
+    finally:
+        if silenced_raw_path and silenced_raw_path != raw_path and os.path.exists(silenced_raw_path):
+            try:
+                os.unlink(silenced_raw_path)
             except Exception:
                 pass
 
@@ -388,6 +457,17 @@ def update_batch_summary_and_zip(batch_id: str, settings: RenderSettingsModel):
                             arc_json_name = f"copy_deck_{formatted_name}.json" if count == 0 else f"copy_deck_{formatted_name} ({count}).json"
                             zipf.writestr(arc_meta_name, meta_txt.encode("utf-8"))
                             zipf.writestr(arc_json_name, json.dumps(deck, indent=2, ensure_ascii=False).encode("utf-8"))
+
+                            # Include sidecar .srt subtitle and auto-extracted cover thumbnail in ZIP bundle
+                            c_srt = c.get("srt_path")
+                            if c_srt and os.path.exists(c_srt):
+                                arc_srt_name = f"{formatted_name}.srt" if count == 0 else f"{formatted_name} ({count}).srt"
+                                zipf.write(c_srt, arcname=arc_srt_name)
+
+                            c_cover = c.get("cover_path")
+                            if c_cover and os.path.exists(c_cover):
+                                arc_cov_name = f"cover_{formatted_name}.jpg" if count == 0 else f"cover_{formatted_name} ({count}).jpg"
+                                zipf.write(c_cover, arcname=arc_cov_name)
                         except Exception as meta_err:
                             logger.warning(f"Failed to append metadata files for {formatted_name}: {meta_err}")
 
@@ -434,7 +514,9 @@ async def render_merged_batch_clips(
 
     part_paths: List[str] = []
     raw_merged_path: Optional[str] = None
+    silenced_merged_path: Optional[str] = None
     ass_path: Optional[str] = None
+    srt_path: Optional[str] = None
     title_overlay_path: Optional[str] = None
 
     try:
@@ -506,13 +588,15 @@ async def render_merged_batch_clips(
             await asyncio.to_thread(subprocess.run, concat_cmd, check=True, timeout=concat_timeout)
 
         # 3. Transcribe & generate time-shifted subtitles
+        silence_mode = (getattr(settings, "silence_cut_mode", "off") or "off").lower().strip()
+        need_merged_words = (settings.caption_style != "none") or (silence_mode in ("natural", "snappy"))
         total_duration_sec = 0.0
         merged_words = []
         for i, seg in enumerate(clips):
             s_t = float(seg.get("start_time", 0.0))
             e_t = float(seg.get("end_time", s_t + 30.0))
             seg_dur = max(0.1, e_t - s_t)
-            if settings.caption_style != "none":
+            if need_merged_words:
                 seg_words = await asyncio.to_thread(
                     transcribe_clip_words,
                     part_paths[i],
@@ -530,6 +614,25 @@ async def render_merged_batch_clips(
             total_duration_sec += seg_dur
 
         total_duration_sec = max(1.0, total_duration_sec)
+
+        # Optional Auto-Trim Dead Air on merged highlight
+        effective_merged_path = raw_merged_path
+        if silence_mode in ("natural", "snappy") and raw_merged_path:
+            candidate_silenced = str(TEMP_DIR / f"{batch_id}_merged_silenced.mp4")
+            cut_res = await asyncio.to_thread(
+                apply_silence_cut,
+                video_path=raw_merged_path,
+                output_path=candidate_silenced,
+                words=merged_words,
+                duration=total_duration_sec,
+                mode=silence_mode,
+            )
+            if cut_res.get("applied"):
+                silenced_merged_path = cut_res["video_path"]
+                effective_merged_path = silenced_merged_path
+                merged_words = cut_res["words"]
+                total_duration_sec = max(1.0, float(cut_res["duration"]))
+                clip_status["silence_removed_sec"] = float(cut_res.get("removed_sec") or 0.0)
 
         display_title = clip_status.get("title") or clip_status.get("base_title") or "Highlight Video"
         skip_ass_title = False
@@ -596,6 +699,21 @@ async def render_merged_batch_clips(
                 keyword_accent_mode=settings.keyword_accent_mode or "accent_and_emoji"
             )
 
+        # Generate sidecar .srt for merged compilation
+        if merged_words:
+            try:
+                srt_candidate = str(EXPORTS_DIR / f"compilation_{batch_id}.srt")
+                srt_path = await asyncio.to_thread(
+                    generate_srt_file,
+                    words=merged_words,
+                    output_srt_path=srt_candidate,
+                    text_case=settings.text_case or "capitalize",
+                    subtitle_offset_ms=settings.subtitle_offset_ms or 0,
+                    speed_ratio=float(getattr(settings, "speed_ramp_ratio", 1.0) or 1.0),
+                )
+            except Exception as srt_err:
+                logger.warning(f"Merged SRT generation skipped: {srt_err}")
+
         # 4. Render Final Single MP4
         clip_status["status"] = "rendering"
         clip_status["progress_percent"] = 65
@@ -609,7 +727,7 @@ async def render_merged_batch_clips(
 
         await asyncio.to_thread(
             render_clip_to_mp4,
-            video_path=raw_merged_path,
+            video_path=effective_merged_path,
             output_mp4_path=out_path,
             aspect_ratio=settings.aspect_ratio,
             background_style=settings.background_style,
@@ -675,6 +793,23 @@ async def render_merged_batch_clips(
         if not os.path.exists(out_path) or not is_valid_mp4(out_path):
             raise RuntimeError("Merged MP4 file is incomplete or missing. Please retry rendering.")
 
+        # Extract cover & run post-render QA gate
+        try:
+            cover_candidate = str(EXPORTS_DIR / f"compilation_{batch_id}_cover.jpg")
+            extracted_cover = await asyncio.to_thread(extract_cover_thumbnail, out_path, cover_candidate, 3.0)
+            if extracted_cover:
+                clip_status["cover_path"] = extracted_cover
+        except Exception as cov_err:
+            logger.warning(f"Merged cover extraction skipped: {cov_err}")
+
+        if srt_path and os.path.exists(srt_path):
+            clip_status["srt_path"] = srt_path
+
+        try:
+            clip_status["qa_report"] = await asyncio.to_thread(audit_rendered_video, out_path, True)
+        except Exception as qa_err:
+            logger.warning(f"Merged post-render QA skipped: {qa_err}")
+
         clip_status["status"] = "completed"
         clip_status["progress_percent"] = 100
         clip_status["download_url"] = f"/api/download-rendered/{out_filename}"
@@ -697,6 +832,11 @@ async def render_merged_batch_clips(
         if raw_merged_path and os.path.exists(raw_merged_path):
             try:
                 os.unlink(raw_merged_path)
+            except Exception:
+                pass
+        if silenced_merged_path and silenced_merged_path != raw_merged_path and os.path.exists(silenced_merged_path):
+            try:
+                os.unlink(silenced_merged_path)
             except Exception:
                 pass
 

@@ -81,6 +81,10 @@ def _format_parsed_dict(data: dict, channel: str, lang_code: str) -> dict:
             "title_suggestion": title_sug,
             "caption_suggestion": str(c.get('caption_suggestion', '') or ''),
             "hashtag_suggestion": str(c.get('hashtag_suggestion', '') or ''),
+            "framing_type": str(c.get('framing_type', '') or '').lower().strip() or None,
+            "open_loop_question": str(c.get('open_loop_question', '') or '').strip(),
+            "payoff_time": float(c.get('payoff_time')) if c.get('payoff_time') is not None else None,
+            "muted_hook_overlay": sanitize_first_person_title(str(c.get('muted_hook_overlay', '') or ''), channel, lang=lang_code),
         })
     return {
         "summary": str(data.get("summary", "") or ""),
@@ -1149,6 +1153,12 @@ async def analyze_video(request: AnalyzeRequest):
             f"   - Purpose: Triggers immediate laughter, high looping re-watch (>100% APV), and tagging friends.\n"
             f"   - Focus: Deadpan innocence, hilarious circular logic, funny misunderstandings, or random punchlines.\n"
             f"   - Title Blueprint: 'Logika Absurd [Nama] Bikin Otak Mikir Keras 😭' or 'Momen Paling Kocak [Nama] Saat Ditanya...'.\n\n"
+            f"CRITICAL OPEN-LOOP & 3-SECOND MUTED HOOK GATE (REASON TO STAY UNTIL THE END):\n"
+            f"For EVERY clip, explicitly validate and populate these 4 retention fields in {lang_name.upper()}:\n"
+            f"1. `framing_type`: Pick one dominant framing: 'controversial', 'respect', or 'comedy'.\n"
+            f"2. `open_loop_question`: State the exact unresolved question or curiosity tension sparked within the first 3 seconds (NOT vague 'wait for it', must be concrete and grounded in the transcript).\n"
+            f"3. `payoff_time`: Exact timestamp (seconds inside [start_time, end_time]) where that open loop is resolved with an earned answer, twist, or punchline.\n"
+            f"4. `muted_hook_overlay`: Ultra-short on-screen text (MAX 6 words, no first-person pronouns) that stops a scrolling viewer even when watching WITHOUT SOUND (muted feed autoplay).\n\n"
             f"CRITICAL TITLE & ATTRIBUTION RULES (NO FIRST-PERSON 'I' OR 'ME'):\n"
             f"1. NEVER write clip titles or title suggestions using first-person pronouns ('I', 'me', 'my', 'mine', 'myself', or equivalents in other languages such as 'saya', 'aku', 'gue')!\n"
             f"2. The user posting or curating these clips is a third-party editor, NOT the person speaking in the video. Titles must NEVER make it look like the clip is expressing the user's personal opinion, story, or reaction (e.g. NEVER write 'Why I think this is bad', 'How I made $100K', 'My biggest mistake', or 'I was shocked' / in Indonesian: NEVER 'Kenapa saya...', 'Cara aku...', 'Opini gue...').\n"
@@ -1678,6 +1688,12 @@ async def analyze_video(request: AnalyzeRequest):
             caption_sug = lowercase_hashtags_in_string(raw_clip.get('caption_suggestion', ''))
             hashtag_sug = lowercase_hashtags_in_string(raw_clip.get('hashtag_suggestion', ''))
             
+            # Validate payoff_time stays within clip bounds
+            raw_payoff = raw_clip.get('payoff_time')
+            payoff_t = float(raw_payoff) if raw_payoff is not None and (start <= float(raw_payoff) <= end) else None
+            raw_framing = (raw_clip.get('framing_type') or '').lower().strip()
+            clean_framing = raw_framing if raw_framing in ('controversial', 'respect', 'comedy') else None
+
             final_clips.append(ViralClip(
                 title=sanitize_first_person_title(raw_clip.get('title', ''), channel, lang=lang_code),
                 start_time=start,
@@ -1688,7 +1704,11 @@ async def analyze_video(request: AnalyzeRequest):
                 transcript=" ".join(clip_lines),
                 title_suggestion=sanitize_first_person_title(raw_clip.get('title_suggestion', ''), channel, lang=lang_code),
                 caption_suggestion=caption_sug,
-                hashtag_suggestion=hashtag_sug
+                hashtag_suggestion=hashtag_sug,
+                framing_type=clean_framing,
+                open_loop_question=str(raw_clip.get('open_loop_question') or '').strip(),
+                payoff_time=payoff_t,
+                muted_hook_overlay=sanitize_first_person_title(str(raw_clip.get('muted_hook_overlay') or ''), channel, lang=lang_code),
             ))
 
         # Enforce max constraint of ~200 clips for auto clip count

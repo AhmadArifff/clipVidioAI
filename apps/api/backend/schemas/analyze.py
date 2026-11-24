@@ -12,6 +12,10 @@ class ViralClip(BaseModel):
     title_suggestion: str = Field(default="", description="Catchy alternative title suggestion. MUST NEVER use first-person pronouns ('I', 'me', 'my'). Attribute to speaker or objective topic.")
     caption_suggestion: str = Field(default="", description="Engaging social media caption suggestion attributing quotes or insights to the speaker.")
     hashtag_suggestion: str = Field(default="", description="Relevant hashtags suggestion (e.g. #hashtag1 #hashtag2)")
+    framing_type: Optional[str] = Field(default=None, description="Dominant viral framing: 'controversial', 'respect', or 'comedy'")
+    open_loop_question: Optional[str] = Field(default="", description="Specific curiosity question planted in the first 3 seconds that keeps viewers watching")
+    payoff_time: Optional[float] = Field(default=None, description="Absolute timestamp in seconds where the open loop question is resolved/answered inside the clip")
+    muted_hook_overlay: Optional[str] = Field(default="", description="Ultra-punchy on-screen text hook (max 6 words) readable when muted in the first 3 seconds")
 
 class ViralClipGemini(BaseModel):
     title: str = Field(description="Catchy clip title, max 8 words, in the EXACT SAME LANGUAGE as the video transcript (STRICT ZERO-TRANSLATION RULE: English is English, Indonesian is Indonesian, Spanish is Spanish). NEVER use first-person pronouns ('I', 'me', 'my', 'myself', 'aku', 'saya'). Attribute to the person speaking by name, host/guest title, or use third-person objective framing so it does not look like the user's opinion.")
@@ -23,6 +27,10 @@ class ViralClipGemini(BaseModel):
     title_suggestion: str = Field(default="", description="Catchy alternative title suggestion in the EXACT SAME LANGUAGE as the video transcript (DO NOT translate). STRICT RULE: NEVER use first-person ('I', 'me', 'my', 'saya', 'aku'). Attribute to the speaker/host/guest by name or topic.")
     caption_suggestion: str = Field(default="", description="Engaging social media caption suggestion written in the EXACT SAME LANGUAGE as the video transcript (DO NOT translate to any other language), attributing insights or story to the speaker.")
     hashtag_suggestion: str = Field(default="", description="Relevant hashtags suggestion in the SAME LANGUAGE as the video transcript (e.g. #hashtag1 #hashtag2)")
+    framing_type: str = Field(default="controversial", description="Dominant framing category: 'controversial', 'respect', or 'comedy'")
+    open_loop_question: str = Field(default="", description="Specific curiosity question planted in the opening 3 seconds in the EXACT SAME LANGUAGE as the video transcript")
+    payoff_time: Optional[float] = Field(default=None, description="Absolute timestamp in seconds inside [start_time, end_time] where the open loop pays off")
+    muted_hook_overlay: str = Field(default="", description="Punchy max 6-word on-screen opening hook understandable even on mute, in the EXACT SAME LANGUAGE as the video transcript")
 
 class VideoAnalysis(BaseModel):
     summary: str = Field(description="1-2 sentence video summary in the EXACT SAME LANGUAGE as the video transcript (STRICT ZERO-TRANSLATION RULE: English stays English, Indonesian stays Indonesian, Spanish stays Spanish), followed by 2-4 relevant hashtags")

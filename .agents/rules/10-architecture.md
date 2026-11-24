@@ -1,145 +1,20 @@
----
-description: Backend Architecture Standards - Controller, Service, Repository, Model (app/**)
-globs: app/**
----
+# Standar Arsitektur Backend FastAPI & Monorepo (`ClipVidio AI`)
 
-# 10. Backend Architecture (Controller ➔ Service ➔ Repository)
+## 1. Pemisahan 4-Layer Backend (`apps/api/backend/`)
+1. **Routers (`routers/*.py`)**: Thin HTTP/SSE controllers. Bertanggung jawab atas parsing request, validasi skema Pydantic, SSE progress streaming (`StreamingResponse`), dan HTTP error mapping. Tidak boleh menaruh logika FFmpeg mentah di dalam router.
+2. **Schemas (`schemas/*.py`)**: Kontrak payload request/response berbasis Pydantic v2 (`ConfigDict(extra="ignore")` untuk backward compatibility dengan client lama).
+3. **Services (`services/*.py`)**: Orkestrasi bisnis dan pipeline berat:
+   * `ai_service.py`: Multi-key Gemini rotation & OpenRouter fallback.
+   * `render_service.py`: Batch job state (`RENDER_BATCHES`), download segmen, silence cutting, transkripsi/ASS/SRT, pemanggilan `video_engine`, post-render QA (`video_qa_service`), dan packaging ZIP.
+   * `silence_cutter_service.py`: Deteksi dan pemangkasan dead air + re-timing word timestamps.
+   * `video_qa_service.py`: Audit otomatis MP4 pasca-render (Frame 0, LUFS, True Peak, Leading Silence, Freeze, AV Sync).
+   * `copywriting_service.py`: Pembuatan hook titles, captions, pinned comment, hashtags, dan `metadata.txt`.
+   * `youtube_service.py` / `gdrive_service.py` / `download_service.py`: Akuisisi media dan transkrip.
+4. **Core Engine (`video_engine.py`)**: Konstruksi filtergraph FFmpeg, face tracking OpenCV (`YuNet`), generator subtitle `.ass`/`.srt`, rendering title PNG emoji, dan eksekusi FFmpeg GPU/CPU fallback.
 
-Sistem `adminShuttleV3` menerapkan arsitektur berorientasi lapisan (*layered architecture*) yang memisahkan tanggung jawab secara tegas (*Separation of Concerns*).
+## 2. Aturan Async & Non-Blocking
+* Semua operasi blocking (FFmpeg subprocess, `yt-dlp`, OpenCV, Pillow, Whisper) **WAJIB** dijalankan di luar event loop FastAPI menggunakan `await asyncio.to_thread(...)`.
+* Progress real-time ke Frontend dikirim melalui `RENDER_BATCHES` (polling `/api/render-batch-status/{batch_id}`) atau SSE `_sse(...)` pada endpoint `/api/analyze`.
 
-```
-   [ Client / Browser ]
-            │
-            ▼
-    [ Controller ]      ──► Validasi Form Request & Otorisasi RBAC
-            │
-            ▼
-      [ Service ]       ──► Logika Bisnis, Kalkulasi, Transformasi Finansial
-            │
-            ▼
-    [ Repository ]      ──► Akses Database, Eloquent Model, Query Builder
-            │
-            ▼
-     [ Database ]
-```
-
----
-
-## 1. Controller (`app/Http/Controllers/`)
-* **Tanggung Jawab**:
-  1. Menerima `Request` dari route HTTP.
-  2. Memeriksa izin hak akses via `$this->permission('read'|'create'|'update'|'delete')`.
-  3. Meneruskan data ke **Service** terkait.
-  4. Mengembalikan respon: `View`, `JsonResponse`, atau `BinaryFileResponse` (download file).
-* **Aturan Mutlak**:
-  * ❌ **JANGAN** menulis logika perhitungan finansial di controller.
-  * ❌ **JANGAN** memanggil `DB::table()`, Model Eloquent, atau query langsung.
-  * ❌ **JANGAN** menginjeksi atau memanggil Repository secara langsung.
-
-```php
-// ✅ CONTOH YANG BENAR
-namespace App\Http\Controllers\Settlement;
-
-use App\Http\Controllers\Controller;
-use App\Services\Settlement\SettlementPackageService;
-use Illuminate\Http\Request;
-use Illuminate\View\View;
-
-class SettlementPackageController extends Controller
-{
-    protected SettlementPackageService $settlementService;
-
-    public function __construct(SettlementPackageService $settlementService)
-    {
-        parent::__construct();
-        $this->settlementService = $settlementService;
-        $this->parent_url = 'settlement-packages/index';
-    }
-
-    public function index(Request $request): View
-    {
-        $this->permission('read');
-        $filters = $request->only(['date_type', 'daterange', 'payment_method']);
-        $result = $this->settlementService->getSettlementData($filters);
-
-        return view('apps.settlements.package.index', $result);
-    }
-}
-```
-
----
-
-## 2. Service (`app/Services/`)
-* **Tanggung Jawab**:
-  1. Pusat seluruh logika bisnis (*business logic*), alur transaksi, dan perhitungan formula.
-  2. Menginjeksi satu atau lebih **Repository**.
-  3. Memanipulasi struktur data untuk kebutuhan tampilan atau ekspor file.
-  4. Mengatur database transaction (`DB::beginTransaction()`, `commit()`, `rollback()`) bila terjadi mutasi multi-tabel.
-* **Aturan Mutlak**:
-  * ❌ **JANGAN** mengimpor Eloquent Model secara langsung di file Service.
-  * ❌ **JANGAN** menulis kueri database SQL / `DB::table()` di dalam Service.
-
-```php
-// ✅ CONTOH YANG BENAR
-namespace App\Services\Settlement;
-
-use App\Repositories\Settlement\SettlementPackageRepository;
-
-class SettlementPackageService
-{
-    protected SettlementPackageRepository $repository;
-
-    public function __construct(SettlementPackageRepository $repository)
-    {
-        $this->repository = $repository;
-    }
-
-    public function getSettlementData(array $filters): array
-    {
-        $rawData = $this->repository->getSettlementPackages($filters);
-        // Lakukan transformasi kalkulasi finansial di sini...
-        return ['reportData' => $processed, 'summaryCards' => $summary];
-    }
-}
-```
-
----
-
-## 3. Repository (`app/Repositories/`)
-* **Tanggung Jawab**:
-  1. Satu-satunya lapisan yang berhak berkomunikasi dengan basis data.
-  2. Mengeksekusi kueri menggunakan Eloquent Model atau Query Builder (`DB::table`).
-  3. Melakukan filter SQL, join tabel, pencarian, dan pagination.
-* **Aturan Mutlak**:
-  * ❌ **JANGAN** menaruh logika bisnis atau formula kalkulasi aplikasi di Repository.
-  * ❌ **JANGAN** mengembalikan respon HTTP dari Repository.
-
-```php
-// ✅ CONTOH YANG BENAR
-namespace App\Repositories\Settlement;
-
-use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
-
-class SettlementPackageRepository
-{
-    public function getSettlementPackages(array $filters): Collection
-    {
-        return DB::table('connex.package_transaction as pt')
-            ->leftJoin('outlets as dep', 'pt.from', '=', 'dep.code')
-            ->where('pt.payment_status', 'paid')
-            ->get();
-    }
-}
-```
-
----
-
-## 4. Model (`app/Models/`)
-* **Tanggung Jawab**:
-  1. Merepresentasikan struktur tabel database.
-  2. Mendefinisikan relasi (`hasOne`, `hasMany`, `belongsTo`).
-  3. Mendefinisikan cast atribut (`$casts`), accessor, mutator, dan local query scope.
-* **Aturan Mutlak**:
-  * ❌ **JANGAN** memanggil Model di Controller atau Service.
-  * Model hanya boleh berinteraksi dengan **Repository**.
+## 3. Resiliensi & Graceful Degradation
+* Jika fitur opsional gagal (misal emoji PNG overlay, silence cutter tanpa jeda, atau QA probe timeout), sistem wajib mencatat `logger.warning(...)` dan melakukan fallback aman ke jalur inti agar render MP4 tetap selesai tanpa crash 500.

@@ -1,7 +1,7 @@
 {
   "project": "clipVidioAI",
-  "version": "2.0.0",
-  "total_cases": 5,
+  "version": "3.9.0",
+  "total_cases": 6,
   "cases": [
     {
       "id": "case-20261009-github-secret-scanning-proxy-false-positive",
@@ -47,6 +47,15 @@
       "status": "VERIFIED",
       "file": "cases/case-20261010-render-pipeline-download-telemetry-caching.md",
       "verified_by": ["backend-engineer", "qa-engineer", "tech-critic"]
+    },
+    {
+      "id": "case-20261124-paket-b-retention-qa-phase-safe-engine",
+      "title": "Paket B Retention & QA Engine: Phase-Safe Mono Guard, Smart Silence Jumpcut, Post-Render Video QA Gate, Open-Loop AI, & Upgrade .agents Standar V2",
+      "category": "multimedia_qa_architecture",
+      "severity": "high",
+      "status": "VERIFIED",
+      "file": "cases/case-20261124-paket-b-retention-qa-phase-safe-engine.md",
+      "verified_by": ["multimedia-video-engineer", "qa-engineer", "tech-critic"]
     }
   ]
 }

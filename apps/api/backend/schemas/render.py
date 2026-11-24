@@ -94,8 +94,10 @@ class RenderSettingsModel(BaseModel):
     reaction_cam_position: Optional[str] = "bottom_right" # "bottom_right" | "bottom_left" | "top_right" | "top_left"
     reaction_cam_size: Optional[float] = 24.0             # 15.0% to 45.0% of canvas width
     reaction_cam_shape: Optional[str] = "circle"          # "circle" | "rounded_rect"
-    reaction_cam_border_color: Optional[str] = "white"    # "white" | "gold" | "cyan" | "none"
+    reaction_cam_border_color: Optional[str] = "white"    # "white" | "gold" | "cyan" | "neon_purple" | "none"
     reaction_cam_mute_audio: Optional[bool] = True        # Default True to preserve original dialogue
+    # v3.9 Retention Engine: Auto-Trim Dead Air (Smart Silence Jumpcut)
+    silence_cut_mode: Optional[str] = "off"               # "off" | "natural" (0.55s) | "snappy" (0.35s)
 
 class RenderBatchRequest(BaseModel):
     model_config = ConfigDict(extra="ignore")

@@ -1,9 +1,9 @@
 {
   "session_id": "session-clipvidio-20261010-01",
   "project": "clipVidioAI",
-  "version": "2.0.0",
-  "active_goal": "Transformasi ClipVidio AI: Implementasi Fitur Custom Background Multi-Ratio, Restrukturisasi Monorepo, Penerapan Session-State Governance, Redesain UI/UX & Ikonografi Profesional (Lucide React), serta Pelacakan Terpusat via PRD.md",
-  "status": "IN_PROGRESS",
+  "version": "3.9.0",
+  "active_goal": "ClipVidio AI v3.9: Paket B Retention & QA Engine (Phase-Safe Audio, 48kHz Broadcast Lock, Safe Zone 9:16, High-Contrast Box, Sidecar SRT + Cover JPG, Smart Silence Jumpcut, Post-Render QA Gate, AI Open-Loop & Muted Hook) serta Upgrade Tata Kelola .agents/ Standar V2",
+  "status": "COMPLETED",
   "completed_milestones": [
     {
       "id": "M1_INITIAL_SETUP_AND_CLEANUP",
@@ -139,6 +139,26 @@
       "verified_at": "2026-10-14",
       "qa_reviewer": "qa-engineer",
       "tech_critic_approval": true
+    },
+    {
+      "id": "M16_REACTION_CAM_FRAMING_AND_FILTERGRAPH_FIXES",
+      "title": "Stabilisasi 3-Way Framing Sync, Reaction Cam PIP Overlay (Circle/Rounded Rect, Border Color, Audio Mixing), dan Resolusi FFmpeg Filtergraph Pad Double-Use serta Duplicate Hook Zoom Overlay",
+      "prd_sections": ["Seksi 20: Reaction Cam PIP & Filtergraph Stability"],
+      "owner_role": "multimedia-video-engineer",
+      "status": "VERIFIED_PASS",
+      "verified_at": "2026-11-24",
+      "qa_reviewer": "qa-engineer",
+      "tech_critic_approval": true
+    },
+    {
+      "id": "M17_PAKET_B_RETENTION_QA_AND_AGENTS_V2_UPGRADE",
+      "title": "Paket B Retention & QA Engine (Phase-Safe Mono Guard, 48kHz AAC + BGM Highpass 120Hz, Safe Zone 9:16 Overlay, High-Contrast Box Subtitle + Anti-Flash 0.40s, Auto Sidecar SRT + Sharpest Cover JPG, Smart Silence Jumpcut 1-Pass + Word Re-Timing, Post-Render Video QA Gate, AI Open-Loop & Muted Hook Gate) serta Upgrade .agents/ Standar V2 (feature-docs, disambiguation, domain-reference, qa-kernel.py, sync-docs.js)",
+      "prd_sections": ["Seksi 21: Paket B Retention & QA Engine + .agents Standar V2 (v3.9.0)"],
+      "owner_role": "multimedia-video-engineer",
+      "status": "VERIFIED_PASS",
+      "verified_at": "2026-11-24",
+      "qa_reviewer": "qa-engineer",
+      "tech_critic_approval": true
     }
   ],
   "in_progress_milestones": [],
@@ -147,8 +167,10 @@
     "C2: Pengembangan diutamakan pada lingkungan native Windows (Node.js & Python .venv). Penggunaan Docker ditunda untuk sementara waktu sesuai instruksi pengguna",
     "C3: Kepatuhan Anti-Slop (R-01..R-38): Dilarang menggunakan em dash (R-02), wajib WCAG AA contrast (R-25), responsive mobile tanpa overflow (R-03), dan UI berorientasi konten profesional",
     "C4: Transisi ke Monorepo harus backward-compatible dengan script launcher start.bat dan npm run dev agar tidak memutus workflow lokal pengguna",
-    "C5: Reviewer Independence (No Self-Review): Setiap deliverable wajib divalidasi oleh QA / Tech-Critic independen sebelum status dipromosikan ke VERIFIED_PASS"
+    "C5: Reviewer Independence (No Self-Review): Setiap deliverable wajib divalidasi oleh QA / Tech-Critic independen sebelum status dipromosikan ke VERIFIED_PASS",
+    "C6: Docs-First Retrieval & Self-Enrichment (Rule #29): Wajib baca .agents/feature-docs/ dan cross-feature-disambiguation.md sebelum coding, serta perbarui dokumentasi & bug-cases.md setelah selesai",
+    "C7: 5-Point RenderSettings Contract & FFmpeg Pad Safety: Parameter baru wajib sinkron di 5 titik (types.ts -> ClipStudioSection -> App.tsx -> schemas/render.py -> render_service + video_engine), audio 48kHz phase-safe, dan stream pad tidak boleh dipakai ganda tanpa split/asplit"
   ],
   "open_questions": [],
-  "last_updated": "2026-10-14T07:50:00Z"
+  "last_updated": "2026-11-24T20:40:00+07:00"
 }

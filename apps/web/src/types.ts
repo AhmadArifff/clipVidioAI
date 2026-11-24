@@ -37,6 +37,10 @@ export interface ViralClip {
   title_suggestion?: string;
   caption_suggestion?: string;
   hashtag_suggestion?: string;
+  framing_type?: 'controversial' | 'respect' | 'comedy' | string;
+  open_loop_question?: string;
+  payoff_time?: number;
+  muted_hook_overlay?: string;
   // v3.4.0 AI Social Copywriting Pack
   copy_deck?: SocialCopyDeck;
   // v3.5.0 AI Smart Clip Settings Recommendation
@@ -136,6 +140,7 @@ export type CaptionStyle =
   | 'fire_red' 
   | 'electric_cyan' 
   | 'golden_aura' 
+  | 'high_contrast_box'
   | 'clean_minimal' 
   | 'none';
 export type CaptionFont = 
@@ -165,6 +170,28 @@ export type VocalIsolationMode = 'off' | 'center_vocal_extract' | 'voice_clarity
 export type ReactionCamPosition = 'bottom_right' | 'bottom_left' | 'top_right' | 'top_left';
 export type ReactionCamShape = 'circle' | 'rounded_rect';
 export type ReactionCamBorderColor = 'white' | 'gold' | 'cyan' | 'neon_purple' | 'none';
+export type SilenceCutMode = 'off' | 'natural' | 'snappy';
+
+export interface VideoQAIssue {
+  rule: string;
+  severity: 'WARN' | 'FAIL';
+  message: string;
+}
+
+export interface VideoQAReport {
+  status: 'PASS' | 'WARN' | 'FAIL';
+  duration_sec?: number;
+  resolution?: string;
+  audio_sample_rate?: number | null;
+  lufs?: number | null;
+  true_peak_db?: number | null;
+  first_frame_ok?: boolean;
+  first_frame_luma?: number | null;
+  leading_silence_sec?: number;
+  frozen_count?: number;
+  issues?: VideoQAIssue[];
+  summary?: string;
+}
 
 export interface FontItem {
   name: string;
@@ -328,6 +355,8 @@ export interface RenderSettings {
   reactionCamShape?: ReactionCamShape;
   reactionCamBorderColor?: ReactionCamBorderColor;
   reactionCamMuteAudio?: boolean;
+  // v3.9 Auto-Trim Dead Air (Smart Silence Jumpcut)
+  silenceCutMode?: SilenceCutMode;
 }
 
 export interface RenderClipStatus {
@@ -342,6 +371,8 @@ export interface RenderClipStatus {
   download_speed?: string;
   download_eta?: string;
   download_pct?: number;
+  silence_removed_sec?: number;
+  qa_report?: VideoQAReport;
 }
 
 export interface BatchRenderProgress {

@@ -2166,6 +2166,13 @@ def generate_ass_file(
         highlight_color = "&H0000B8FF"  # #FFB800 Warm Gold
         outline_w = 4.8
         shadow_w = 2.0
+    elif style_preset == "high_contrast_box":
+        primary_color = "&H00FFFFFF"
+        outline_color = "&H380A0A0F"  # Translucent dark plate padding (BorderStyle=3)
+        back_color = "&H380A0A0F"
+        highlight_color = "&H0000E6FF"  # #FFE600 Crisp High-Contrast Gold
+        outline_w = 10.0
+        shadow_w = 0.0
     else:  # clean_minimal or none
         primary_color = "&H00FFFFFF"
         outline_color = "&H00111111"
@@ -2177,6 +2184,7 @@ def generate_ass_file(
     # Title styling: clean transparent background across ALL formats (no black box border)
     title_box_back = "&H00000000"
     title_border_style = 1
+    sub_border_style = 3 if style_preset == "high_contrast_box" else 1
 
     ass_header = f"""[Script Info]
 ScriptType: v4.00+
@@ -2189,7 +2197,7 @@ Collisions: Reverse
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
 Style: TitleStyle,{title_font_name or font_name},{title_font_size},&H00FFFFFF,&H000000FF,&H00000000,{title_box_back},-1,0,0,0,100,100,0,0,{title_border_style},4.4,2.0,8,40,40,0,1
-Style: SubStyle,{font_name},{sub_font_size},{primary_color},&H000000FF,{outline_color},{back_color},-1,0,0,0,100,100,0,0,1,{outline_w},{shadow_w},2,40,40,0,1
+Style: SubStyle,{font_name},{sub_font_size},{primary_color},&H000000FF,{outline_color},{back_color},-1,0,0,0,100,100,0,0,{sub_border_style},{outline_w},{shadow_w},2,40,40,0,1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
@@ -2221,7 +2229,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     if words and style_preset != "none":
         # Step A: Sanitize and sort all word timestamps with optional timing shift calibration
         offset_sec = float(subtitle_offset_ms or 0) / 1000.0
-        punch_lead_in = 0.08 if style_preset in ("beast_punch", "viral_pop", "cyber_violet", "fire_red", "electric_cyan", "golden_aura") else 0.0
+        punch_lead_in = 0.08 if style_preset in ("beast_punch", "viral_pop", "cyber_violet", "fire_red", "electric_cyan", "golden_aura", "high_contrast_box") else 0.0
         valid_words = []
         for w in words:
             raw_text = clean_caption_text(w.get("word", "").strip())
@@ -2267,17 +2275,17 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         if current_chunk:
             chunks.append(current_chunk)
 
-        # Step C: Enforce strictly non-overlapping, monotonically increasing chunk boundaries
+        # Step C: Enforce strictly non-overlapping, monotonically increasing chunk boundaries (>=0.40s anti-flash floor)
         chunk_bounds = []
         for chunk in chunks:
             c_start = chunk[0]["start"]
-            c_end = max(c_start + 0.25, chunk[-1]["end"])
+            c_end = max(c_start + 0.40, chunk[-1]["end"])
             if chunk_bounds:
                 prev_end = chunk_bounds[-1][1]
                 if c_start < prev_end:
                     c_start = prev_end
                 if c_end <= c_start:
-                    c_end = c_start + 0.25
+                    c_end = c_start + 0.40
             chunk_bounds.append((c_start, c_end))
 
         # Clamp against subsequent chunk start times to eliminate any inter-chunk overlaps
@@ -2340,6 +2348,148 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         f.write(ass_content)
 
     return output_ass_path
+
+
+def format_srt_timestamp(seconds: float) -> str:
+    """Formats seconds into standard SubRip (.srt) HH:MM:SS,mmm timestamp."""
+    s = max(0.0, float(seconds))
+    h = int(s // 3600)
+    m = int((s % 3600) // 60)
+    sec = int(s % 60)
+    ms = int(round((s - int(s)) * 1000))
+    if ms >= 1000:
+        sec += 1
+        ms -= 1000
+    if sec >= 60:
+        m += 1
+        sec -= 60
+    if m >= 60:
+        h += 1
+        m -= 60
+    return f"{h:02d}:{m:02d}:{sec:02d},{ms:03d}"
+
+
+def generate_srt_file(
+    words: List[Dict[str, Any]],
+    output_srt_path: str,
+    text_case: str = "capitalize",
+    subtitle_offset_ms: Optional[int] = 0,
+    speed_ratio: float = 1.0,
+) -> Optional[str]:
+    """Generates a clean sidecar .srt file for YouTube Shorts / LinkedIn SEO indexing."""
+    if not words:
+        return None
+
+    offset_sec = float(subtitle_offset_ms or 0) / 1000.0
+    eff_speed = max(0.90, min(1.15, float(speed_ratio or 1.0)))
+    use_speed = abs(eff_speed - 1.0) >= 0.005
+
+    cleaned = []
+    for w in words:
+        txt = clean_caption_text(str(w.get("word", "")).strip())
+        if not txt:
+            continue
+        st = max(0.0, float(w.get("start", 0.0)) + offset_sec)
+        et = max(st + 0.10, float(w.get("end", st + 0.25)) + offset_sec)
+        if use_speed:
+            st = st / eff_speed
+            et = et / eff_speed
+        cleaned.append({"text": txt, "start": st, "end": et})
+
+    if not cleaned:
+        return None
+    cleaned.sort(key=lambda x: x["start"])
+
+    # Group into readable phrases (max 5 words or 32 chars for vertical safe readability)
+    cues = []
+    cur = []
+    cur_len = 0
+    for item in cleaned:
+        wlen = len(item["text"])
+        gap = (item["start"] - cur[-1]["end"]) if cur else 0.0
+        if cur and (len(cur) >= 5 or cur_len + wlen + 1 > 32 or gap >= 0.65):
+            cues.append(cur)
+            cur = [item]
+            cur_len = wlen
+        else:
+            cur.append(item)
+            cur_len += wlen + (1 if cur_len else 0)
+    if cur:
+        cues.append(cur)
+
+    blocks = []
+    prev_end = 0.0
+    for idx, cue in enumerate(cues):
+        st = max(prev_end, cue[0]["start"])
+        et = max(st + 0.40, cue[-1]["end"])
+        if idx + 1 < len(cues):
+            next_st = cues[idx + 1][0]["start"]
+            if et > next_st and next_st > st + 0.15:
+                et = next_st
+        prev_end = et
+        raw_line = " ".join(x["text"] for x in cue)
+        if text_case in ("uppercase", "lowercase"):
+            raw_line = apply_text_case(raw_line, text_case)
+        blocks.append(f"{idx + 1}\n{format_srt_timestamp(st)} --> {format_srt_timestamp(et)}\n{raw_line}\n")
+
+    os.makedirs(os.path.dirname(os.path.abspath(output_srt_path)), exist_ok=True)
+    with open(output_srt_path, "w", encoding="utf-8") as f:
+        f.write("\n".join(blocks))
+    return output_srt_path
+
+
+def extract_cover_thumbnail(
+    video_path: str,
+    output_jpg_path: str,
+    sample_window_sec: float = 3.0,
+) -> Optional[str]:
+    """Selects the sharpest, non-black frame in the opening 3 seconds as a Shorts/Reels cover image."""
+    try:
+        import cv2
+        import numpy as np
+        cap = cv2.VideoCapture(str(video_path))
+        if not cap.isOpened():
+            return None
+        fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
+        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT) or 0)
+        duration = total_frames / fps if fps > 0 and total_frames > 0 else sample_window_sec
+        max_t = max(0.2, min(float(sample_window_sec), max(0.2, duration - 0.1)))
+        sample_times = [0.15 + (max_t - 0.15) * (i / 4.0) for i in range(5)]
+
+        best_frame = None
+        best_score = -1.0
+        for t_sec in sample_times:
+            cap.set(cv2.CAP_PROP_POS_MSEC, t_sec * 1000.0)
+            ok, frame = cap.read()
+            if not ok or frame is None:
+                continue
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            luma_mean = float(np.mean(gray))
+            if luma_mean < 14.0:
+                continue
+            sharpness = float(cv2.Laplacian(gray, cv2.CV_64F).var())
+            # Favor crisp well-lit frames early in the opening hook
+            score = sharpness * (1.0 + min(1.0, luma_mean / 128.0))
+            if score > best_score:
+                best_score = score
+                best_frame = frame.copy()
+
+        if best_frame is None:
+            cap.set(cv2.CAP_PROP_POS_MSEC, 250.0)
+            ok, fallback_frame = cap.read()
+            if ok and fallback_frame is not None:
+                best_frame = fallback_frame
+        cap.release()
+
+        if best_frame is None:
+            return None
+
+        os.makedirs(os.path.dirname(os.path.abspath(output_jpg_path)), exist_ok=True)
+        cv2.imwrite(str(output_jpg_path), best_frame, [int(cv2.IMWRITE_JPEG_QUALITY), 92])
+        return str(output_jpg_path) if os.path.exists(output_jpg_path) else None
+    except Exception as e:
+        logger.warning(f"Cover thumbnail extraction failed: {e}")
+        return None
 
 
 def detect_image_saliency_center(frame) -> Tuple[float, float]:
@@ -3634,6 +3784,63 @@ def check_has_audio(video_path: str) -> bool:
         return True
 
 
+def _probe_audio_mean_db(video_path: str, pan_expr: str, max_sec: float = 12.0) -> Optional[float]:
+    """Measures mean audio volume in dB for a given FFmpeg pan filter expression."""
+    try:
+        cmd = [
+            "ffmpeg", "-hide_banner", "-nostats", "-t", f"{max_sec:.1f}",
+            "-i", str(video_path),
+            "-map", "0:a:0",
+            "-af", f"{pan_expr},volumedetect",
+            "-f", "null", "-"
+        ]
+        res = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+        m = re.search(r"mean_volume:\s*(-?[\d\.]+)\s*dB", res.stderr or "")
+        return float(m.group(1)) if m else None
+    except Exception:
+        return None
+
+
+def detect_safe_mono_pan(video_path: str) -> str:
+    """
+    Phase-safe stereo-to-mono channel selector.
+    Guards against inverted-phase stereo recordings where summing 0.5*L + 0.5*R cancels dialogue to silence.
+    """
+    default_sum = "pan=stereo|c0=0.5*c0+0.5*c1|c1=0.5*c0+0.5*c1"
+    try:
+        ch_cmd = [
+            "ffprobe", "-v", "error",
+            "-select_streams", "a:0",
+            "-show_entries", "stream=channels",
+            "-of", "csv=p=0",
+            str(video_path)
+        ]
+        ch_res = subprocess.run(ch_cmd, capture_output=True, text=True, timeout=6)
+        channels = int((ch_res.stdout or "2").strip().splitlines()[0])
+        if channels < 2:
+            return "pan=stereo|c0=c0|c1=c0"
+
+        vol_l = _probe_audio_mean_db(video_path, "pan=mono|c0=c0")
+        vol_r = _probe_audio_mean_db(video_path, "pan=mono|c0=c1")
+        vol_sum = _probe_audio_mean_db(video_path, "pan=mono|c0=0.5*c0+0.5*c1")
+        if vol_l is None or vol_r is None or vol_sum is None:
+            return default_sum
+
+        strongest = max(vol_l, vol_r)
+        # If summed mono drops more than 6 dB below the strongest individual channel, stereo channels are out of phase
+        if strongest > -75.0 and (strongest - vol_sum) > 6.0:
+            chosen = "c0" if vol_l >= vol_r else "c1"
+            logger.warning(
+                f"Inverted stereo phase detected (L={vol_l:.1f}dB, R={vol_r:.1f}dB, L+R={vol_sum:.1f}dB). "
+                f"Switching to phase-safe channel '{chosen}' to prevent vocal cancellation."
+            )
+            return f"pan=stereo|c0={chosen}|c1={chosen}"
+        return default_sum
+    except Exception as e:
+        logger.debug(f"Phase-safe mono probe fallback to default sum: {e}")
+        return default_sum
+
+
 def render_clip_to_mp4(
     video_path: str,
     output_mp4_path: str,
@@ -3956,27 +4163,30 @@ def render_clip_to_mp4(
             "white": "white",
             "gold": "#F59E0B",
             "cyan": "#06B6D4",
+            "neon_purple": "#A855F7",
             "none": "none"
         }
         b_color = border_hex_map.get((reaction_cam_border_color or "white").lower(), "white")
 
-        # Safe margins so reaction cam doesn't collide with native TikTok/Reels UI buttons or Top Titles
-        m_x = 36
-        m_y_bottom = 220 if aspect_ratio != "16:9_landscape" else 48
-        m_y_top = 220 if aspect_ratio != "16:9_landscape" else 48
+        # Safe margins calibrated to universal 9:16 TikTok/Shorts/Reels safe box (x: 64..916, y: 220..1440)
+        is_land = (aspect_ratio == "16:9_landscape")
+        m_x_left = 48 if is_land else 56
+        m_x_right = 48 if is_land else 156
+        m_y_bottom = 48 if is_land else 380
+        m_y_top = 48 if is_land else 220
 
         pos = (reaction_cam_position or "bottom_right").lower().strip()
         if pos == "bottom_left":
-            rc_x_expr = f"{m_x}"
+            rc_x_expr = f"{m_x_left}"
             rc_y_expr = f"main_h-overlay_h-{m_y_bottom}"
         elif pos == "top_right":
-            rc_x_expr = f"main_w-overlay_w-{m_x}"
+            rc_x_expr = f"main_w-overlay_w-{m_x_right}"
             rc_y_expr = f"{m_y_top}"
         elif pos == "top_left":
-            rc_x_expr = f"{m_x}"
+            rc_x_expr = f"{m_x_left}"
             rc_y_expr = f"{m_y_top}"
         else:  # bottom_right (default)
-            rc_x_expr = f"main_w-overlay_w-{m_x}"
+            rc_x_expr = f"main_w-overlay_w-{m_x_right}"
             rc_y_expr = f"main_h-overlay_h-{m_y_bottom}"
 
         shape = (reaction_cam_shape or "circle").lower().strip()
@@ -3995,10 +4205,9 @@ def render_clip_to_mp4(
         filter_chains.append(overlay_cmd)
         out_video_map = "[v_reaction]"
 
-        # Optional audio mixing from reaction cam
-        if not reaction_cam_mute_audio:
-            filter_chains.append(f"[{rc_idx}:a]volume=0.85[rc_audio]")
-            audio_inputs_to_mix.append("[rc_audio]")
+        rc_audio_idx_to_mix = rc_idx if (not reaction_cam_mute_audio and check_has_audio(reaction_cam_file_path)) else None
+    else:
+        rc_audio_idx_to_mix = None
 
     # Visual Micro-Sharpening & Color Vibrancy Polish (BT.709-optimized)
     if video_polish_enabled:
@@ -4020,18 +4229,19 @@ def render_clip_to_mp4(
     dur = max(1.0, float(clip_duration))
     effective_dur = (dur / effective_speed) if is_speed_ramped else dur
 
-    # 2. Audio Processing (Original Voice with Boost, Anti-Content ID Vocal Isolation, Micro Speed Ramping, BGM with smart ducking, Hook SFX, Loudness Mastering)
+    # 2. Audio Processing (Original Voice with Boost, Phase-Safe Vocal Isolation, Micro Speed Ramping, BGM with smart ducking, Hook SFX, Loudness Mastering)
     audio_inputs_to_mix = []
     has_orig_audio = check_has_audio(video_path)
     orig_voice_tag = None
+    orig_voice_sidechain_tag = None
     if has_orig_audio:
         orig_vol = max(0.0, min(2.0, float(original_audio_volume)))
         voice_filters = []
 
-        # Anti-Content ID Vocal Isolation (Native DSP)
+        # Anti-Content ID Vocal Isolation (Phase-Safe Native DSP)
         if vocal_isolation_mode == "center_vocal_extract":
-            # Cancels stereo side channels where BGM lives and isolates center mono dialogue + FFT denoise
-            voice_filters.append("pan=stereo|c0=0.5*c0+0.5*c1|c1=0.5*c0+0.5*c1,highpass=f=120,lowpass=f=7500,afftdn=nf=-25")
+            safe_pan = detect_safe_mono_pan(video_path)
+            voice_filters.append(f"{safe_pan},highpass=f=120,lowpass=f=7500,afftdn=nf=-25")
         elif vocal_isolation_mode == "voice_clarity_bandpass":
             # Isolate human speech frequency range (150Hz to 3800Hz)
             voice_filters.append("highpass=f=150,lowpass=f=3800")
@@ -4048,9 +4258,7 @@ def render_clip_to_mp4(
         else:
             orig_voice_tag = "[0:a:0]"
 
-        # Check if BGM and Smart Auto-Ducking are active:
-        # If active, the voice stream must be split via asplit=2 so one branch triggers sidechain compression
-        # and the other branch is fed to amix for the final speech track (FFmpeg filter pads can only be consumed once).
+        # Split voice stream when Smart Auto-Ducking is active so FFmpeg pads are consumed exactly once
         if bgm_enabled and bgm_path and os.path.exists(bgm_path) and smart_ducking_enabled and orig_voice_tag:
             filter_chains.append(f"{orig_voice_tag}asplit=2[v_voice_mix][v_voice_sidechain]")
             audio_inputs_to_mix.append("[v_voice_mix]")
@@ -4059,7 +4267,12 @@ def render_clip_to_mp4(
             audio_inputs_to_mix.append(orig_voice_tag)
             orig_voice_sidechain_tag = None
 
-    # BGM input with start offset & looping
+    # Optional Reaction Cam audio stream (safely mixed only when unmuted and audio track exists)
+    if rc_audio_idx_to_mix is not None:
+        filter_chains.append(f"[{rc_audio_idx_to_mix}:a]asetpts=PTS-STARTPTS,atrim=end={effective_dur:.2f},volume=0.85[rc_audio]")
+        audio_inputs_to_mix.append("[rc_audio]")
+
+    # BGM input with start offset, phone-speaker clarity highpass, & looping
     if bgm_enabled and bgm_path and os.path.exists(bgm_path):
         bgm_idx = input_idx_counter
         input_idx_counter += 1
@@ -4071,7 +4284,7 @@ def render_clip_to_mp4(
         vol = max(0.0, min(1.0, float(bgm_volume)))
         fade_st = max(0.0, effective_dur - 1.5)
         filter_chains.append(
-            f"[{bgm_idx}:a]asetpts=PTS-STARTPTS,volume={vol:.3f},afade=t=out:st={fade_st:.2f}:d=1.5[bgm_proc]"
+            f"[{bgm_idx}:a]asetpts=PTS-STARTPTS,highpass=f=120,volume={vol:.3f},afade=t=out:st={fade_st:.2f}:d=1.5[bgm_proc]"
         )
         bgm_stream_tag = "[bgm_proc]"
 
@@ -4147,7 +4360,7 @@ def render_clip_to_mp4(
         "-map", out_video_map,
         "-map", out_audio_map,
         *v_codec_args,
-        "-c:a", "aac", "-b:a", "192k",
+        "-c:a", "aac", "-ar", "48000", "-ac", "2", "-b:a", "192k",
         "-colorspace", "bt709", "-color_primaries", "bt709", "-color_trc", "bt709",
         "-pix_fmt", "yuv420p",
         "-movflags", "+faststart",
@@ -4187,7 +4400,7 @@ def render_clip_to_mp4(
                 "-map", out_video_map,
                 "-map", out_audio_map,
                 "-c:v", "libx264", "-preset", "veryfast", "-crf", "22",
-                "-c:a", "aac", "-b:a", "192k",
+                "-c:a", "aac", "-ar", "48000", "-ac", "2", "-b:a", "192k",
                 "-colorspace", "bt709", "-color_primaries", "bt709", "-color_trc", "bt709",
                 "-pix_fmt", "yuv420p",
                 "-movflags", "+faststart",

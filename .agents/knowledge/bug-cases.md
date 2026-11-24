@@ -1,113 +1,120 @@
-# Riwayat Kasus Bug & Solusi Terverifikasi (Bug Knowledge Bank)
+---
+id: "production-bug-cases"
+title: "Daftar Kasus Bug & Solusi Terverifikasi ClipVidio AI (Bug Knowledge Bank)"
+project: "Clipper-Vidio-YT"
+category: "00-arsitektur-dan-knowledge"
+route: "N/A"
+lead_developer: "ClipVidio AI Team"
+status: "Active"
+last_updated: "2026-11-24"
+tags: ["bug-cases", "ffmpeg", "filtergraph", "audio", "reaction-cam", "subtitles", "yt-dlp"]
+---
 
-Dokumen ini mencatat riwayat pemecahan masalah teknis nyata yang telah diselesaikan di sistem `adminShuttleV3`. Seluruh AI Agent wajib merujuk dokumen ini untuk mencegah terjadinya kembali kesalahan yang serupa.
+# Riwayat Kasus Bug & Solusi Terverifikasi (`ClipVidio AI`)
+
+Dokumen ini mencatat riwayat kendala teknis nyata yang pernah terjadi di **ClipVidio AI** (`Clipper-Vidio-YT`) beserta akar masalah dan solusi permanennya agar tidak pernah terulang.
 
 ---
 
-### Kasus #01: Restore Softdelete Akun OTA & Re-generasi Kredensial Acak
-* **Kategori**: Keamanan & Autentikasi / RBAC
+### Kasus #01: FFmpeg Filtergraph Error `Stream specifier 'v_orig_boosted' matches no streams`
+* **Kategori**: FFmpeg Filtergraph / Audio Smart Ducking
 * **Gejala (Symptom)**:
-  Saat agen/OTA yang sebelumnya sudah dihapus (*softdeleted*) didaftarkan kembali, sistem berisiko mengalami bentrok *duplicate entry* atau menggunakan kredensial lama yang berpotensi membocorkan akses.
+  Saat fitur BGM + Smart Auto-Ducking + Vocal Isolation aktif bersamaan, proses render FFmpeg langsung gagal dengan error `Stream specifier 'v_orig_boosted' in filtergraph description ... matches no streams`.
 * **Akar Masalah (Root Cause)**:
-  Pemeriksaan keunikan data (*unique check*) dan penanganan restore belum otomatis men-generate ulang username dan password baru saat record dihidupkan kembali.
+  Output pad audio `[v_orig_boosted]` dikonsumsi dua kali di filtergraph yang sama (satu kali sebagai referensi sidechain di `sidechaincompress`, satu kali lagi sebagai input campuran di `amix`). Di FFmpeg, setiap labeled pad hanya bisa dikonsumsi tepat 1 kali.
 * **Solusi (Fix Applied)**:
-  Di [OtaService.php](file:///c:/Users/ASUS/Documents/Web%20Dev/sunjaya/Roleback/adminShuttleV3/app/Services/Agent/OtaService.php) dan [OtaRepository.php](file:///c:/Users/ASUS/Documents/Web%20Dev/sunjaya/Roleback/adminShuttleV3/app/Repositories/Agent/OtaRepository.php):
-  1. Periksa keberadaan akun dengan `withTrashed()`.
-  2. Jika record ditemukan dalam kondisi terhapus: panggil `$record->restore()`.
-  3. Generate ulang username acak baru dan password baru menggunakan `Str::random()` serta `bcrypt()` secara otomatis.
+  Di `apps/api/backend/video_engine.py`: tambahkan `asplit=2[v_voice_mix][v_voice_sidechain]` ketika `bgm_enabled` dan `smart_ducking_enabled` aktif. Cabang `[v_voice_sidechain]` masuk ke `sidechaincompress`, sedangkan `[v_voice_mix]` masuk ke `amix`.
 * **Pelajaran (Takeaway)**:
-  Setiap entitas yang memiliki kredensial dan mendukung softdelete wajib men-generate ulang seluruh token rahasia saat di-restore.
+  Setiap kali satu stream video/audio dipakai oleh lebih dari satu filter, WAJIB pecah memakai `split=2` atau `asplit=2`.
 
 ---
 
-### Kasus #02: Ketidaksejajaran Garis Kolom Header & Total Akumulasi Laporan Closing
-* **Kategori**: UI / DataTables Alignment (Bab 41)
+### Kasus #02: Video & Subtitle Bertumpuk Ganda pada Detik 0-3 (Duplicate Hook Zoom Overlay)
+* **Kategori**: FFmpeg Filtergraph / Hook Zoom
 * **Gejala (Symptom)**:
-  Pada tabel Laporan Closing, garis vertikal pemisah kolom antara header (No sampai Detail) dengan kolom di bawah total akumulasi bergeser / tidak sejajar (*misaligned vertical borders*).
+  Pada detik 0 sampai 3 hasil render MP4, muncul dua video bertumpuk (video kotak 1080x1080 di sudut kiri atas menimpa kanvas 9:16 lengkap dengan subtitle ganda), lalu di detik ke-3 video kembali normal.
 * **Akar Masalah (Root Cause)**:
-  1. Adanya pembungkus `.table-responsive` di Blade yang menyebabkan DataTables membuat scroll ganda sehingga kalkulasi lebar kolom header dan body berbeda beberapa piksel.
-  2. Struktur baris multi-level `<thead>` (rowspan & colspan) tidak terhitung secara simetris terhadap baris `<tfoot>`.
+  Terdapat dua blok Hook Zoom di `video_engine.py`: blok pertama sudah benar (`trim` 0-2.5s + `scale=1188:2112` + `concat`), namun masih tertinggal blok lama kedua yang melakukan `scale=1232:1232,crop=1080:1080` lalu menempelkannya dengan `overlay=0:0:enable='lte(t,3.0)'`.
 * **Solusi (Fix Applied)**:
-  1. Hapus pembungkus `.table-responsive` dari Blade; tempatkan `<table>` langsung di dalam card-body.
-  2. Tambahkan CSS padding eksplisit `padding-left: 0.3rem !important; padding-right: 0.3rem !important;` pada seluruh elemen `th` dan `td`.
-  3. Terapkan sinkronisasi scroll 3-arah (`scrollHead`, `scrollBody`, `scrollFoot`) pada event `initComplete` dan `drawCallback`.
+  Hapus total blok duplikat kedua di `video_engine.py` sehingga hanya ada satu jalur Hook Zoom yang bersih.
 * **Pelajaran (Takeaway)**:
-  Jangan pernah menggabungkan kelas Bootstrap `.table-responsive` dengan DataTables `scrollX: true`.
+  Selalu audit urutan filtergraph secara menyeluruh dan jalankan uji render frame detik `0.5s` vs `4.0s` setiap kali memodifikasi efek transisi/zoom.
 
 ---
 
-### Kasus #03: Adaptasi Modul Settlement Paket & Standarisasi Laporan CSO
-* **Kategori**: Desain Sistem & Kueri Cross-Database
+### Kasus #03: Inverted Stereo Phase Menghilangkan Suara Vokal pada `center_vocal_extract`
+* **Kategori**: Audio DSP / Anti-Content ID Shield
 * **Gejala (Symptom)**:
-  Sistem membutuhkan menu Settlement Paket yang mengadopsi core data legacy `admin-sunjaya`, tetapi tabel transaksi paket berada di database `connex` dan styling legacy masih menggunakan Bootstrap usang (`table-danger`, prefix "Rp ", dsb).
+  Pada sumber video podcast atau rekaman mikrofon wireless tertentu yang kanal stereo L dan R-nya memiliki fase terbalik (*inverted phase*), mode default `center_vocal_extract` (`pan=stereo|c0=0.5*c0+0.5*c1|c1=0.5*c0+0.5*c1`) menyebabkan suara pembicara saling meniadakan hingga sangat pelan atau hening total.
 * **Akar Masalah (Root Cause)**:
-  Pemisahan basis data antara core `transport_system` dan transaksi paket `connex`, serta ketiadaan menu settlement paket di `adminShuttleV3`.
+  Penjumlahan mentah `0.5*L + 0.5*R` mengasumsikan kedua kanal sefase (*in-phase*). Jika `R = -L`, maka `L + R = 0`.
 * **Solusi (Fix Applied)**:
-  1. Buat kueri cross-database aman di [SettlementPackageRepository.php](file:///c:/Users/ASUS/Documents/Web%20Dev/sunjaya/Roleback/adminShuttleV3/app/Repositories/Settlement/SettlementPackageRepository.php) yang menghubungkan `connex.package_transaction` dengan `connex.v_settlement_package` dan tabel master `outlets`.
-  2. Di [SettlementPackageService.php](file:///c:/Users/ASUS/Documents/Web%20Dev/sunjaya/Roleback/adminShuttleV3/app/Services/Settlement/SettlementPackageService.php), implementasikan kalkulasi 6 KPI Cards dan baris akumulasi finansial.
-  3. Di View [index.blade.php](file:///c:/Users/ASUS/Documents/Web%20Dev/sunjaya/Roleback/adminShuttleV3/resources/views/apps/settlements/package/index.blade.php), gunakan standar modern **Laporan CSO**: palet warna lembut (`bg-soft-primary`, `bg-soft-danger`), format numerik murni tanpa "Rp ", single table tanpa `.table-responsive`, dan ekspor Excel via FastXlsxWriter.
+  Di `apps/api/backend/video_engine.py`: implementasikan helper `detect_safe_mono_pan(video_path)` (mengadopsi pelajaran `reelmimic/analyze.py`) yang mengukur mean volume dB dari L, R, dan L+R via FFmpeg `volumedetect`. Jika `L+R` turun > 6 dB dibanding kanal terkuat, sistem otomatis memilih kanal tunggal terkuat (`c0=c0|c1=c0` atau `c0=c1|c1=c1`).
 * **Pelajaran (Takeaway)**:
-  Saat mereplikasi fitur legacy, selalu adopsi logika core-nya namun perbarui arsitektur kode dan estetika tampilannya mengikuti standar modern yang sudah ada di `adminShuttleV3`.
+  Jangan pernah melakukan summing stereo ke mono tanpa verifikasi fase terlebih dahulu.
 
 ---
 
-### Kasus #04: Eliminasi Jargon Teknis Internal & Penyederhanaan Komentar Kode (UI & Code Hygiene)
-* **Kategori**: UI/UX & Standarisasi Kolaborasi Tim Developer
+### Kasus #04: Reaction Cam PIP Tertutup Tombol UI TikTok/Shorts di Pojok Bawah Kanan
+* **Kategori**: Layout Safe Zone 9:16 (1080x1920)
 * **Gejala (Symptom)**:
-  1. Label UI pada modul Mitra OTA memunculkan detail implementasi teknis seperti `Password (16 Karakter):`, teks konfirmasi `(random string 16 karakter acak)`, dan form-text `disanitasi dari karakter injeksi`.
-  2. Komentar kode di file CSS memuat banner dekoratif ASCII raksasa dan kutipan berkas tata kelola AI internal (`RULESCODE.md - Bab 7`) yang tidak developer-friendly.
+  Pada mode `reaction_cam_position="bottom_right"`, margin awal `m_x=36` dan `m_y_bottom=220` menempatkan sebagian bingkai wajah kreator di area tombol Like/Comment/Share (kanan 164 px) dan deskripsi video (bawah 400-480 px) pada aplikasi TikTok dan YouTube Shorts.
 * **Akar Masalah (Root Cause)**:
-  Spesifikasi teknis backend bocor ke antarmuka pengguna akhir (operator/admin), dan komentar kode ditulis dengan gaya berlebihan (*slop*) bukannya ringkas fungsional.
+  Margin awal belum mengacu pada zona aman organik universal 9:16 (`x: 64..916`, `y: 220..1440`).
 * **Solusi (Fix Applied)**:
-  1. Di [ota.js](file:///c:/Users/ASUS/Documents/Web%20Dev/sunjaya/Roleback/adminShuttleV3/public/js/apps/agents/ota.js): rapikan label menjadi `Password :` dan `Password Baru :`, serta sederhanakan pesan konfirmasi SweetAlert.
-  2. Di [modal-create-ota.blade.php](file:///c:/Users/ASUS/Documents/Web%20Dev/sunjaya/Roleback/adminShuttleV3/resources/views/apps/agents/ota/modal-create-ota.blade.php) & [modal-update-ota.blade.php](file:///c:/Users/ASUS/Documents/Web%20Dev/sunjaya/Roleback/adminShuttleV3/resources/views/apps/agents/ota/modal-update-ota.blade.php): sederhanakan form-text menjadi `Format nama OTA otomatis disesuaikan ke huruf besar.`.
-  3. Di [custom.css](file:///c:/Users/ASUS/Documents/Web%20Dev/sunjaya/Roleback/adminShuttleV3/public/css/assets/custom.css): ganti blok banner ASCII 10 baris menjadi komentar fungsional 1 baris yang bersih.
-  4. Di [AGENTS.md](file:///c:/Users/ASUS/Documents/Web%20Dev/sunjaya/Roleback/adminShuttleV3/AGENTS.md) dan modul [`.agents/rules/`](file:///c:/Users/ASUS/Documents/Web%20Dev/sunjaya/Roleback/adminShuttleV3/.agents/rules/): kunci Larangan Mutlak ke-6 (Clean Comments) dan ke-7 (Human-Friendly UI & Anti-Jargon Teknis).
+  Kalibrasi margin aman di `video_engine.py` (`m_x_right = 156`, `m_x_left = 56`, `m_y_bottom = 380`, `m_y_top = 220`) dan tambahkan toggle visual **Safe Zone Overlay** di Phone Preview `ClipStudioSection.tsx`.
 * **Pelajaran (Takeaway)**:
-  Tampilan UI wajib menggunakan istilah umum yang bersih dan profesional bagi pengguna manusia. Komentar kode wajib ringkas, fungsional, dan natural bagi tim pengembang yang memelihara sistem.
+  Semua elemen penting (wajah reaksi, judul, subtitle, watermark) pada rasio 9:16 wajib memverifikasi kecocokan dengan Safe Box `x: 64..916, y: 220..1440`.
 
 ---
 
-### Kasus #05: Resolusi Suffix Angka Username OTA (`-2`) saat Restore Softdelete & Edit
-* **Kategori**: Logika Bisnis & Penanganan Softdelete (Authentication)
+### Kasus #05: `moov atom not found` & Hardware Encoder Timeout saat Download/Render
+* **Kategori**: Network Resilience & Hardware Encoder Fallback
 * **Gejala (Symptom)**:
-  Ketika mitra OTA yang telah di-softdelete (misal `TIKET.COM` dengan username `tiketcom-metics`) ditambahkan kembali, sistem membuatkan username baru berakhiran angka (`tiketcom-metics-2`). Saat dihapus dan ditambah lagi, suffix angka berganti-ganti secara tidak konsisten.
+  Unduhan segmen `yt-dlp` yang terputus di tengah jalan menghasilkan file MP4 parsial tanpa atom `moov`, atau encoder GPU (`h264_amf`/`h264_nvenc`) mengalami timeout pada filtergraph kompleks.
 * **Akar Masalah (Root Cause)**:
-  1. Method `usernameExists($username)` di `OtaRepository` menggunakan `withTrashed()` untuk mendeteksi tabrakan username tanpa mengecualikan ID entitas yang sedang dipulihkan/diedit (`$excludeId`).
-  2. Sistem mendeteksi username milik record soft-deleted itu sendiri sebagai konflik dengan akun lain, sehingga memicu generator username unik menambahkan suffix angka increment (`-2`).
+  Segmen parsial lolos ke FFmpeg jika tidak divalidasi dengan `ffprobe`, dan kegagalan GPU langsung mematikan batch job tanpa fallback CPU.
 * **Solusi (Fix Applied)**:
-  1. Di [OtaRepositoryInterface.php](file:///c:/Users/ASUS/Documents/Web%20Dev/sunjaya/Roleback/adminShuttleV3/app/Repositories/Agent/OtaRepositoryInterface.php) dan [OtaRepository.php](file:///c:/Users/ASUS/Documents/Web%20Dev/sunjaya/Roleback/adminShuttleV3/app/Repositories/Agent/OtaRepository.php): tambahkan parameter opsional `?string $excludeId = null` pada `usernameExists()`, dengan klausa `where('id', '!=', $excludeId)`.
-  2. Di [OtaService.php](file:///c:/Users/ASUS/Documents/Web%20Dev/sunjaya/Roleback/adminShuttleV3/app/Services/Agent/OtaService.php): teruskan `$trashedOta->id` pada pemanggilan `generateUniqueUsername($data['name'], $trashedOta->id)` saat restore di `createOta()`, dan teruskan `$id` pada `updateOta()`.
+  Validasi wajib `is_valid_mp4()` setelah download, timeout dinamis berdasarkan durasi klip, dan fallback otomatis ke universal `libx264` CPU di `render_clip_to_mp4()`.
 * **Pelajaran (Takeaway)**:
-  Pengecekan keunikan (*unique check*) pada proses restore soft-delete atau update data wajib selalu mengecualikan primary key (`id`) dari record yang sedang diproses agar tidak terjadi bentrok dengan datanya sendiri (*self-collision*).
+  Selalu validasi integritas biner MP4 sebelum dan sesudah proses FFmpeg serta sediakan jalur fallback CPU.
 
 ---
 
-### Kasus #06: Isolasi Database Eksternal (Connex) & Implementasi UI-Ready Empty State pada Settlement Paket
-* **Kategori**: Keamanan Database & Isolasi Environment Development
+### Kasus #06: TypeScript Build Fail akibat Ketidakselarasan Kunci i18n (`id.ts` vs `en.ts` vs TSX)
+* **Kategori**: Frontend TypeScript & Lokalisasi
 * **Gejala (Symptom)**:
-  Pada halaman Settlement Paket, muncul 1 data transaksi kargo aktif riil (`PCNX261002M7TC`) bernilai Rp 63.000 karena kueri terhubung secara *cross-database* ke database `connex` yang sedang aktif dipakai di lingkungan *production*.
+  Penambahan kartu UI baru di `ClipStudioSection.tsx` gagal pada `tsc -b` karena perbedaan nama properti antara `t.studio.*` yang dipanggil di TSX dan kunci yang didefinisikan di `locales/id.ts` serta `locales/en.ts`.
 * **Akar Masalah (Root Cause)**:
-  Sistem `adminShuttleV3` menggunakan database utama `transport_system` (khusus penumpang), sementara data paket kargo berada di database terpisah `connex`. Kueri *cross-database* tidak boleh digunakan selama masa pengembangan karena berisiko membebani sistem lain dan membocorkan data operasional live.
+  Kunci lokalisasi ditambahkan terpisah tanpa verifikasi `npm run build --prefix apps/web` segera setelah edit.
 * **Solusi (Fix Applied)**:
-  1. Di [SettlementPackageRepository.php](file:///c:/Users/ASUS/Documents/Web%20Dev/sunjaya/Roleback/adminShuttleV3/app/Repositories/Settlement/SettlementPackageRepository.php), putus kueri `DB::table('connex.package_transaction as pt')` dan kembalikan koleksi kosong `collect([])`.
-  2. Pertahankan `getFilterOptions()` agar dropdown outlet dan pembayaran tetap aktif dari `transport_system`.
-  3. Antarmuka tabel dan 6 KPI summary cards tetap tampil lengkap 100% dalam kondisi *graceful empty state* (nilai 0), dan fitur ekspor Excel tetap dapat diunduh tanpa error.
+  Sinkronkan seluruh kunci di `id.ts` dan `en.ts`, hapus state yang tidak terpakai, dan wajib jalankan `npm run build --prefix apps/web` sebagai gate wajib sebelum selesai.
 * **Pelajaran (Takeaway)**:
-  Lingkungan pengembangan wajib terisolasi penuh dari database luar yang aktif di *production*. Jika skema data belum final, gunakan pola *UI-ready empty state* yang aman tanpa mengorbankan kelengkapan desain antarmuka.
+  Selalu edit `types.ts`, `id.ts`, `en.ts`, dan komponen TSX dalam satu sinkronisasi lalu kunci dengan `tsc -b`.
+
 
 ---
 
-### Kasus #07: Isolasi Database Eksternal (Connex & v_package_transactions) pada Seluruh Modul Laporan
-* **Kategori**: Keamanan Database & Isolasi Environment Development
+### Kasus #07: `UnboundLocalError` saat Audio Reaction Cam Diaktifkan (`reaction_cam_mute_audio=False`)
+* **Kategori**: FFmpeg Audio Filtergraph / Python Ordering
 * **Gejala (Symptom)**:
-  Modul-modul laporan shuttle (Paket Reguler, Pembatalan Paket, CSO, All-In, Harian, dan Outlet) berpotensi mengeksekusi kueri ke database luar `connex` baik secara langsung (`connex.package_transaction_person`) maupun tidak langsung melalui view database `v_package_transactions`.
+  Ketika pengguna mengaktifkan Reaction Cam PIP dengan `reaction_cam_mute_audio=False`, `render_clip_to_mp4()` melempar `UnboundLocalError` karena mencoba melakukan `audio_inputs_to_mix.append(...)` sebelum daftar `audio_inputs_to_mix = []` diinisialisasi di blok audio.
 * **Akar Masalah (Root Cause)**:
-  View `v_package_transactions` di skema MySQL secara implisit melakukan kueri lintas basis data ke `connex.package_transaction`. Pada masa *development*, kueri ini berisiko membocorkan data live kargo dan membebani server database luar.
+  Blok overlay video Reaction Cam berada di atas blok mixing audio sehingga merujuk variabel lokal yang baru dideklarasikan beberapa puluh baris kemudian.
 * **Solusi (Fix Applied)**:
-  1. Di [PackageRegularReportController.php](file:///c:/Users/ASUS/Documents/Web%20Dev/sunjaya/Roleback/adminShuttleV3/app/Http/Controllers/Report/PackageRegularReportController.php) dan [PackageCanceledReportController.php](file:///c:/Users/ASUS/Documents/Web%20Dev/sunjaya/Roleback/adminShuttleV3/app/Http/Controllers/Report/PackageCanceledReportController.php): cabut kueri database kargo dan kembalikan `collect([])` (UI-Ready Empty State).
-  2. Di [CsoReportController.php](file:///c:/Users/ASUS/Documents/Web%20Dev/sunjaya/Roleback/adminShuttleV3/app/Http/Controllers/Report/CsoReportController.php), [AllInReportController.php](file:///c:/Users/ASUS/Documents/Web%20Dev/sunjaya/Roleback/adminShuttleV3/app/Http/Controllers/Report/AllInReportController.php), [DailyReportController.php](file:///c:/Users/ASUS/Documents/Web%20Dev/sunjaya/Roleback/adminShuttleV3/app/Http/Controllers/Report/DailyReportController.php), dan [OutletReportController.php](file:///c:/Users/ASUS/Documents/Web%20Dev/sunjaya/Roleback/adminShuttleV3/app/Http/Controllers/Report/OutletReportController.php): putus kueri paket kargo dan jadikan nilai paket default `0` / array kosong, sementara kalkulasi data tiket penumpang dan manifest operasional tetap 100% aktif dari `transport_system`.
+  Simpan indeks input audio Reaction Cam sementara pada variabel `rc_audio_idx_to_mix` (dilindungi `check_has_audio(reaction_cam_file_path)`), lalu masukkan ke `audio_inputs_to_mix` setelah inisialisasi blok audio.
 * **Pelajaran (Takeaway)**:
-  Pada modul laporan campuran (hybrid), isolasi modul eksternal harus dilakukan secara bedah mikro tanpa mengganggu keakuratan kalkulasi modul inti yang sudah mandiri di basis data utama.
+  Jaga pemisahan tegas antara tahap deklarasi input/video filtergraph dan tahap audio mixing, serta selalu uji jalur unmuted pada `qa-kernel.py`.
 
+---
 
+### Kasus #08: `NameError: name 'cv2' is not defined` pada Fungsi Helper Baru di `video_engine.py`
+* **Kategori**: Python Lazy Import Discipline
+* **Gejala (Symptom)**:
+  `extract_cover_thumbnail()` di `apps/api/backend/video_engine.py` gagal secara diam-diam saat diuji E2E di `qa-kernel.py` dengan log `Cover thumbnail extraction failed: name 'cv2' is not defined`.
+* **Akar Masalah (Root Cause)**:
+  `video_engine.py` sengaja tidak mengimpor `cv2` dan `numpy` di top-level agar startup FastAPI cepat; fungsi helper baru lupa menambahkan `import cv2` dan `import numpy as np` secara lokal di dalam fungsi.
+* **Solusi (Fix Applied)**:
+  Tambahkan `import cv2` dan `import numpy as np` di dalam blok `try:` pada `extract_cover_thumbnail()` lalu verifikasi ulang melalui `qa-kernel.py` Check #5 hingga file `cover_*.jpg` terbangun valid (> 5 KB).
+* **Pelajaran (Takeaway)**:
+  `python -m compileall` tidak mendeteksi `NameError` runtime akibat lazy import; selalu jalankan fungsi baru secara nyata melalui `.agents/scripts/qa-kernel.py`.

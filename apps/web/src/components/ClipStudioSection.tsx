@@ -34,6 +34,7 @@ import type {
   ReactionCamPosition,
   ReactionCamShape,
   ReactionCamBorderColor,
+  SilenceCutMode,
 } from '../types';
 import { BackgroundCustomizer } from './BackgroundCustomizer';
 
@@ -101,6 +102,8 @@ function getCaptionStyleColors(style: CaptionStyle): { primary: string; highligh
       return { primary: '#ffffff', highlight: '#00F0FF' };
     case 'golden_aura':
       return { primary: '#ffffff', highlight: '#FFB800' };
+    case 'high_contrast_box':
+      return { primary: '#ffffff', highlight: '#FFE600' };
     case 'clean_minimal':
     default:
       return { primary: '#ffffff', highlight: '#ffffff' };
@@ -602,6 +605,7 @@ export interface StudioPreferences {
   reactionCamShape?: ReactionCamShape;
   reactionCamBorderColor?: ReactionCamBorderColor;
   reactionCamMuteAudio?: boolean;
+  silenceCutMode?: SilenceCutMode;
 }
 
 export const DEFAULT_STUDIO_PREFS: Required<StudioPreferences> = {
@@ -667,6 +671,7 @@ export const DEFAULT_STUDIO_PREFS: Required<StudioPreferences> = {
   reactionCamShape: 'circle',
   reactionCamBorderColor: 'white',
   reactionCamMuteAudio: true,
+  silenceCutMode: 'off',
 };
 
 function getSavedStudioPreferences(): Partial<StudioPreferences> {
@@ -1044,6 +1049,10 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
   const [reactionCamBorderColor, setReactionCamBorderColor] = useState<ReactionCamBorderColor>(() => getSavedStudioPreferences().reactionCamBorderColor ?? DEFAULT_STUDIO_PREFS.reactionCamBorderColor);
   const [reactionCamMuteAudio, setReactionCamMuteAudio] = useState<boolean>(() => getSavedStudioPreferences().reactionCamMuteAudio ?? DEFAULT_STUDIO_PREFS.reactionCamMuteAudio);
   const [isUploadingReactionCam, setIsUploadingReactionCam] = useState<boolean>(false);
+
+  // v3.9 Auto-Trim Dead Air (Smart Silence Jumpcut) & Safe Zone Preview Overlay
+  const [silenceCutMode, setSilenceCutMode] = useState<SilenceCutMode>(() => getSavedStudioPreferences().silenceCutMode ?? DEFAULT_STUDIO_PREFS.silenceCutMode);
+  const [showSafeZoneOverlay, setShowSafeZoneOverlay] = useState<boolean>(false);
 
   // Hardware acceleration / Video Encoder state
   const [hardwareAccel, setHardwareAccel] = useState<HardwareAccelOption>(() => getSavedStudioPreferences().hardwareAccel ?? DEFAULT_STUDIO_PREFS.hardwareAccel);
@@ -3136,6 +3145,7 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
       reactionCamShape,
       reactionCamBorderColor,
       reactionCamMuteAudio,
+      silenceCutMode,
     };
     try {
       localStorage.setItem(STUDIO_PREFS_KEY, JSON.stringify(prefs));
@@ -3205,6 +3215,7 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
     reactionCamShape,
     reactionCamBorderColor,
     reactionCamMuteAudio,
+    silenceCutMode,
   ]);
 
   const handleResetToDefaults = () => {
@@ -3271,6 +3282,7 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
     setReactionCamShape(DEFAULT_STUDIO_PREFS.reactionCamShape);
     setReactionCamBorderColor(DEFAULT_STUDIO_PREFS.reactionCamBorderColor);
     setReactionCamMuteAudio(DEFAULT_STUDIO_PREFS.reactionCamMuteAudio);
+    setSilenceCutMode(DEFAULT_STUDIO_PREFS.silenceCutMode);
     handleResetTitlePosition();
     handleResetSubtitlePosition();
     try {
@@ -3392,6 +3404,8 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
       reactionCamShape,
       reactionCamBorderColor,
       reactionCamMuteAudio,
+      // v3.9 Auto-Trim Dead Air (Smart Silence Jumpcut)
+      silenceCutMode,
     });
   };
 
@@ -5043,6 +5057,28 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                   GOLDEN <span className="pop-gold">AURA</span>
                 </div>
                 <span className="caption-style-sub">{t.studio.styleGoldenAuraSub}</span>
+              </button>
+
+              <button
+                type="button"
+                className={`caption-style-card high-contrast-box ${captionStyle === 'high_contrast_box' ? 'active' : ''}`}
+                onClick={() => {
+                  setCaptionStyle('high_contrast_box');
+                  setLastActiveCaptionStyle('high_contrast_box');
+                }}
+              >
+                <div className="caption-preview-text">
+                  <span style={{
+                    background: 'rgba(10, 10, 15, 0.88)',
+                    border: '1px solid rgba(255, 255, 255, 0.25)',
+                    borderRadius: '5px',
+                    padding: '2px 7px',
+                    fontSize: '0.78em',
+                  }}>
+                    HIGH <span style={{ color: '#FFE600' }}>BOX</span>
+                  </span>
+                </div>
+                <span className="caption-style-sub">{t.studio.styleHighContrastBoxSub}</span>
               </button>
 
               <button
@@ -7258,6 +7294,65 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                 ))}
               </div>
 
+              {/* Subsection C: Auto-Trim Dead Air (Smart Silence Jumpcut) */}
+              <div style={{
+                marginTop: '0.85rem',
+                paddingTop: '0.85rem',
+                borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+                marginBottom: '0.75rem'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.35rem', flexWrap: 'wrap', gap: '0.3rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#e2e8f0' }}>
+                      ✂️ {t.studio.silenceCutTitle}
+                    </span>
+                    <span style={{
+                      fontSize: '0.64rem',
+                      fontWeight: 700,
+                      padding: '0.1rem 0.42rem',
+                      borderRadius: '4px',
+                      background: 'rgba(139, 92, 246, 0.18)',
+                      color: '#c4b5fd',
+                      border: '1px solid rgba(139, 92, 246, 0.35)'
+                    }}>
+                      STAYED TO WATCH BOOSTER
+                    </span>
+                  </div>
+                  <span style={{ fontSize: '0.72rem', color: silenceCutMode !== 'off' ? '#c4b5fd' : 'var(--text-muted)', fontWeight: 600 }}>
+                    {silenceCutMode === 'natural' ? t.studio.silenceCutNatural : silenceCutMode === 'snappy' ? t.studio.silenceCutSnappy : t.studio.silenceCutOff}
+                  </span>
+                </div>
+                <p style={{ fontSize: '0.71rem', color: 'var(--text-muted)', margin: '0 0 0.55rem 0', lineHeight: 1.4 }}>
+                  {t.studio.silenceCutDesc}
+                </p>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.45rem' }}>
+                  {([
+                    { id: 'off', label: t.studio.silenceCutOff, sub: 'Tanpa potong jeda' },
+                    { id: 'natural', label: t.studio.silenceCutNatural, sub: 'Nafas natural aman' },
+                    { id: 'snappy', label: t.studio.silenceCutSnappy, sub: 'Tempo Shorts agresif' },
+                  ] as Array<{ id: SilenceCutMode; label: string; sub: string }>).map(opt => (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => setSilenceCutMode(opt.id)}
+                      style={{
+                        padding: '0.48rem 0.6rem',
+                        borderRadius: '7px',
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                        background: silenceCutMode === opt.id ? 'rgba(139, 92, 246, 0.24)' : 'rgba(255, 255, 255, 0.03)',
+                        border: silenceCutMode === opt.id ? '1px solid #a78bfa' : '1px solid rgba(255, 255, 255, 0.08)',
+                        color: silenceCutMode === opt.id ? '#f5f3ff' : 'var(--text-secondary)',
+                        transition: 'all 0.15s ease',
+                      }}
+                    >
+                      <div style={{ fontSize: '0.73rem', fontWeight: 600 }}>{opt.label}</div>
+                      <div style={{ fontSize: '0.64rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>{opt.sub}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {/* Recommendation Note */}
               <div style={{
                 padding: '0.65rem 0.85rem',
@@ -7734,22 +7829,44 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
         {/* Right Column: Real Video Live Preview */}
         <div className={`studio-preview-pane ${previewHighlight ? 'has-active-spotlight' : ''}`}>
           <div className="preview-sticky-wrap">
-            <div className="preview-header-bar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.45rem 0.6rem' }}>
+            <div className="preview-header-bar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.4rem', padding: '0.45rem 0.6rem', flexWrap: 'wrap' }}>
               <span className="preview-title" style={{ fontWeight: 700, fontSize: '0.88rem' }}>{t.studio.livePreview}</span>
-              <span
-                className="preview-indicator"
-                style={{
-                  fontSize: '0.72rem',
-                  fontWeight: 700,
-                  color: isPlaying ? '#10b981' : playerReady ? '#38bdf8' : '#94a3b8',
-                  background: isPlaying ? 'rgba(16, 185, 129, 0.15)' : playerReady ? 'rgba(56, 189, 248, 0.12)' : 'rgba(255, 255, 255, 0.08)',
-                  border: isPlaying ? '1px solid rgba(16, 185, 129, 0.35)' : playerReady ? '1px solid rgba(56, 189, 248, 0.3)' : '1px solid rgba(255, 255, 255, 0.15)',
-                  padding: '0.15rem 0.5rem',
-                  borderRadius: '6px',
-                }}
-              >
-                {!playerReady ? t.studio.previewLoading : isPlaying ? t.studio.previewPlaying : t.studio.previewReady}
-              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                {!isLandscape && (
+                  <button
+                    type="button"
+                    onClick={() => setShowSafeZoneOverlay(prev => !prev)}
+                    style={{
+                      fontSize: '0.68rem',
+                      fontWeight: 700,
+                      padding: '0.16rem 0.5rem',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      background: showSafeZoneOverlay ? 'rgba(244, 63, 94, 0.24)' : 'rgba(255, 255, 255, 0.06)',
+                      color: showSafeZoneOverlay ? '#fda4af' : '#cbd5e1',
+                      border: showSafeZoneOverlay ? '1px solid rgba(244, 63, 94, 0.55)' : '1px solid rgba(255, 255, 255, 0.14)',
+                      transition: 'all 0.15s ease',
+                    }}
+                    title="Tampilkan area tombol Like/Share & caption TikTok/Shorts/Reels (Safe Box 1080x1920)"
+                  >
+                    📱 {showSafeZoneOverlay ? t.studio.safeZoneBtnActive : t.studio.safeZoneBtn}
+                  </button>
+                )}
+                <span
+                  className="preview-indicator"
+                  style={{
+                    fontSize: '0.72rem',
+                    fontWeight: 700,
+                    color: isPlaying ? '#10b981' : playerReady ? '#38bdf8' : '#94a3b8',
+                    background: isPlaying ? 'rgba(16, 185, 129, 0.15)' : playerReady ? 'rgba(56, 189, 248, 0.12)' : 'rgba(255, 255, 255, 0.08)',
+                    border: isPlaying ? '1px solid rgba(16, 185, 129, 0.35)' : playerReady ? '1px solid rgba(56, 189, 248, 0.3)' : '1px solid rgba(255, 255, 255, 0.15)',
+                    padding: '0.15rem 0.5rem',
+                    borderRadius: '6px',
+                  }}
+                >
+                  {!playerReady ? t.studio.previewLoading : isPlaying ? t.studio.previewPlaying : t.studio.previewReady}
+                </span>
+              </div>
             </div>
 
             <div
@@ -8123,7 +8240,13 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                           fontWeight: 800,
                           letterSpacing: '0.03em',
                           textAlign: 'center',
-                          textShadow: '0 0 2px #000, 0 1px 3px rgba(0,0,0,0.95), 0 0 5px rgba(0,0,0,0.8)',
+                          textShadow: captionStyle === 'high_contrast_box'
+                            ? '0 1px 2px rgba(0,0,0,0.85)'
+                            : '0 0 2px #000, 0 1px 3px rgba(0,0,0,0.95), 0 0 5px rgba(0,0,0,0.8)',
+                          background: captionStyle === 'high_contrast_box' ? 'rgba(10, 10, 15, 0.82)' : 'transparent',
+                          border: captionStyle === 'high_contrast_box' ? '1px solid rgba(255, 255, 255, 0.22)' : 'none',
+                          borderRadius: captionStyle === 'high_contrast_box' ? '6px' : '0',
+                          padding: captionStyle === 'high_contrast_box' ? '0.16em 0.45em' : '0',
                           display: 'inline-flex',
                           alignItems: 'center',
                           justifyContent: 'center',
@@ -8208,6 +8331,12 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                                 <span style={{ color: '#FFB800' }}>{applyLetterCase('MOMENT', textCase)}</span>
                               </>
                             )}
+                            {captionStyle === 'high_contrast_box' && (
+                              <>
+                                <span style={{ color: '#ffffff' }}>{applyLetterCase('HIGH', textCase)}</span>{' '}
+                                <span style={{ color: '#FFE600' }}>{applyLetterCase('CONTRAST', textCase)}</span>
+                              </>
+                            )}
                             {captionStyle === 'clean_minimal' && (
                               <span style={{ color: '#ffffff' }}>
                                 {applyLetterCase('CLEAN SUBTITLE', textCase)}
@@ -8280,14 +8409,16 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                         ? '2px solid #fbbf24'
                         : reactionCamBorderColor === 'cyan'
                         ? '2px solid #22d3ee'
+                        : reactionCamBorderColor === 'neon_purple'
+                        ? '2px solid #a855f7'
                         : 'none',
                       ...(reactionCamPosition === 'bottom_right'
-                        ? { bottom: '12%', right: '5%' }
+                        ? { bottom: isLandscape ? '6%' : '20%', right: isLandscape ? '4%' : '14.5%' }
                         : reactionCamPosition === 'bottom_left'
-                        ? { bottom: '12%', left: '5%' }
+                        ? { bottom: isLandscape ? '6%' : '20%', left: isLandscape ? '4%' : '5.2%' }
                         : reactionCamPosition === 'top_right'
-                        ? { top: '8%', right: '5%' }
-                        : { top: '8%', left: '5%' }),
+                        ? { top: isLandscape ? '6%' : '11.5%', right: isLandscape ? '4%' : '14.5%' }
+                        : { top: isLandscape ? '6%' : '11.5%', left: isLandscape ? '4%' : '5.2%' }),
                       pointerEvents: 'none',
                       transition: 'all 0.2s ease-out',
                     }}
@@ -8321,6 +8452,98 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                       }}
                     >
                       YOU
+                    </div>
+                  </div>
+                )}
+
+                {/* TikTok / YouTube Shorts / Reels Universal Safe Zone Visual Overlay (1080x1920) */}
+                {showSafeZoneOverlay && !isLandscape && (
+                  <div
+                    className="safe-zone-guide-overlay"
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      zIndex: 35,
+                      pointerEvents: 'none',
+                    }}
+                  >
+                    {/* Top Unsafe Band: 0..220px (11.5%) */}
+                    <div style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      height: '11.5%',
+                      background: 'rgba(244, 63, 94, 0.22)',
+                      borderBottom: '1px dashed rgba(251, 113, 133, 0.85)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '7.5px',
+                      fontWeight: 800,
+                      color: '#fecdd3',
+                      letterSpacing: '0.05em',
+                    }}>
+                      {t.studio.safeZoneTopLabel}
+                    </div>
+
+                    {/* Right Unsafe Action Column: 916..1080px (15.2%) */}
+                    <div style={{
+                      position: 'absolute',
+                      top: '11.5%',
+                      bottom: '25%',
+                      right: 0,
+                      width: '15.2%',
+                      background: 'rgba(244, 63, 94, 0.20)',
+                      borderLeft: '1px dashed rgba(251, 113, 133, 0.85)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'flex-end',
+                      paddingBottom: '10px',
+                      gap: '6px',
+                      fontSize: '7px',
+                      fontWeight: 800,
+                      color: '#fecdd3',
+                      textAlign: 'center',
+                    }}>
+                      <span>❤️</span>
+                      <span>💬</span>
+                      <span>↗️</span>
+                      <span style={{ fontSize: '6px', lineHeight: 1.1 }}>{t.studio.safeZoneRightLabel}</span>
+                    </div>
+
+                    {/* Left Thin Bezel Margin: 0..64px (6%) */}
+                    <div style={{
+                      position: 'absolute',
+                      top: '11.5%',
+                      bottom: '25%',
+                      left: 0,
+                      width: '6%',
+                      background: 'rgba(244, 63, 94, 0.12)',
+                      borderRight: '1px dashed rgba(251, 113, 133, 0.5)',
+                    }} />
+
+                    {/* Bottom Unsafe Caption/Profile Band: 1440..1920px (25%) */}
+                    <div style={{
+                      position: 'absolute',
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      height: '25%',
+                      background: 'rgba(244, 63, 94, 0.24)',
+                      borderTop: '1px dashed rgba(251, 113, 133, 0.9)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '7.5px',
+                      fontWeight: 800,
+                      color: '#fecdd3',
+                      letterSpacing: '0.04em',
+                      textAlign: 'center',
+                      padding: '0 8px',
+                    }}>
+                      {t.studio.safeZoneBottomLabel}
                     </div>
                   </div>
                 )}

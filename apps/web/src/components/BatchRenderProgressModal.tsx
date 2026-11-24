@@ -93,17 +93,82 @@ export const BatchRenderProgressModal: React.FC<BatchRenderProgressModalProps> =
                   </span>
                 )}
                 {clip.status === 'completed' && (
-                  <div className="completed-action-row">
-                    <span className="status-badge success">{t.batchProgress.statusDone}</span>
-                    {clip.download_url && (
-                      <a
-                        href={clip.download_url}
-                        download
-                        className="btn-download-clip"
-                        title={t.batchProgress.downloadMp4Tooltip}
-                      >
-                        ⬇️ MP4
-                      </a>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+                    <div className="completed-action-row" style={{ flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                      {clip.qa_report && (
+                        <span
+                          title={
+                            clip.qa_report.issues && clip.qa_report.issues.length > 0
+                              ? clip.qa_report.issues.map(i => `[${i.severity}] ${i.message}`).join('\n')
+                              : (clip.qa_report.summary || 'QA Verified')
+                          }
+                          style={{
+                            fontSize: '0.67rem',
+                            fontWeight: 700,
+                            padding: '0.18rem 0.5rem',
+                            borderRadius: '5px',
+                            background: clip.qa_report.status === 'PASS'
+                              ? 'rgba(16, 185, 129, 0.16)'
+                              : clip.qa_report.status === 'WARN'
+                                ? 'rgba(245, 158, 11, 0.18)'
+                                : 'rgba(239, 68, 68, 0.18)',
+                            color: clip.qa_report.status === 'PASS'
+                              ? '#34d399'
+                              : clip.qa_report.status === 'WARN'
+                                ? '#fbbf24'
+                                : '#f87171',
+                            border: `1px solid ${
+                              clip.qa_report.status === 'PASS'
+                                ? 'rgba(16, 185, 129, 0.4)'
+                                : clip.qa_report.status === 'WARN'
+                                  ? 'rgba(245, 158, 11, 0.45)'
+                                  : 'rgba(239, 68, 68, 0.45)'
+                            }`,
+                            cursor: 'help',
+                          }}
+                        >
+                          {clip.qa_report.status === 'PASS' ? '🛡️ QA PASS' : clip.qa_report.status === 'WARN' ? '⚠️ QA WARN' : '❌ QA FAIL'}
+                          {clip.qa_report.lufs !== undefined && clip.qa_report.lufs !== null ? ` · ${clip.qa_report.lufs} LUFS` : ''}
+                        </span>
+                      )}
+                      {clip.silence_removed_sec && clip.silence_removed_sec > 0.2 && (
+                        <span
+                          style={{
+                            fontSize: '0.66rem',
+                            fontWeight: 600,
+                            padding: '0.16rem 0.45rem',
+                            borderRadius: '5px',
+                            background: 'rgba(139, 92, 246, 0.16)',
+                            color: '#c4b5fd',
+                            border: '1px solid rgba(139, 92, 246, 0.35)',
+                          }}
+                          title="Dead air dipangkas otomatis oleh Smart Silence Jumpcut"
+                        >
+                          ✂️ -{clip.silence_removed_sec.toFixed(1)}s
+                        </span>
+                      )}
+                      <span className="status-badge success">{t.batchProgress.statusDone}</span>
+                      {clip.download_url && (
+                        <a
+                          href={clip.download_url}
+                          download
+                          className="btn-download-clip"
+                          title={t.batchProgress.downloadMp4Tooltip}
+                        >
+                          ⬇️ MP4
+                        </a>
+                      )}
+                    </div>
+                    {clip.qa_report && clip.qa_report.issues && clip.qa_report.issues.length > 0 && (
+                      <div style={{
+                        fontSize: '0.66rem',
+                        color: clip.qa_report.status === 'FAIL' ? '#fca5a5' : '#fde68a',
+                        textAlign: 'right',
+                        maxWidth: '340px',
+                        lineHeight: 1.3,
+                      }}>
+                        {clip.qa_report.issues.slice(0, 2).map(i => i.message).join(' | ')}
+                      </div>
                     )}
                   </div>
                 )}

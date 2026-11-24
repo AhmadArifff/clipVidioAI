@@ -581,6 +581,8 @@ export default function App() {
             reaction_cam_shape: settings.reactionCamShape || 'circle',
             reaction_cam_border_color: settings.reactionCamBorderColor || 'white',
             reaction_cam_mute_audio: settings.reactionCamMuteAudio !== undefined ? settings.reactionCamMuteAudio : true,
+            // v3.9 Auto-Trim Dead Air (Smart Silence Jumpcut)
+            silence_cut_mode: settings.silenceCutMode || 'off',
           },
           transcript: result.transcript,
         }),
@@ -4876,6 +4878,74 @@ Transcript:
                           {clip.key_quotes.map((quote, qIdx) => (
                             <div key={qIdx} className="quote-item">“{quote}”</div>
                           ))}
+                        </div>
+                      )}
+
+                      {/* v3.9 Open Loop, Framing & Muted Hook Telemetry */}
+                      {(clip.framing_type || clip.open_loop_question || clip.muted_hook_overlay) && (
+                        <div style={{
+                          marginTop: '0.5rem',
+                          padding: '0.5rem 0.65rem',
+                          borderRadius: '8px',
+                          background: 'rgba(15, 23, 42, 0.55)',
+                          border: '1px solid rgba(56, 189, 248, 0.22)',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '0.32rem',
+                          fontSize: '0.73rem',
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                            {clip.framing_type && (
+                              <span style={{
+                                padding: '0.1rem 0.45rem',
+                                borderRadius: '4px',
+                                fontSize: '0.66rem',
+                                fontWeight: 700,
+                                textTransform: 'uppercase',
+                                background: clip.framing_type === 'controversial'
+                                  ? 'rgba(239, 68, 68, 0.2)'
+                                  : clip.framing_type === 'respect'
+                                    ? 'rgba(16, 185, 129, 0.2)'
+                                    : 'rgba(245, 158, 11, 0.2)',
+                                color: clip.framing_type === 'controversial'
+                                  ? '#fca5a5'
+                                  : clip.framing_type === 'respect'
+                                    ? '#6ee7b7'
+                                    : '#fde68a',
+                                border: '1px solid rgba(255, 255, 255, 0.12)',
+                              }}>
+                                {clip.framing_type === 'controversial' ? '🔥 Kontroversi' : clip.framing_type === 'respect' ? '💎 Respect' : '😂 Komedi'}
+                              </span>
+                            )}
+                            {clip.payoff_time !== undefined && clip.payoff_time !== null && (
+                              <span style={{ fontSize: '0.67rem', color: '#94a3b8' }}>
+                                🎯 Payoff @ {Math.max(0, Math.round(clip.payoff_time - clip.start_time))}s
+                              </span>
+                            )}
+                          </div>
+                          {clip.open_loop_question && (
+                            <div style={{ color: '#cbd5e1', lineHeight: 1.35 }}>
+                              <strong style={{ color: '#38bdf8' }}>Open Loop (0-3s):</strong> {clip.open_loop_question}
+                            </div>
+                          )}
+                          {clip.muted_hook_overlay && (
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.4rem' }}>
+                              <div style={{ color: '#fde68a', lineHeight: 1.3 }}>
+                                <strong>🔇 Muted Hook:</strong> {clip.muted_hook_overlay}
+                              </div>
+                              <button
+                                type="button"
+                                className="copy-mini-btn"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleCopyText(clip.muted_hook_overlay!, 'Muted Hook');
+                                }}
+                                title="Salin Muted Hook"
+                              >
+                                📋
+                              </button>
+                            </div>
+                          )}
                         </div>
                       )}
 
